@@ -1,3 +1,77 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* React Big Calendar Styles */
+.family-calendar {
+  height: 100%;
+  font-family: inherit;
+}
+
+.family-calendar .rbc-calendar {
+  background: white;
+}
+
+.family-calendar .rbc-header {
+  background: #f8fafc;
+  border-bottom: 1px solid #e2e8f0;
+  font-weight: 600;
+  color: #374151;
+  padding: 12px 6px;
+}
+
+.family-calendar .rbc-month-view {
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+}
+
+.family-calendar .rbc-date-cell {
+  padding: 8px;
+  border-right: 1px solid #f1f5f9;
+}
+
+.family-calendar .rbc-day-bg {
+  background: white;
+  border-right: 1px solid #f1f5f9;
+}
+
+.family-calendar .rbc-today {
+  background: #fef3c7;
+}
+
+.family-calendar .rbc-event {
+  border-radius: 4px;
+  border: none;
+  font-size: 12px;
+  padding: 2px 5px;
+}
+
+.family-calendar .rbc-toolbar {
+  margin-bottom: 20px;
+  padding: 0;
+}
+
+.family-calendar .rbc-toolbar button {
+  background: #3b82f6;
+  border: none;
+  color: white;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-weight: 500;
+  margin: 0 2px;
+  transition: background-color 0.2s;
+}
+
+.family-calendar .rbc-toolbar button:hover {
+  background: #2563eb;
+}
+
+.family-calendar .rbc-toolbar button.rbc-active {
+  background: #1d4ed8;
+}
+
+.family-calendar .rbc-toolbar .rbc-toolbar-label {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #374151;
+}

@@ -5,6 +5,60 @@ const jwt = require('jsonwebtoken');
 const db = require('../config/database');
 const { body, validationResult } = require('express-validator');
 
+// Register endpoint
+router.post('/register', [
+  body('username').notEmpty().trim().isLength({ min: 3 }),
+  body('password').notEmpty().isLength({ min: 6 }),
+  body('email').isEmail().normalizeEmail()
+], (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ errors: errors.array() });
+  }
+
+  const { username, password, email } = req.body;
+  const full_name = username; // Use username as full_name for now
+  
+  try {
+    // Check if user already exists
+    const existingUser = db.prepare('SELECT * FROM users WHERE username = ? OR email = ?').get(username, email);
+    if (existingUser) {
+      const message = existingUser.username === username ? 'Username already exists' : 'Email already registered';
+      return res.status(400).json({ message });
+    }
+
+    // Hash password
+    const saltRounds = 10;
+    const password_hash = bcrypt.hashSync(password, saltRounds);
+
+    // Create user
+    const result = db.prepare(`
+      INSERT INTO users (username, email, password_hash, full_name)
+      VALUES (?, ?, ?, ?)
+    `).run(username, email, password_hash, full_name);
+
+    // Generate token
+    const token = jwt.sign(
+      { id: result.lastInsertRowid, username },
+      process.env.JWT_SECRET,
+      { expiresIn: '24h' }
+    );
+
+    res.status(201).json({
+      token,
+      user: {
+        id: result.lastInsertRowid,
+        username,
+        email,
+        full_name
+      }
+    });
+  } catch (error) {
+    console.error('Register error:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
 // Login endpoint
 router.post('/login', [
   body('username').notEmpty().trim(),

@@ -1,0 +1,47 @@
+import { NavLink } from 'react-router-dom';
+import { Calendar, CheckSquare, Home, Users, Clock, CalendarDays, FileText, ListChecks, Settings, UtensilsCrossed } from 'lucide-react';
+
+const Sidebar = () => {
+  const navItems = [
+    { to: '/', icon: Home, label: 'Dashboard' },
+    { to: '/daily', icon: Clock, label: 'Today\'s Plan' },
+    { to: '/weekly', icon: CalendarDays, label: 'Week View' },
+    { to: '/calendar', icon: Calendar, label: 'Calendar' },
+    { to: '/tasks', icon: CheckSquare, label: 'Tasks' },
+    { to: '/meals', icon: UtensilsCrossed, label: 'Meal Planning' },
+    { to: '/checklists', icon: ListChecks, label: 'Checklists' },
+    { to: '/brief', icon: FileText, label: 'Family Brief' },
+    { to: '/family', icon: Users, label: 'Family' },
+    { to: '/settings', icon: Settings, label: 'Settings' },
+  ];
+
+  return (
+    <aside className="bg-blue-50 w-64 min-h-screen shadow-lg">
+      <nav className="mt-8">
+        <div className="px-4">
+          <ul className="space-y-2">
+            {navItems.map(({ to, icon: Icon, label }) => (
+              <li key={to}>
+                <NavLink
+                  to={to}
+                  className={({ isActive }) =>
+                    `flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
+                      isActive
+                        ? 'bg-blue-200 text-blue-800 border-r-4 border-blue-600'
+                        : 'text-gray-700 hover:bg-blue-100 hover:text-blue-800'
+                    }`
+                  }
+                >
+                  <Icon className="h-5 w-5 mr-3" />
+                  {label}
+                </NavLink>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </nav>
+    </aside>
+  );
+};
+
+export default Sidebar;

@@ -5,11 +5,17 @@ module.exports = {
     cwd: '/Users/scottkaufman/Dropbox/01. Personal Master Folder/30-39 Music, Coding & Creative/38 Coding Projects/family-planner',
     env: {
       PORT: 11001,
-      NODE_ENV: 'production'
+      NODE_ENV: 'production',
+      CLIENT_URL: 'http://localhost:3000',
+      DATABASE_PATH: '../database/family.db',
+      JWT_SECRET: 'QcfOSmU5oPhWGpsE6xT6t37Fxc/fN5GOoZncxWPP4uY='
     },
     env_development: {
       PORT: 11001,
-      NODE_ENV: 'development'
+      NODE_ENV: 'development',
+      CLIENT_URL: 'http://localhost:5173',
+      DATABASE_PATH: '../database/family.db',
+      JWT_SECRET: 'QcfOSmU5oPhWGpsE6xT6t37Fxc/fN5GOoZncxWPP4uY='
     },
     watch: false,
     instances: 1,
