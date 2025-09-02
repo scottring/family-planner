@@ -1,0 +1,486 @@
+.checklist-instance {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+}
+
+.checklist-instance.compact {
+  border-radius: 8px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.instance-header {
+  padding: 20px;
+  border-bottom: 1px solid #e2e8f0;
+  display: flex;
+  justify-content: space-between;
+  align-items: start;
+}
+
+.compact .instance-header {
+  padding: 12px 16px;
+}
+
+.header-content h2 {
+  margin: 0 0 8px 0;
+  color: #2d3748;
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.compact .header-content h2 {
+  font-size: 16px;
+  margin: 0 0 4px 0;
+}
+
+.header-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+  color: #718096;
+}
+
+.compact .header-meta {
+  font-size: 11px;
+}
+
+.template-name, .event-name, .created-date {
+  display: block;
+}
+
+.header-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.close-btn, .delete-btn {
+  padding: 8px 12px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: background-color 0.2s;
+}
+
+.close-btn {
+  background: #f7fafc;
+  color: #4a5568;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+}
+
+.close-btn:hover {
+  background: #edf2f7;
+}
+
+.delete-btn {
+  background: #fed7d7;
+  color: #c53030;
+}
+
+.delete-btn:hover {
+  background: #feb2b2;
+}
+
+.progress-section {
+  padding: 16px 20px;
+  background: #f7fafc;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.compact .progress-section {
+  padding: 12px 16px;
+}
+
+.progress-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.progress-stats {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+}
+
+.progress-text {
+  color: #4a5568;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.compact .progress-text {
+  font-size: 12px;
+}
+
+.progress-percentage {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.compact .progress-percentage {
+  font-size: 14px;
+}
+
+.progress-bar {
+  width: 100%;
+  height: 8px;
+  background: #e2e8f0;
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+
+.compact .progress-bar {
+  height: 6px;
+}
+
+.progress-fill {
+  height: 100%;
+  transition: width 0.3s ease, background-color 0.3s ease;
+  border-radius: 4px;
+}
+
+.completion-message {
+  text-align: center;
+  color: #38a169;
+  font-weight: 500;
+  font-size: 14px;
+  margin-top: 8px;
+}
+
+.compact .completion-message {
+  font-size: 12px;
+}
+
+.items-section {
+  padding: 0;
+}
+
+.compact .items-section {
+  padding: 0;
+}
+
+.items-group {
+  padding: 16px 20px;
+}
+
+.compact .items-group {
+  padding: 12px 16px;
+}
+
+.items-group + .items-group {
+  border-top: 1px solid #f7fafc;
+}
+
+.group-title {
+  margin: 0 0 12px 0;
+  color: #2d3748;
+  font-size: 16px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.compact .group-title {
+  font-size: 14px;
+  margin: 0 0 8px 0;
+}
+
+.completed-group .group-title {
+  color: #38a169;
+}
+
+.items-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.compact .items-list {
+  gap: 4px;
+}
+
+.item-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px;
+  border-radius: 6px;
+  transition: background-color 0.2s;
+}
+
+.compact .item-row {
+  padding: 4px;
+  gap: 8px;
+}
+
+.item-row:hover {
+  background: #f7fafc;
+}
+
+.item-row.checked {
+  opacity: 0.7;
+}
+
+.item-row.checked .item-text {
+  text-decoration: line-through;
+  color: #718096;
+}
+
+.item-checkbox {
+  position: relative;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.item-checkbox input[type="checkbox"] {
+  position: absolute;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.checkmark {
+  height: 20px;
+  width: 20px;
+  background-color: #fff;
+  border: 2px solid #cbd5e0;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.compact .checkmark {
+  height: 16px;
+  width: 16px;
+}
+
+.item-checkbox:hover .checkmark {
+  border-color: #4299e1;
+}
+
+.item-checkbox input:checked ~ .checkmark {
+  background-color: #4299e1;
+  border-color: #4299e1;
+}
+
+.item-checkbox input:checked ~ .checkmark::after {
+  content: "✓";
+  color: white;
+  font-size: 12px;
+  font-weight: bold;
+}
+
+.compact .item-checkbox input:checked ~ .checkmark::after {
+  font-size: 10px;
+}
+
+.item-checkbox input:disabled ~ .checkmark {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.item-text {
+  flex: 1;
+  color: #2d3748;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.compact .item-text {
+  font-size: 12px;
+}
+
+.custom-badge {
+  background: #fed7eb;
+  color: #97266d;
+  font-size: 10px;
+  font-weight: 500;
+  padding: 2px 6px;
+  border-radius: 8px;
+  flex-shrink: 0;
+}
+
+.completion-time {
+  font-size: 11px;
+  color: #38a169;
+  flex-shrink: 0;
+}
+
+.compact .completion-time {
+  font-size: 10px;
+}
+
+.add-item-section {
+  padding: 16px 20px;
+  border-top: 1px solid #f7fafc;
+  background: #fafbfc;
+}
+
+.add-item-btn {
+  background: #4299e1;
+  color: white;
+  border: none;
+  padding: 10px 16px;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  width: 100%;
+}
+
+.add-item-btn:hover {
+  background: #3182ce;
+}
+
+.add-item-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.add-item-input {
+  padding: 10px 12px;
+  border: 1px solid #cbd5e0;
+  border-radius: 6px;
+  font-size: 14px;
+  transition: border-color 0.2s;
+}
+
+.add-item-input:focus {
+  outline: none;
+  border-color: #4299e1;
+  box-shadow: 0 0 0 3px rgba(66, 153, 225, 0.1);
+}
+
+.add-item-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.confirm-add-btn, .cancel-add-btn {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.confirm-add-btn {
+  background: #48bb78;
+  color: white;
+  flex: 1;
+}
+
+.confirm-add-btn:hover:not(:disabled) {
+  background: #38a169;
+}
+
+.confirm-add-btn:disabled {
+  background: #a0aec0;
+  cursor: not-allowed;
+}
+
+.cancel-add-btn {
+  background: #f7fafc;
+  color: #4a5568;
+  border: 1px solid #e2e8f0;
+}
+
+.cancel-add-btn:hover {
+  background: #edf2f7;
+}
+
+.completion-badge {
+  background: #c6f6d5;
+  color: #22543d;
+  padding: 12px 20px;
+  text-align: center;
+  font-size: 14px;
+  font-weight: 500;
+  border-top: 1px solid #9ae6b4;
+}
+
+.loading, .error {
+  padding: 40px 20px;
+  text-align: center;
+  color: #718096;
+  font-size: 14px;
+}
+
+.compact .loading, .compact .error {
+  padding: 20px 16px;
+  font-size: 12px;
+}
+
+.error {
+  color: #e53e3e;
+}
+
+.retry-btn {
+  background: #4299e1;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  margin-top: 12px;
+  font-size: 14px;
+}
+
+.retry-btn:hover {
+  background: #3182ce;
+}
+
+@media (max-width: 768px) {
+  .instance-header {
+    flex-direction: column;
+    gap: 16px;
+    align-items: stretch;
+  }
+  
+  .header-actions {
+    justify-content: flex-end;
+  }
+  
+  .progress-stats {
+    flex-direction: column;
+    gap: 4px;
+    align-items: stretch;
+  }
+  
+  .progress-text, .progress-percentage {
+    text-align: center;
+  }
+  
+  .item-row {
+    padding: 12px 8px;
+  }
+  
+  .items-group {
+    padding: 12px 16px;
+  }
+  
+  .add-item-section {
+    padding: 12px 16px;
+  }
+}
