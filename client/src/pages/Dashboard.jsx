@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react';
 import { Calendar, CheckSquare, Users, Clock, AlertCircle, TrendingUp, CalendarDays, MapPin } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useTaskStore } from '../stores/taskStore';
 import { useAuthStore } from '../stores/authStore';
 import { useEventStore } from '../stores/eventStore';
 import EventCard from '../components/itinerary/EventCard';
 
 const Dashboard = () => {
+  const navigate = useNavigate();
   const { tasks, fetchTasks, getTaskStats, getOverdueTasks, getTasksDueToday } = useTaskStore();
   const { events, fetchEvents } = useEventStore();
   const { user } = useAuthStore();
@@ -223,7 +224,7 @@ const Dashboard = () => {
                   key={event.id} 
                   event={event} 
                   compact={true} 
-                  onClick={() => console.log('Event clicked:', event)} 
+                  onClick={() => navigate(`/event/${event.id}`)} 
                 />
               ))}
             </div>

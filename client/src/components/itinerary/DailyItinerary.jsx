@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
 import { Clock, MapPin, Users, AlertTriangle, Cloud, Sun, CloudRain, Timer } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import EventCard from './EventCard';
 
 // Mock data for demonstration
@@ -98,7 +99,7 @@ const eventTypeColors = {
 };
 
 const DailyItinerary = ({ date = new Date() }) => {
-  const [selectedEvent, setSelectedEvent] = useState(null);
+  const navigate = useNavigate();
   
   // Generate timeline hours from 6am to 10pm
   const timelineHours = useMemo(() => {
@@ -283,7 +284,7 @@ const DailyItinerary = ({ date = new Date() }) => {
                       key={event.id}
                       className={`absolute left-4 right-4 rounded-lg border-l-4 p-3 cursor-pointer hover:shadow-md transition-all ${eventTypeColors[event.type]} bg-white`}
                       style={position}
-                      onClick={() => setSelectedEvent(event)}
+                      onClick={() => navigate(`/event/${event.id}`)}
                     >
                       <div className="flex items-center justify-between mb-1">
                         <h4 className="font-medium text-gray-900 text-sm">{event.title}</h4>
@@ -321,79 +322,12 @@ const DailyItinerary = ({ date = new Date() }) => {
               <EventCard 
                 key={event.id} 
                 event={event} 
-                onClick={() => setSelectedEvent(event)}
+                onClick={() => navigate(`/event/${event.id}`)}
               />
             ))}
           </div>
         </div>
       </div>
-
-      {/* Event Details Modal */}
-      {selectedEvent && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg max-w-md w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-gray-900">{selectedEvent.title}</h3>
-                <button
-                  onClick={() => setSelectedEvent(null)}
-                  className="text-gray-400 hover:text-gray-600"
-                >
-                  <span className="sr-only">Close</span>
-                  ×
-                </button>
-              </div>
-
-              <div className="space-y-4">
-                <div className="flex items-center space-x-3 text-gray-600">
-                  <Clock className="h-4 w-4" />
-                  <span>{formatTime(selectedEvent.time)} - {formatTime(selectedEvent.endTime)}</span>
-                </div>
-
-                <div className="flex items-center space-x-3 text-gray-600">
-                  <MapPin className="h-4 w-4" />
-                  <span>{selectedEvent.location}</span>
-                </div>
-
-                <div className="flex items-center space-x-3 text-gray-600">
-                  <Users className="h-4 w-4" />
-                  <span>{selectedEvent.attendees.join(', ')}</span>
-                </div>
-
-                {selectedEvent.description && (
-                  <p className="text-gray-700">{selectedEvent.description}</p>
-                )}
-
-                {selectedEvent.checklist && selectedEvent.checklist.length > 0 && (
-                  <div>
-                    <h4 className="font-medium text-gray-900 mb-2">Preparation Checklist</h4>
-                    <ul className="space-y-1">
-                      {selectedEvent.checklist.map((item, index) => (
-                        <li key={index} className="flex items-center space-x-2 text-sm text-gray-600">
-                          <input type="checkbox" className="rounded" />
-                          <span>{item}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-
-                {selectedEvent.preparation && (
-                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
-                    <div className="flex items-center space-x-2 text-yellow-800">
-                      <AlertTriangle className="h-4 w-4" />
-                      <span className="font-medium">Preparation Time</span>
-                    </div>
-                    <p className="text-sm text-yellow-700 mt-1">
-                      Start preparing {selectedEvent.preparation} minutes before
-                    </p>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

@@ -14,6 +14,7 @@ import TasksPage from './pages/TasksPage';
 import FamilyPage from './pages/FamilyPage';
 import Settings from './pages/Settings';
 import MealPlanner from './components/meals/MealPlanner';
+import EventDetailPage from './pages/EventDetailPage';
 import { useAuthStore } from './stores/authStore';
 import './App.css';
 
@@ -49,14 +50,17 @@ function App() {
           >
             <Route index element={<Dashboard />} />
             <Route path="daily" element={<DailyPage />} />
-            <Route path="weekly" element={<WeeklyPage />} />
             <Route path="calendar" element={<CalendarView />} />
+            <Route path="event/:id" element={<EventDetailPage />} />
             <Route path="tasks" element={<TasksPage />} />
             <Route path="meals" element={<MealPlanner />} />
-            <Route path="checklists" element={<ChecklistsPage />} />
-            <Route path="brief" element={<BriefPage />} />
             <Route path="family" element={<FamilyPage />} />
             <Route path="settings" element={<Settings />} />
+            
+            {/* Redirects for old routes */}
+            <Route path="weekly" element={<Navigate to="/calendar" replace />} />
+            <Route path="checklists" element={<Navigate to="/tasks" replace />} />
+            <Route path="brief" element={<Navigate to="/daily" replace />} />
           </Route>
 
           {/* Catch all route */}

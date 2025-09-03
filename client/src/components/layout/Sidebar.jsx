@@ -4,13 +4,10 @@ import { Calendar, CheckSquare, Home, Users, Clock, CalendarDays, FileText, List
 const Sidebar = ({ isOpen = false, onClose = () => {} }) => {
   const navItems = [
     { to: '/', icon: Home, label: 'Dashboard' },
-    { to: '/daily', icon: Clock, label: 'Today\'s Plan' },
-    { to: '/weekly', icon: CalendarDays, label: 'Week View' },
+    { to: '/daily', icon: Clock, label: 'Today' },
     { to: '/calendar', icon: Calendar, label: 'Calendar' },
-    { to: '/tasks', icon: CheckSquare, label: 'Tasks' },
-    { to: '/meals', icon: UtensilsCrossed, label: 'Meal Planning' },
-    { to: '/checklists', icon: ListChecks, label: 'Checklists' },
-    { to: '/brief', icon: FileText, label: 'Family Brief' },
+    { to: '/tasks', icon: CheckSquare, label: 'Tasks & Lists' },
+    { to: '/meals', icon: UtensilsCrossed, label: 'Meals' },
     { to: '/family', icon: Users, label: 'Family' },
     { to: '/settings', icon: Settings, label: 'Settings' },
   ];
