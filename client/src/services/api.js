@@ -31,10 +31,13 @@ api.interceptors.response.use(
   (error) => {
     // Handle common errors
     if (error.response?.status === 401) {
-      // Unauthorized - clear auth data and redirect to login
+      // Unauthorized - clear auth data but don't redirect
+      // Let the auth store and React Router handle navigation
       localStorage.removeItem('auth-token');
       localStorage.removeItem('auth-user');
-      window.location.href = '/login';
+      
+      // Dispatch a custom event that the auth store can listen to
+      window.dispatchEvent(new CustomEvent('auth:logout'));
     }
 
     if (error.response?.status === 403) {

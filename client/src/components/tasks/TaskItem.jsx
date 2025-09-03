@@ -18,13 +18,13 @@ const TaskItem = ({ task, onEdit }) => {
   const getPriorityColor = (priority) => {
     switch (priority) {
       case 'high':
-        return 'text-red-600 bg-red-50 border-red-200';
+        return 'text-error-700 bg-error-100/80 border-error-200 shadow-error/10';
       case 'medium':
-        return 'text-yellow-600 bg-yellow-50 border-yellow-200';
+        return 'text-warning-700 bg-warning-100/80 border-warning-200 shadow-warm/10';
       case 'low':
-        return 'text-green-600 bg-green-50 border-green-200';
+        return 'text-success-700 bg-success-100/80 border-success-200 shadow-success/10';
       default:
-        return 'text-blue-600 bg-blue-50 border-blue-200';
+        return 'text-primary-700 bg-primary-100/80 border-primary-200 shadow-primary/10';
     }
   };
 
@@ -49,27 +49,27 @@ const TaskItem = ({ task, onEdit }) => {
 
   return (
     <div
-      className={`border rounded-lg p-4 transition-all duration-200 ${
+      className={`group border rounded-2xl p-6 transition-all duration-300 transform hover:scale-[1.01] animate-fade-in ${
         task.completed 
-          ? 'bg-gray-50 border-gray-200' 
-          : 'bg-white border-gray-300 hover:shadow-md'
-      } ${isOverdue ? 'border-red-300 bg-red-50' : ''}`}
+          ? 'bg-gradient-to-r from-gray-50 to-gray-100/50 border-gray-200 shadow-sm' 
+          : 'bg-white border-gray-200 hover:shadow-lg card-hover'
+      } ${isOverdue ? 'border-error-300 bg-gradient-to-r from-error-50 to-error-100/30 shadow-error/10' : 'shadow-sm'}`}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
       <div className="flex items-start space-x-3">
         <button
           onClick={handleToggleComplete}
-          className={`mt-1 transition-colors ${
+          className={`mt-1 p-2 rounded-xl transition-all duration-300 transform hover:scale-110 ${
             task.completed 
-              ? 'text-green-600 hover:text-green-700' 
-              : 'text-gray-400 hover:text-green-600'
+              ? 'text-success-600 bg-success-100/50 hover:bg-success-100 shadow-success/20 animate-bounce-gentle' 
+              : 'text-gray-400 hover:text-success-600 hover:bg-success-50'
           }`}
         >
           {task.completed ? (
-            <CheckCircle2 className="h-5 w-5" />
+            <CheckCircle2 className="h-6 w-6 animate-checkmark" />
           ) : (
-            <Circle className="h-5 w-5" />
+            <Circle className="h-6 w-6 group-hover:scale-110 transition-transform duration-200" />
           )}
         </button>
 
@@ -123,24 +123,24 @@ const TaskItem = ({ task, onEdit }) => {
               </div>
             </div>
 
-            {isHovered && !task.completed && (
-              <div className="flex items-center space-x-1 ml-2">
-                <button
-                  onClick={() => onEdit(task)}
-                  className="p-1 text-gray-400 hover:text-blue-600 transition-colors"
-                  title="Edit task"
-                >
-                  <Edit3 className="h-4 w-4" />
-                </button>
-                <button
-                  onClick={handleDelete}
-                  className="p-1 text-gray-400 hover:text-red-600 transition-colors"
-                  title="Delete task"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </button>
-              </div>
-            )}
+            <div className={`flex items-center space-x-2 ml-2 transition-all duration-300 ${
+              isHovered && !task.completed ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-2'
+            }`}>
+              <button
+                onClick={() => onEdit(task)}
+                className="p-2 text-gray-400 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-all duration-200 transform hover:scale-110"
+                title="Edit task"
+              >
+                <Edit3 className="h-4 w-4" />
+              </button>
+              <button
+                onClick={handleDelete}
+                className="p-2 text-gray-400 hover:text-error-600 hover:bg-error-50 rounded-lg transition-all duration-200 transform hover:scale-110"
+                title="Delete task"
+              >
+                <Trash2 className="h-4 w-4" />
+              </button>
+            </div>
           </div>
         </div>
       </div>

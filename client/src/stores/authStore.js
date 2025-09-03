@@ -28,7 +28,14 @@ export const useAuthStore = create(
             localStorage.removeItem('auth-user');
             set({ user: null, token: null, isLoading: false });
           }
+        } else {
+          set({ isLoading: false });
         }
+        
+        // Listen for auth logout events from API
+        window.addEventListener('auth:logout', () => {
+          get().logout();
+        });
       },
 
       // Login function

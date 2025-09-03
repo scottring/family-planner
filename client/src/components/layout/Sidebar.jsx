@@ -1,7 +1,7 @@
 import { NavLink } from 'react-router-dom';
 import { Calendar, CheckSquare, Home, Users, Clock, CalendarDays, FileText, ListChecks, Settings, UtensilsCrossed } from 'lucide-react';
 
-const Sidebar = () => {
+const Sidebar = ({ isOpen = false, onClose = () => {} }) => {
   const navItems = [
     { to: '/', icon: Home, label: 'Dashboard' },
     { to: '/daily', icon: Clock, label: 'Today\'s Plan' },
@@ -16,7 +16,10 @@ const Sidebar = () => {
   ];
 
   return (
-    <aside className="bg-blue-50 w-64 min-h-screen shadow-lg">
+    <aside className={`bg-blue-50 w-64 min-h-screen shadow-lg transition-transform duration-300 ease-in-out z-50
+      ${isOpen ? 'translate-x-0' : '-translate-x-full'} 
+      lg:translate-x-0 lg:static lg:z-auto fixed left-0 top-0
+    `}>
       <nav className="mt-8">
         <div className="px-4">
           <ul className="space-y-2">
@@ -24,6 +27,7 @@ const Sidebar = () => {
               <li key={to}>
                 <NavLink
                   to={to}
+                  onClick={onClose}
                   className={({ isActive }) =>
                     `flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
                       isActive

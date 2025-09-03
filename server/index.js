@@ -10,14 +10,14 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: process.env.CLIENT_URL || 'http://localhost:5173',
+    origin: ['http://localhost:5173', 'http://localhost:5174', 'http://localhost:3000'],
     credentials: true
   }
 });
 
 // Middleware
 app.use(cors({
-  origin: process.env.CLIENT_URL || 'http://localhost:5173',
+  origin: ['http://localhost:5173', 'http://localhost:5174', 'http://localhost:3000'],
   credentials: true
 }));
 app.use(express.json());
@@ -36,6 +36,7 @@ const familyRoutes = require('./routes/family');
 const aiRoutes = require('./routes/ai');
 const checklistRoutes = require('./routes/checklists');
 const telegramRoutes = require('./routes/telegram');
+const googleCalendarRoutes = require('./routes/googleCalendar');
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {
@@ -56,6 +57,7 @@ app.use('/api/family', familyRoutes);
 app.use('/api/ai', aiRoutes);
 app.use('/api/checklists', checklistRoutes);
 app.use('/api/telegram', telegramRoutes);
+app.use('/api/google', googleCalendarRoutes);
 
 // WebSocket connection
 io.on('connection', (socket) => {

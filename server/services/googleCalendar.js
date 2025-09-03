@@ -12,6 +12,12 @@ class GoogleCalendarService {
     // Initialize OAuth2 client with credentials from environment
     const credentials = this.getCredentials();
     
+    console.log('Google Calendar credentials check:', {
+      hasClientId: !!credentials.client_id,
+      hasClientSecret: !!credentials.client_secret,
+      redirectUri: credentials.redirect_uri
+    });
+    
     if (credentials.client_id && credentials.client_secret) {
       this.oauth2Client = new google.auth.OAuth2(
         credentials.client_id,
@@ -20,8 +26,9 @@ class GoogleCalendarService {
       );
       
       this.calendar = google.calendar({ version: 'v3', auth: this.oauth2Client });
+      console.log('✅ Google Calendar service initialized successfully');
     } else {
-      console.warn('Google Calendar credentials not configured. Using mock mode.');
+      console.warn('⚠️  Google Calendar credentials not configured. Using mock mode.');
     }
   }
 

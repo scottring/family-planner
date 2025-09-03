@@ -3,13 +3,13 @@ import { useState } from 'react';
 import { aiService } from '../../services/ai';
 
 const eventTypeColors = {
-  school: 'border-l-blue-500 bg-blue-50',
-  sports: 'border-l-green-500 bg-green-50',
-  medical: 'border-l-red-500 bg-red-50',
-  social: 'border-l-purple-500 bg-purple-50',
-  work: 'border-l-yellow-500 bg-yellow-50',
-  personal: 'border-l-gray-500 bg-gray-50',
-  family: 'border-l-pink-500 bg-pink-50'
+  school: 'border-l-blue-500 bg-white',
+  sports: 'border-l-green-500 bg-white',
+  medical: 'border-l-red-500 bg-white',
+  social: 'border-l-purple-500 bg-white',
+  work: 'border-l-yellow-500 bg-white',
+  personal: 'border-l-gray-500 bg-white',
+  family: 'border-l-pink-500 bg-white'
 };
 
 const eventTypeIcons = {
@@ -137,7 +137,7 @@ const EventCard = ({ event, onClick, compact = false, showDetails = true, onEven
           <div className="flex-1 min-w-0">
             <div className="flex items-center space-x-2">
               <span className="text-lg">{eventTypeIcons[event.type]}</span>
-              <h4 className="font-medium text-gray-900 truncate">{event.title}</h4>
+              <h4 className="font-medium text-gray-800 truncate">{event.title}</h4>
             </div>
             <div className="flex items-center space-x-4 mt-1 text-sm text-gray-600">
               <span className="flex items-center">
@@ -170,7 +170,7 @@ const EventCard = ({ event, onClick, compact = false, showDetails = true, onEven
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center space-x-2">
                 <span className="text-xl">{eventTypeIcons[event.type]}</span>
-                <h3 className="font-semibold text-gray-900">{event.title}</h3>
+                <h3 className="font-semibold text-gray-800">{event.title}</h3>
                 {event.checklist && event.checklist.length > 0 && (
                   <CheckSquare className="h-4 w-4 text-gray-400" />
                 )}

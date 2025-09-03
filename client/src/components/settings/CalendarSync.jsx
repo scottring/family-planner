@@ -47,7 +47,15 @@ const CalendarSync = () => {
         await loadCalendars();
       }
     } catch (err) {
-      setError(err.message);
+      // Don't show error on initial load - might just be not configured
+      console.log('Calendar sync status check failed:', err);
+      setSyncStatus({
+        isConfigured: false,
+        isAuthenticated: false,
+        syncEnabled: false,
+        lastSyncTime: null,
+        mockMode: true
+      });
     } finally {
       setLoading(false);
     }
