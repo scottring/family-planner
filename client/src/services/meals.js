@@ -44,6 +44,18 @@ export const mealsApi = {
   async generateMealSuggestions(preferences = {}) {
     const response = await api.post('/meals/suggest', preferences);
     return response.data.suggestions;
+  },
+
+  // Generate AI-powered weekly meal plan
+  async generateAiMealPlan(planData) {
+    const response = await api.post('/meals/ai-generate-plan', planData);
+    return response.data;
+  },
+
+  // Sync AI-generated meal plan to database
+  async syncAiMealPlan(planData) {
+    const response = await api.post('/meals/sync-ai-plan', planData);
+    return response.data;
   }
 };
 

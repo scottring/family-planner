@@ -1,5 +1,6 @@
 import { User, LogOut, Menu } from 'lucide-react';
 import { useAuthStore } from '../../stores/authStore';
+import NotificationBadge from '../notifications/NotificationBadge';
 
 const Header = ({ onToggleSidebar }) => {
   const { user, logout } = useAuthStore();
@@ -25,6 +26,8 @@ const Header = ({ onToggleSidebar }) => {
           
           {user && (
             <div className="flex items-center space-x-3">
+              <NotificationBadge />
+              
               <User className="h-5 w-5 text-gray-600" />
               <span className="hidden sm:block text-gray-600">
                 {user.username}

@@ -80,4 +80,32 @@ export const taskAPI = {
   bulkMarkComplete: (taskIds) => {
     return api.patch('/tasks/bulk-complete', { taskIds });
   },
+
+  // Phase 9: Task Lifecycle endpoints
+  
+  // Get task templates
+  getTemplates: (category = null) => {
+    const params = category ? { category } : {};
+    return api.get('/tasks/templates', { params });
+  },
+
+  // Create task from template
+  createFromTemplate: (templateId, customData = {}) => {
+    return api.post('/tasks/from-template', { templateId, customData });
+  },
+
+  // Complete task with lifecycle handling
+  completeWithEvents: (taskId, completionData = {}) => {
+    return api.post(`/tasks/${taskId}/complete-with-events`, { completionData });
+  },
+
+  // Generate next recurring instance
+  generateNextInstance: (taskId) => {
+    return api.post(`/tasks/${taskId}/generate-next`);
+  },
+
+  // Convert task to event
+  convertToEvent: (taskId, eventData) => {
+    return api.post(`/tasks/${taskId}/convert-to-event`, { eventData });
+  },
 };

@@ -1,13 +1,15 @@
 import { NavLink } from 'react-router-dom';
-import { Calendar, CheckSquare, Home, Users, Clock, CalendarDays, FileText, ListChecks, Settings, UtensilsCrossed } from 'lucide-react';
+import { Calendar, CheckSquare, Home, Users, Clock, CalendarDays, FileText, ListChecks, Settings, UtensilsCrossed, Inbox, ClipboardList } from 'lucide-react';
 
 const Sidebar = ({ isOpen = false, onClose = () => {} }) => {
   const navItems = [
     { to: '/', icon: Home, label: 'Dashboard' },
+    { to: '/inbox', icon: Inbox, label: 'Smart Inbox' },
     { to: '/daily', icon: Clock, label: 'Today' },
     { to: '/calendar', icon: Calendar, label: 'Calendar' },
     { to: '/tasks', icon: CheckSquare, label: 'Tasks & Lists' },
     { to: '/meals', icon: UtensilsCrossed, label: 'Meals' },
+    { to: '/planning', icon: ClipboardList, label: 'Weekly Planning' },
     { to: '/family', icon: Users, label: 'Family' },
     { to: '/settings', icon: Settings, label: 'Settings' },
   ];

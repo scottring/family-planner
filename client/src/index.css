@@ -396,10 +396,105 @@
   }
 }
 
+/* ===== SKELETON LOADERS ===== */
+@layer components {
+  .skeleton {
+    @apply animate-pulse bg-gray-200 rounded;
+  }
+
+  .skeleton-text {
+    @apply h-4 bg-gray-200 rounded animate-pulse;
+  }
+
+  .skeleton-text-sm {
+    @apply h-3 bg-gray-200 rounded animate-pulse;
+  }
+
+  .skeleton-text-lg {
+    @apply h-6 bg-gray-200 rounded animate-pulse;
+  }
+
+  .skeleton-circle {
+    @apply rounded-full bg-gray-200 animate-pulse;
+  }
+
+  .skeleton-button {
+    @apply h-10 bg-gray-200 rounded-lg animate-pulse;
+  }
+
+  .skeleton-card {
+    @apply bg-white p-4 rounded-lg shadow-sm border border-gray-200;
+  }
+}
+
+/* ===== MOBILE-FIRST IMPROVEMENTS ===== */
+@layer utilities {
+  /* Touch-friendly sizing */
+  .touch-target {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  .touch-target-lg {
+    min-height: 48px;
+    min-width: 48px;
+  }
+
+  /* Thumb zone friendly - easier to reach */
+  .thumb-zone {
+    @apply fixed bottom-4 right-4 z-50;
+  }
+
+  /* Smooth mobile animations */
+  .mobile-scale {
+    transition: transform 0.1s ease-out;
+  }
+
+  .mobile-scale:active {
+    transform: scale(0.95);
+  }
+
+  /* Prevent text selection on mobile interactions */
+  .no-select {
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+  }
+  
+  /* High contrast for better mobile readability */
+  .mobile-contrast {
+    text-shadow: 0 0 1px rgba(0, 0, 0, 0.1);
+  }
+}
+
 /* ===== RESPONSIVE BREAKPOINTS ===== */
 @media (max-width: 640px) {
   .content-area {
     padding: var(--space-4);
+  }
+
+  /* Ensure all touch targets are minimum size */
+  button, input, select, textarea, a[role="button"] {
+    min-height: 44px;
+  }
+
+  /* Larger text sizes for mobile readability */
+  body {
+    font-size: 16px; /* Prevents zoom on iOS */
+  }
+
+  /* Better spacing for mobile */
+  .space-y-1 > * + * {
+    margin-top: 0.5rem;
+  }
+  
+  .space-y-2 > * + * {
+    margin-top: 0.75rem;
+  }
+  
+  .space-y-3 > * + * {
+    margin-top: 1rem;
   }
 
   .family-calendar .rbc-toolbar {
@@ -421,6 +516,15 @@
   h1 { font-size: var(--font-size-2xl); }
   h2 { font-size: var(--font-size-xl); }
   h3 { font-size: var(--font-size-lg); }
+  
+  /* Improve button spacing for fat fingers */
+  .grid.grid-cols-2 {
+    gap: 1rem;
+  }
+  
+  .grid.grid-cols-3 {
+    gap: 0.75rem;
+  }
 }
 
 @media (max-width: 768px) {
@@ -428,5 +532,25 @@
     right: var(--space-2);
     left: var(--space-2);
     max-width: none;
+  }
+  
+  /* Prevent horizontal scroll */
+  body {
+    overflow-x: hidden;
+  }
+  
+  /* Better mobile form styling */
+  input, textarea, select {
+    font-size: 16px; /* Prevents zoom on iOS */
+    padding: 12px;
+  }
+}
+
+/* ===== HIGH DPI / RETINA DISPLAY OPTIMIZATIONS ===== */
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+  /* Crisper icons and graphics */
+  .icon {
+    image-rendering: -webkit-optimize-contrast;
+    image-rendering: crisp-edges;
   }
 }

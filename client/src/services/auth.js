@@ -60,4 +60,19 @@ export const authAPI = {
   deleteAccount: (password) => {
     return api.delete('/auth/account', { data: { password } });
   },
+
+  // Get user preferences
+  getPreferences: () => {
+    return api.get('/auth/preferences');
+  },
+
+  // Update user preferences
+  updatePreferences: (preferences) => {
+    return api.put('/auth/preferences', { preferences });
+  },
+
+  // Update dashboard preferences specifically
+  updateDashboardPreferences: (dashboardPreferences) => {
+    return api.put('/auth/profile', { dashboard_preferences: dashboardPreferences });
+  },
 };

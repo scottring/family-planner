@@ -15,6 +15,8 @@ import FamilyPage from './pages/FamilyPage';
 import Settings from './pages/Settings';
 import MealPlanner from './components/meals/MealPlanner';
 import EventDetailPage from './pages/EventDetailPage';
+import SmartInbox from './components/inbox/SmartInbox';
+import PlanningSession from './components/planning/PlanningSession';
 import { useAuthStore } from './stores/authStore';
 import './App.css';
 
@@ -49,11 +51,13 @@ function App() {
             }
           >
             <Route index element={<Dashboard />} />
+            <Route path="inbox" element={<SmartInbox />} />
             <Route path="daily" element={<DailyPage />} />
             <Route path="calendar" element={<CalendarView />} />
             <Route path="event/:id" element={<EventDetailPage />} />
             <Route path="tasks" element={<TasksPage />} />
             <Route path="meals" element={<MealPlanner />} />
+            <Route path="planning" element={<PlanningSession />} />
             <Route path="family" element={<FamilyPage />} />
             <Route path="settings" element={<Settings />} />
             

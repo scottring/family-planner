@@ -477,6 +477,414 @@ Provide a JSON response with:
     
     return optimizations;
   }
+
+  /**
+   * Enhance task-to-event conversion with AI suggestions
+   */
+  async enhanceTaskToEvent(task, eventData) {
+    if (this.useMockData) {
+      return {
+        suggestedLocation: eventData.location || 'Home',
+        preparationList: [`Prepare for ${task.title}`, 'Set reminders', 'Gather materials'],
+        resourcesNeeded: { materials: ['Task-related items'], people: [], equipment: [] },
+        suggestions: { preparation_time: 15, optimal_duration: 60 }
+      };
+    }
+
+    try {
+      const prompt = `Convert this task to an event with practical suggestions:
+      Task: ${task.title}
+      Description: ${task.description || 'No description'}
+      Category: ${task.category || 'General'}
+      Priority: ${task.priority || 3}
+      Event Data: ${JSON.stringify(eventData)}
+      
+      Provide JSON with: suggestedLocation, preparationList (array), resourcesNeeded (object with materials/people/equipment arrays), suggestions (object with preparation_time and optimal_duration)`;
+
+      const response = await this.openai.chat.completions.create({
+        model: 'gpt-3.5-turbo',
+        messages: [
+          { role: 'system', content: 'You are a helpful family planning assistant. Convert tasks to events with practical suggestions. Always respond with valid JSON.' },
+          { role: 'user', content: prompt }
+        ],
+        temperature: 0.7,
+        max_tokens: 500
+      });
+
+      return JSON.parse(response.choices[0].message.content);
+    } catch (error) {
+      console.error('AI task-to-event enhancement error:', error);
+      return {
+        suggestedLocation: 'Home',
+        preparationList: [`Complete ${task.title}`],
+        resourcesNeeded: { materials: [], people: [], equipment: [] },
+        suggestions: { preparation_time: 15, optimal_duration: 30 }
+      };
+    }
+  }
+
+  /**
+   * Suggest event creation based on completed task
+   */
+  async suggestEventFromTask(task) {
+    if (this.useMockData) {
+      return {
+        title: `Follow-up for ${task.title}`,
+        description: `Event created based on completed task: ${task.title}`,
+        duration: 60,
+        suggested_time: 'within_week',
+        location: 'Home',
+        type: 'follow_up'
+      };
+    }
+
+    try {
+      const prompt = `Based on this completed task, suggest a related calendar event:
+      Task: ${task.title}
+      Description: ${task.description || 'No description'}
+      Category: ${task.category || 'General'}
+      
+      Suggest a relevant event with title, description, duration (minutes), suggested_time (today/tomorrow/within_week), location, and type.`;
+
+      const response = await this.openai.chat.completions.create({
+        model: 'gpt-3.5-turbo',
+        messages: [
+          { role: 'system', content: 'Suggest relevant calendar events based on completed tasks. Always respond with valid JSON.' },
+          { role: 'user', content: prompt }
+        ],
+        temperature: 0.7,
+        max_tokens: 400
+      });
+
+      return JSON.parse(response.choices[0].message.content);
+    } catch (error) {
+      console.error('AI event suggestion error:', error);
+      return {
+        title: `Review ${task.title}`,
+        description: `Follow-up on completed task`,
+        duration: 30,
+        suggested_time: 'within_week',
+        location: 'Home',
+        type: 'review'
+      };
+    }
+  }
+
+  /**
+   * Generate follow-up task suggestions based on completed task
+   */
+  async suggestFollowUpTasks(task) {
+    if (this.useMockData) {
+      return [
+        {
+          title: `Review ${task.title} results`,
+          description: 'Follow up on the completed task to ensure success',
+          priority: 2,
+          category: task.category || 'General',
+          duration: 15
+        }
+      ];
+    }
+
+    try {
+      const prompt = `Based on this completed task, suggest 1-3 relevant follow-up tasks:
+      Task: ${task.title}
+      Description: ${task.description || 'No description'}
+      Category: ${task.category || 'General'}
+      
+      Provide JSON array with objects containing: title, description, priority (1-5), category, duration (minutes)`;
+
+      const response = await this.openai.chat.completions.create({
+        model: 'gpt-3.5-turbo',
+        messages: [
+          { role: 'system', content: 'Suggest relevant follow-up tasks based on completed tasks. Always respond with valid JSON array.' },
+          { role: 'user', content: prompt }
+        ],
+        temperature: 0.7,
+        max_tokens: 400
+      });
+
+      return JSON.parse(response.choices[0].message.content);
+    } catch (error) {
+      console.error('AI follow-up suggestions error:', error);
+      return [
+        {
+          title: `Follow up on ${task.title}`,
+          description: 'Check results and plan next steps',
+          priority: 3,
+          category: task.category || 'General',
+          duration: 15
+        }
+      ];
+    }
+  }
+
+  /**
+   * Generate AI-powered weekly meal plan
+   */
+  async generateWeeklyMealPlan({
+    startDate,
+    dietaryPatterns = {},
+    familyPreferences = {},
+    scheduleInfo = {},
+    availableIngredients = [],
+    nutritionGoals = {}
+  }) {
+    if (this.useMockData) {
+      return this.getMockWeeklyMealPlan(startDate);
+    }
+
+    try {
+      const prompt = this.buildMealPlanPrompt({
+        startDate,
+        dietaryPatterns,
+        familyPreferences,
+        scheduleInfo,
+        availableIngredients,
+        nutritionGoals
+      });
+
+      const response = await this.openai.chat.completions.create({
+        model: 'gpt-3.5-turbo',
+        messages: [
+          {
+            role: 'system',
+            content: `You are a professional family meal planning assistant. Create practical, family-friendly meal plans that consider dietary patterns, individual preferences, schedules, and available ingredients. Always respond with valid JSON.`
+          },
+          {
+            role: 'user',
+            content: prompt
+          }
+        ],
+        temperature: 0.7,
+        max_tokens: 2000
+      });
+
+      const result = JSON.parse(response.choices[0].message.content);
+      return this.formatMealPlanResult(result);
+    } catch (error) {
+      console.error('AI meal plan generation error:', error);
+      // Fallback to mock data if API fails
+      return this.getMockWeeklyMealPlan(startDate);
+    }
+  }
+
+  buildMealPlanPrompt({
+    startDate,
+    dietaryPatterns,
+    familyPreferences,
+    scheduleInfo,
+    availableIngredients,
+    nutritionGoals
+  }) {
+    const weekStart = new Date(startDate);
+    const weekDays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+    
+    return `
+Generate a comprehensive weekly meal plan for a family starting ${weekStart.toDateString()}.
+
+FAMILY CONSTRAINTS:
+Dietary Patterns: ${JSON.stringify(dietaryPatterns)}
+Individual Preferences: ${JSON.stringify(familyPreferences)}
+Schedule Requirements: ${JSON.stringify(scheduleInfo)}
+Available Ingredients: ${availableIngredients.join(', ')}
+Nutrition Goals: ${JSON.stringify(nutritionGoals)}
+
+REQUIREMENTS:
+- Include breakfast, lunch, dinner, and snacks for each day
+- Consider meal prep time (15-45 minutes max for weekdays, flexible for weekends)
+- Avoid repetition within the week
+- Prioritize practical, family-friendly meals
+- Use available ingredients where possible
+- Balance nutrition across the week
+- Consider who's eating what meals based on schedule
+
+RESPONSE FORMAT - Return valid JSON:
+{
+  "meal_plan": {
+    "Monday": {
+      "breakfast": {
+        "title": "Meal Name",
+        "prep_time": 15,
+        "servings": 4,
+        "difficulty": "Easy",
+        "ingredients": [
+          {"name": "Ingredient", "quantity": 1, "unit": "cup", "category": "Produce"}
+        ],
+        "nutrition_info": {"calories": 300, "protein": 15, "carbs": 45, "fat": 8},
+        "tags": ["quick", "healthy"],
+        "description": "Brief description",
+        "cooking_notes": "Any special instructions"
+      },
+      "lunch": {...},
+      "dinner": {...},
+      "snacks": {...}
+    },
+    "Tuesday": {...},
+    "Wednesday": {...},
+    "Thursday": {...},
+    "Friday": {...},
+    "Saturday": {...},
+    "Sunday": {...}
+  },
+  "shopping_list": {
+    "Produce": ["item1", "item2"],
+    "Dairy & Eggs": ["item1", "item2"],
+    "Meat & Seafood": ["item1", "item2"],
+    "Pantry": ["item1", "item2"]
+  },
+  "weekly_summary": {
+    "total_prep_time": 180,
+    "nutrition_totals": {"calories": 2100, "protein": 105, "carbs": 315, "fat": 70},
+    "meal_variety_score": 8.5,
+    "budget_estimate": 150
+  },
+  "meal_prep_suggestions": [
+    "Prep vegetables on Sunday",
+    "Make overnight oats for quick breakfasts"
+  ]
+}
+
+Focus on practical, cookable meals that save time and reduce daily decision fatigue.
+    `;
+  }
+
+  formatMealPlanResult(result) {
+    return {
+      meal_plan: result.meal_plan || {},
+      shopping_list: result.shopping_list || {},
+      weekly_summary: result.weekly_summary || {},
+      meal_prep_suggestions: result.meal_prep_suggestions || [],
+      generated_at: new Date().toISOString()
+    };
+  }
+
+  getMockWeeklyMealPlan(startDate) {
+    const weekStart = new Date(startDate);
+    const weekDays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+    
+    const mockMeals = {
+      breakfast: [
+        {
+          title: "Overnight Oats with Berries",
+          prep_time: 5,
+          servings: 4,
+          difficulty: "Easy",
+          ingredients: [
+            {"name": "Rolled oats", "quantity": 2, "unit": "cups", "category": "Pantry"},
+            {"name": "Greek yogurt", "quantity": 1, "unit": "cup", "category": "Dairy & Eggs"},
+            {"name": "Mixed berries", "quantity": 1.5, "unit": "cups", "category": "Produce"},
+            {"name": "Honey", "quantity": 3, "unit": "tbsp", "category": "Pantry"}
+          ],
+          nutrition_info: {"calories": 280, "protein": 12, "carbs": 48, "fat": 6},
+          tags: ["healthy", "make-ahead", "quick"],
+          description: "Creamy overnight oats with fresh berries and honey",
+          cooking_notes: "Prepare the night before for grab-and-go breakfast"
+        },
+        {
+          title: "Scrambled Eggs with Toast",
+          prep_time: 10,
+          servings: 4,
+          difficulty: "Easy",
+          ingredients: [
+            {"name": "Eggs", "quantity": 8, "unit": "large", "category": "Dairy & Eggs"},
+            {"name": "Whole grain bread", "quantity": 4, "unit": "slices", "category": "Bakery"},
+            {"name": "Butter", "quantity": 2, "unit": "tbsp", "category": "Dairy & Eggs"},
+            {"name": "Milk", "quantity": 0.25, "unit": "cup", "category": "Dairy & Eggs"}
+          ],
+          nutrition_info: {"calories": 320, "protein": 18, "carbs": 22, "fat": 16},
+          tags: ["protein", "quick", "classic"],
+          description: "Fluffy scrambled eggs with buttered toast",
+          cooking_notes: "Cook eggs on medium-low heat for creaminess"
+        }
+      ],
+      lunch: [
+        {
+          title: "Turkey and Avocado Wrap",
+          prep_time: 10,
+          servings: 4,
+          difficulty: "Easy",
+          ingredients: [
+            {"name": "Large tortillas", "quantity": 4, "unit": "pieces", "category": "Bakery"},
+            {"name": "Sliced turkey", "quantity": 0.5, "unit": "lb", "category": "Meat & Seafood"},
+            {"name": "Avocado", "quantity": 2, "unit": "medium", "category": "Produce"},
+            {"name": "Lettuce", "quantity": 4, "unit": "cups", "category": "Produce"}
+          ],
+          nutrition_info: {"calories": 380, "protein": 25, "carbs": 32, "fat": 18},
+          tags: ["portable", "healthy", "quick"],
+          description: "Fresh wrap with turkey, avocado, and crisp vegetables",
+          cooking_notes: "Wrap tightly for easy handling"
+        }
+      ],
+      dinner: [
+        {
+          title: "One-Pan Chicken and Vegetables",
+          prep_time: 35,
+          servings: 4,
+          difficulty: "Easy",
+          ingredients: [
+            {"name": "Chicken thighs", "quantity": 2, "unit": "lbs", "category": "Meat & Seafood"},
+            {"name": "Sweet potatoes", "quantity": 2, "unit": "large", "category": "Produce"},
+            {"name": "Broccoli", "quantity": 1, "unit": "large head", "category": "Produce"},
+            {"name": "Olive oil", "quantity": 3, "unit": "tbsp", "category": "Pantry"}
+          ],
+          nutrition_info: {"calories": 420, "protein": 35, "carbs": 28, "fat": 18},
+          tags: ["one-pan", "healthy", "family-friendly"],
+          description: "Roasted chicken with colorful vegetables",
+          cooking_notes: "Roast at 425°F for 30-35 minutes"
+        }
+      ],
+      snacks: [
+        {
+          title: "Apple Slices with Peanut Butter",
+          prep_time: 5,
+          servings: 4,
+          difficulty: "Easy",
+          ingredients: [
+            {"name": "Apples", "quantity": 2, "unit": "large", "category": "Produce"},
+            {"name": "Natural peanut butter", "quantity": 4, "unit": "tbsp", "category": "Pantry"}
+          ],
+          nutrition_info: {"calories": 180, "protein": 6, "carbs": 20, "fat": 10},
+          tags: ["healthy", "quick", "portable"],
+          description: "Crisp apple slices with creamy peanut butter",
+          cooking_notes: "Sprinkle apples with lemon juice to prevent browning"
+        }
+      ]
+    };
+
+    const meal_plan = {};
+    weekDays.forEach((day, index) => {
+      meal_plan[day] = {
+        breakfast: mockMeals.breakfast[index % mockMeals.breakfast.length],
+        lunch: mockMeals.lunch[index % mockMeals.lunch.length],
+        dinner: mockMeals.dinner[index % mockMeals.dinner.length],
+        snacks: mockMeals.snacks[index % mockMeals.snacks.length]
+      };
+    });
+
+    return {
+      meal_plan,
+      shopping_list: {
+        "Produce": ["Mixed berries", "Apples", "Sweet potatoes", "Broccoli", "Avocado", "Lettuce"],
+        "Dairy & Eggs": ["Greek yogurt", "Eggs", "Butter", "Milk"],
+        "Meat & Seafood": ["Chicken thighs", "Sliced turkey"],
+        "Pantry": ["Rolled oats", "Honey", "Olive oil", "Natural peanut butter"],
+        "Bakery": ["Whole grain bread", "Large tortillas"]
+      },
+      weekly_summary: {
+        total_prep_time: 180,
+        nutrition_totals: {"calories": 2100, "protein": 120, "carbs": 280, "fat": 85},
+        meal_variety_score: 8.0,
+        budget_estimate: 125
+      },
+      meal_prep_suggestions: [
+        "Prepare overnight oats on Sunday for the week",
+        "Wash and chop vegetables when you get home from grocery shopping",
+        "Cook extra chicken for easy lunch leftovers"
+      ],
+      generated_at: new Date().toISOString()
+    };
+  }
 }
 
 module.exports = new AIService();

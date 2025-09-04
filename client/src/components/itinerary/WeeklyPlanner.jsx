@@ -1,46 +1,11 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { ChevronLeft, ChevronRight, Calendar, Clock, Users, MoreHorizontal } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { useEventStore } from '../../stores/eventStore';
+import { format, parseISO, startOfWeek, addDays, isSameDay } from 'date-fns';
 import EventCard from './EventCard';
-
-// Mock events data for the week
-const mockWeeklyEvents = {
-  '2024-09-02': [
-    { id: 1, title: 'School Drop-off', time: '08:00', type: 'school', attendees: ['Mom', 'Emma', 'Jake'] },
-    { id: 2, title: 'Emma\'s Soccer', time: '16:00', type: 'sports', attendees: ['Emma'] },
-    { id: 3, title: 'Family Dinner', time: '18:30', type: 'family', attendees: ['All'] },
-    { id: 4, title: 'Team Meeting', time: '09:00', type: 'work', attendees: ['Dad'] },
-  ],
-  '2024-09-03': [
-    { id: 5, title: 'Dentist Appointment', time: '14:00', type: 'medical', attendees: ['Jake', 'Mom'] },
-    { id: 6, title: 'Grocery Shopping', time: '16:00', type: 'personal', attendees: ['Mom'] },
-    { id: 7, title: 'Piano Lesson', time: '17:30', type: 'social', attendees: ['Emma'] },
-  ],
-  '2024-09-04': [
-    { id: 8, title: 'Parent-Teacher Conference', time: '15:00', type: 'school', attendees: ['Mom', 'Dad'] },
-    { id: 9, title: 'Jake\'s Basketball', time: '17:00', type: 'sports', attendees: ['Jake', 'Dad'] },
-  ],
-  '2024-09-05': [
-    { id: 10, title: 'Work Presentation', time: '10:00', type: 'work', attendees: ['Dad'] },
-    { id: 11, title: 'Lunch with Friends', time: '12:30', type: 'social', attendees: ['Mom'] },
-    { id: 12, title: 'Kids Playdate', time: '15:00', type: 'social', attendees: ['Emma', 'Jake'] },
-    { id: 13, title: 'Date Night', time: '19:00', type: 'social', attendees: ['Mom', 'Dad'] },
-  ],
-  '2024-09-06': [
-    { id: 14, title: 'Yoga Class', time: '09:00', type: 'personal', attendees: ['Mom'] },
-    { id: 15, title: 'School Event', time: '14:00', type: 'school', attendees: ['All'] },
-    { id: 16, title: 'Movie Night', time: '20:00', type: 'family', attendees: ['All'] },
-  ],
-  '2024-09-07': [
-    { id: 17, title: 'Soccer Game', time: '10:00', type: 'sports', attendees: ['Emma', 'Parents'] },
-    { id: 18, title: 'Birthday Party', time: '14:00', type: 'social', attendees: ['Jake'] },
-    { id: 19, title: 'BBQ with Neighbors', time: '17:00', type: 'social', attendees: ['All'] },
-  ],
-  '2024-09-08': [
-    { id: 20, title: 'Church Service', time: '10:00', type: 'social', attendees: ['All'] },
-    { id: 21, title: 'Family Hike', time: '14:00', type: 'family', attendees: ['All'] },
-    { id: 22, title: 'Meal Prep', time: '17:00', type: 'personal', attendees: ['Mom'] },
-  ]
-};
+import EventAssignment from '../events/EventAssignment';
+import ConflictAlert from '../conflicts/ConflictAlert';
 
 const eventTypeColors = {
   school: 'bg-blue-500 text-white',
@@ -63,9 +28,58 @@ const eventTypeBorders = {
 };
 
 const WeeklyPlanner = ({ initialDate = new Date() }) => {
+  const navigate = useNavigate();
+  const { events, fetchEvents } = useEventStore();
   const [currentWeek, setCurrentWeek] = useState(initialDate);
-  const [selectedEvent, setSelectedEvent] = useState(null);
+  const [weeklyEvents, setWeeklyEvents] = useState({});
   const [expandedDays, setExpandedDays] = useState(new Set());
+  
+  useEffect(() => {
+    fetchEvents();
+  }, [fetchEvents]);
+
+  useEffect(() => {
+    // Organize events by date for the current week
+    const weekStart = startOfWeek(currentWeek, { weekStartsOn: 0 }); // Sunday
+    const organized = {};
+    
+    // Initialize all days of the week
+    for (let i = 0; i < 7; i++) {
+      const day = addDays(weekStart, i);
+      const dateKey = format(day, 'yyyy-MM-dd');
+      organized[dateKey] = [];
+    }
+    
+    // Add events to their respective days
+    events.forEach(event => {
+      if (!event.start_time) return;
+      const eventDate = parseISO(event.start_time);
+      
+      // Check if event falls within current week
+      for (let i = 0; i < 7; i++) {
+        const day = addDays(weekStart, i);
+        if (isSameDay(eventDate, day)) {
+          const dateKey = format(day, 'yyyy-MM-dd');
+          const startTime = format(eventDate, 'HH:mm');
+          
+          organized[dateKey].push({
+            ...event,
+            time: startTime,
+            type: event.category || 'personal',
+            attendees: event.attendees ? event.attendees.split(',').map(a => a.trim()) : []
+          });
+          break;
+        }
+      }
+    });
+    
+    // Sort events by time for each day
+    Object.keys(organized).forEach(dateKey => {
+      organized[dateKey].sort((a, b) => a.time.localeCompare(b.time));
+    });
+    
+    setWeeklyEvents(organized);
+  }, [events, currentWeek]);
 
   // Get the start of the week (Sunday)
   const getWeekStart = (date) => {
@@ -85,7 +99,7 @@ const WeeklyPlanner = ({ initialDate = new Date() }) => {
       date.setDate(weekStart.getDate() + i);
       
       const dateString = date.toISOString().split('T')[0];
-      const events = mockWeeklyEvents[dateString] || [];
+      const events = weeklyEvents[dateString] || [];
       
       days.push({
         date,
@@ -100,7 +114,7 @@ const WeeklyPlanner = ({ initialDate = new Date() }) => {
     }
     
     return days;
-  }, [currentWeek]);
+  }, [currentWeek, weeklyEvents]);
 
   const navigateWeek = (direction) => {
     const newDate = new Date(currentWeek);
@@ -179,6 +193,16 @@ const WeeklyPlanner = ({ initialDate = new Date() }) => {
         </div>
       </div>
 
+      {/* Conflict Alerts */}
+      <ConflictAlert 
+        maxDisplay={2}
+        onConflictClick={(conflict) => {
+          console.log('Conflict clicked in weekly view:', conflict);
+          // Could navigate to a detailed conflict page or open a modal
+        }}
+        className="animate-slide-in-up"
+      />
+
       {/* Week Grid */}
       <div className="bg-white rounded-lg shadow-sm overflow-hidden">
         {/* Week Header */}
@@ -226,14 +250,17 @@ const WeeklyPlanner = ({ initialDate = new Date() }) => {
                       className={`text-xs p-2 rounded cursor-pointer hover:shadow-sm transition-all ${
                         eventTypeBorders[event.type]
                       } border`}
-                      onClick={() => setSelectedEvent(event)}
+                      onClick={() => navigate(`/event/${event.id}`)}
                     >
                       <div className="font-medium text-gray-900 truncate">
                         {event.title}
                       </div>
-                      <div className="flex items-center text-gray-600 mt-1">
-                        <Clock className="h-3 w-3 mr-1" />
-                        <span>{formatTime(event.time)}</span>
+                      <div className="flex items-center justify-between text-gray-600 mt-1">
+                        <div className="flex items-center">
+                          <Clock className="h-3 w-3 mr-1" />
+                          <span>{formatTime(event.time)}</span>
+                        </div>
+                        <EventAssignment event={event} compact={true} showLabel={false} />
                       </div>
                       {event.attendees && (
                         <div className="flex items-center text-gray-500 mt-1">
@@ -324,43 +351,6 @@ const WeeklyPlanner = ({ initialDate = new Date() }) => {
         </div>
       </div>
 
-      {/* Event Details Modal */}
-      {selectedEvent && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg max-w-md w-full">
-            <div className="p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-gray-900">{selectedEvent.title}</h3>
-                <button
-                  onClick={() => setSelectedEvent(null)}
-                  className="text-gray-400 hover:text-gray-600"
-                >
-                  <span className="sr-only">Close</span>
-                  ×
-                </button>
-              </div>
-
-              <div className="space-y-3">
-                <div className="flex items-center space-x-3 text-gray-600">
-                  <Clock className="h-4 w-4" />
-                  <span>{formatTime(selectedEvent.time)}</span>
-                </div>
-
-                <div className="flex items-center space-x-3 text-gray-600">
-                  <Users className="h-4 w-4" />
-                  <span>{selectedEvent.attendees.join(', ')}</span>
-                </div>
-
-                <div className="flex items-center space-x-3">
-                  <div className={`px-3 py-1 rounded-full text-xs font-medium ${eventTypeColors[selectedEvent.type]}`}>
-                    {selectedEvent.type.charAt(0).toUpperCase() + selectedEvent.type.slice(1)}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

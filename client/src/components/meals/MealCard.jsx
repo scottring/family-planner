@@ -6,14 +6,27 @@ const MealCard = ({
   onDelete, 
   onDragStart, 
   onDragEnd, 
-  isDragging 
+  isDragging,
+  onFeedback 
 }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [showDetails, setShowDetails] = useState(false);
+  const [showFeedback, setShowFeedback] = useState(false);
   const [editForm, setEditForm] = useState({
     title: meal.title || '',
     prep_time: meal.prep_time || '',
     recipe_url: meal.recipe_url || ''
+  });
+  const [feedbackForm, setFeedbackForm] = useState({
+    rating: 0,
+    liked: null,
+    attendance: {
+      parent1: false,
+      parent2: false,
+      kaleb: false,
+      ella: false
+    },
+    notes: ''
   });
 
   const handleEdit = (e) => {
@@ -49,9 +62,43 @@ const MealCard = ({
   };
 
   const handleCardClick = () => {
-    if (!isEditing) {
+    if (!isEditing && !showFeedback) {
       setShowDetails(!showDetails);
     }
+  };
+
+  const handleMarkAsEaten = (e) => {
+    e.stopPropagation();
+    setShowFeedback(true);
+  };
+
+  const handleSubmitFeedback = async (e) => {
+    e.stopPropagation();
+    try {
+      if (onFeedback) {
+        await onFeedback(meal.id, feedbackForm);
+      }
+      setShowFeedback(false);
+      // Reset form
+      setFeedbackForm({
+        rating: 0,
+        liked: null,
+        attendance: {
+          parent1: false,
+          parent2: false,
+          kaleb: false,
+          ella: false
+        },
+        notes: ''
+      });
+    } catch (error) {
+      console.error('Failed to submit feedback:', error);
+    }
+  };
+
+  const handleCancelFeedback = (e) => {
+    e.stopPropagation();
+    setShowFeedback(false);
   };
 
   const getDietaryBadges = () => {
@@ -162,6 +209,13 @@ const MealCard = ({
               </h3>
               <div className="flex space-x-1 ml-1">
                 <button
+                  onClick={handleMarkAsEaten}
+                  className="text-gray-400 hover:text-green-600 text-xs"
+                  title="Mark as eaten & give feedback"
+                >
+                  ✅
+                </button>
+                <button
                   onClick={handleEdit}
                   className="text-gray-400 hover:text-gray-600 text-xs"
                   title="Edit meal"
@@ -216,8 +270,119 @@ const MealCard = ({
         )}
       </div>
 
+      {/* Feedback Form */}
+      {showFeedback && !isEditing && (
+        <div className="p-3 space-y-3 bg-blue-50 border-t" onClick={(e) => e.stopPropagation()}>
+          <h4 className="text-sm font-semibold text-gray-800">How was this meal?</h4>
+          
+          {/* Star Rating */}
+          <div>
+            <label className="text-xs font-medium text-gray-700 block mb-1">Overall Rating</label>
+            <div className="flex space-x-1">
+              {[1, 2, 3, 4, 5].map((star) => (
+                <button
+                  key={star}
+                  onClick={() => setFeedbackForm({ ...feedbackForm, rating: star })}
+                  className={`text-lg ${
+                    star <= feedbackForm.rating ? 'text-yellow-400' : 'text-gray-300'
+                  } hover:text-yellow-400 transition-colors`}
+                >
+                  ⭐
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Thumbs Up/Down */}
+          <div>
+            <label className="text-xs font-medium text-gray-700 block mb-1">Did the family like it?</label>
+            <div className="flex space-x-2">
+              <button
+                onClick={() => setFeedbackForm({ ...feedbackForm, liked: true })}
+                className={`px-3 py-1 rounded text-xs font-medium ${
+                  feedbackForm.liked === true
+                    ? 'bg-green-500 text-white'
+                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                }`}
+              >
+                👍 Liked
+              </button>
+              <button
+                onClick={() => setFeedbackForm({ ...feedbackForm, liked: false })}
+                className={`px-3 py-1 rounded text-xs font-medium ${
+                  feedbackForm.liked === false
+                    ? 'bg-red-500 text-white'
+                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                }`}
+              >
+                👎 Disliked
+              </button>
+            </div>
+          </div>
+
+          {/* Family Attendance */}
+          <div>
+            <label className="text-xs font-medium text-gray-700 block mb-1">Who ate this meal?</label>
+            <div className="grid grid-cols-2 gap-2 text-xs">
+              {[
+                { key: 'parent1', label: 'Parent 1' },
+                { key: 'parent2', label: 'Parent 2' },
+                { key: 'kaleb', label: 'Kaleb' },
+                { key: 'ella', label: 'Ella' }
+              ].map(({ key, label }) => (
+                <label key={key} className="flex items-center space-x-1">
+                  <input
+                    type="checkbox"
+                    checked={feedbackForm.attendance[key]}
+                    onChange={(e) =>
+                      setFeedbackForm({
+                        ...feedbackForm,
+                        attendance: {
+                          ...feedbackForm.attendance,
+                          [key]: e.target.checked
+                        }
+                      })
+                    }
+                    className="rounded"
+                  />
+                  <span>{label}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+
+          {/* Notes */}
+          <div>
+            <label className="text-xs font-medium text-gray-700 block mb-1">Notes (optional)</label>
+            <textarea
+              value={feedbackForm.notes}
+              onChange={(e) => setFeedbackForm({ ...feedbackForm, notes: e.target.value })}
+              placeholder="Any comments about the meal?"
+              rows="2"
+              className="w-full text-xs border border-gray-300 rounded px-2 py-1 resize-none"
+            />
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex space-x-2">
+            <button
+              onClick={handleSubmitFeedback}
+              className="px-3 py-1 bg-green-500 text-white text-xs rounded hover:bg-green-600 transition-colors"
+            >
+              Submit Feedback
+            </button>
+            <button
+              onClick={handleCancelFeedback}
+              className="px-3 py-1 bg-gray-500 text-white text-xs rounded hover:bg-gray-600 transition-colors"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Expanded Details */}
-      {showDetails && !isEditing && (
+      {showDetails && !isEditing && !showFeedback && (
         <div className="p-3 space-y-3 bg-gray-50">
           {/* Nutrition Info */}
           {meal.nutrition_info && Object.keys(meal.nutrition_info).length > 0 && (
@@ -274,7 +439,7 @@ const MealCard = ({
       )}
 
       {/* Compact preview when not expanded */}
-      {!showDetails && !isEditing && meal.ingredients && (
+      {!showDetails && !isEditing && !showFeedback && meal.ingredients && (
         <div className="px-3 pb-2">
           <div className="text-xs text-gray-500 truncate">
             {meal.ingredients.slice(0, 3).map(ing => ing.name).join(', ')}

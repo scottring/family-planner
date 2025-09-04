@@ -1,8 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Calendar, Clock, MapPin, Users, FileText, Link, Repeat, ChevronLeft, Edit, Trash2, Copy, CheckSquare } from 'lucide-react';
+import { Calendar, Clock, MapPin, Users, FileText, Link, Repeat, ChevronLeft, Edit, Trash2, Copy, CheckSquare, LayoutTemplate } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { useEventStore } from '../stores/eventStore';
+import EventLogistics from '../components/events/EventLogistics';
+import LogisticsTemplates from '../components/events/LogisticsTemplates';
+import ConditionalChecklist from '../components/events/ConditionalChecklist';
 
 const EventDetailPage = () => {
   const { id } = useParams();
@@ -12,6 +15,7 @@ const EventDetailPage = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [editedEvent, setEditedEvent] = useState(null);
   const [showRecurringModal, setShowRecurringModal] = useState(false);
+  const [showLogisticsTemplates, setShowLogisticsTemplates] = useState(false);
   
   const [recurringOptions, setRecurringOptions] = useState({
     frequency: 'daily', // daily, weekly, monthly, yearly
@@ -24,7 +28,10 @@ const EventDetailPage = () => {
   });
 
   useEffect(() => {
-    const foundEvent = events.find(e => e.id === parseInt(id));
+    console.log('EventDetailPage - Looking for event with id:', id);
+    console.log('Available events:', events);
+    const foundEvent = events.find(e => e.id === parseInt(id) || e.id === id);
+    console.log('Found event:', foundEvent);
     if (foundEvent) {
       setEvent(foundEvent);
       setEditedEvent(foundEvent);
@@ -75,6 +82,18 @@ const EventDetailPage = () => {
     
     setShowRecurringModal(false);
     navigate('/calendar');
+  };
+
+  const handleLogisticsUpdate = () => {
+    // Refresh event data after logistics update
+    const foundEvent = events.find(e => e.id === parseInt(id));
+    if (foundEvent) {
+      setEvent(foundEvent);
+    }
+  };
+
+  const handleTemplateApplied = () => {
+    handleLogisticsUpdate();
   };
 
   const calculateRecurringDates = (baseEvent, options) => {
@@ -194,6 +213,13 @@ const EventDetailPage = () => {
                 title="Make Recurring"
               >
                 <Repeat className="h-5 w-5" />
+              </button>
+              <button
+                onClick={() => setShowLogisticsTemplates(true)}
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                title="Logistics Templates"
+              >
+                <LayoutTemplate className="h-5 w-5" />
               </button>
               <button
                 onClick={handleDelete}
@@ -325,7 +351,7 @@ const EventDetailPage = () => {
               />
             ) : (
               <div className="space-y-2">
-                {event.resources ? (
+                {event.resources && typeof event.resources === 'string' ? (
                   event.resources.split('\n').map((resource, index) => (
                     <div key={index} className="flex items-center space-x-2">
                       <span className="text-gray-600">•</span>
@@ -344,35 +370,50 @@ const EventDetailPage = () => {
             )}
           </div>
 
-          {/* Checklist Card */}
+          {/* Enhanced Checklist Card */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
             <h2 className="text-lg font-semibold mb-4 flex items-center">
               <CheckSquare className="h-5 w-5 mr-2" />
               Event Checklist
             </h2>
+            <ConditionalChecklist 
+              event={event} 
+              onUpdate={setEvent}
+              isEditing={isEditing}
+            />
+          </div>
+
+          {/* Notes */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <h2 className="text-lg font-semibold mb-4 flex items-center">
+              <FileText className="h-5 w-5 mr-2" />
+              Notes & Reminders
+            </h2>
             {isEditing ? (
               <textarea
-                value={editedEvent.checklist || ''}
-                onChange={(e) => setEditedEvent({ ...editedEvent, checklist: e.target.value })}
-                placeholder="Add checklist items (one per line)"
-                rows={6}
+                value={editedEvent.notes || ''}
+                onChange={(e) => setEditedEvent({ ...editedEvent, notes: e.target.value })}
+                placeholder="Add notes, reminders, or special instructions (e.g., 'Ask Kaleb about Reed')"
+                rows={4}
                 className="w-full px-3 py-2 border rounded-lg"
               />
             ) : (
-              <div className="space-y-2">
-                {event.checklist ? (
-                  event.checklist.split('\n').map((item, index) => (
-                    <div key={index} className="flex items-start space-x-3">
-                      <input type="checkbox" className="mt-1" />
-                      <span className="text-gray-700">{item}</span>
-                    </div>
-                  ))
+              <div className="min-h-[2rem]">
+                {event.notes ? (
+                  <div className="prose max-w-none">
+                    <p className="text-gray-700 whitespace-pre-wrap bg-yellow-50 border-l-4 border-yellow-400 pl-4 py-2 rounded-r-lg">
+                      {event.notes}
+                    </p>
+                  </div>
                 ) : (
-                  <p className="text-gray-500">No checklist items</p>
+                  <p className="text-gray-500 italic">No notes added</p>
                 )}
               </div>
             )}
           </div>
+
+          {/* Event Logistics */}
+          <EventLogistics event={event} onUpdate={handleLogisticsUpdate} />
         </div>
 
         {/* Sidebar */}
@@ -381,6 +422,24 @@ const EventDetailPage = () => {
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
             <h2 className="text-lg font-semibold mb-4">Quick Info</h2>
             <dl className="space-y-3">
+              <div>
+                <dt className="text-sm text-gray-500">Assigned To</dt>
+                <dd className="font-medium">
+                  {isEditing ? (
+                    <input
+                      type="text"
+                      value={editedEvent.assigned_to || ''}
+                      onChange={(e) => setEditedEvent({ ...editedEvent, assigned_to: e.target.value })}
+                      placeholder="Who is responsible?"
+                      className="w-full px-3 py-2 border rounded-lg"
+                    />
+                  ) : (
+                    <span className={`px-3 py-2 rounded-lg text-sm font-medium ${event.assigned_to ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-500'}`}>
+                      {event.assigned_to || 'Not assigned'}
+                    </span>
+                  )}
+                </dd>
+              </div>
               <div>
                 <dt className="text-sm text-gray-500">Category</dt>
                 <dd className="font-medium">
@@ -427,23 +486,6 @@ const EventDetailPage = () => {
             </dl>
           </div>
 
-          {/* Notes */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <h2 className="text-lg font-semibold mb-4">Notes</h2>
-            {isEditing ? (
-              <textarea
-                value={editedEvent.notes || ''}
-                onChange={(e) => setEditedEvent({ ...editedEvent, notes: e.target.value })}
-                placeholder="Add private notes"
-                rows={4}
-                className="w-full px-3 py-2 border rounded-lg"
-              />
-            ) : (
-              <p className="text-gray-700 whitespace-pre-wrap">
-                {event.notes || 'No notes added'}
-              </p>
-            )}
-          </div>
         </div>
       </div>
 
@@ -544,6 +586,15 @@ const EventDetailPage = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Logistics Templates Modal */}
+      {showLogisticsTemplates && (
+        <LogisticsTemplates 
+          event={event}
+          onApplyTemplate={handleTemplateApplied}
+          onClose={() => setShowLogisticsTemplates(false)}
+        />
       )}
     </div>
   );

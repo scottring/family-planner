@@ -37,6 +37,14 @@ const aiRoutes = require('./routes/ai');
 const checklistRoutes = require('./routes/checklists');
 const telegramRoutes = require('./routes/telegram');
 const googleCalendarRoutes = require('./routes/googleCalendar');
+const notificationRoutes = require('./routes/notifications');
+const conflictRoutes = require('./routes/conflicts');
+const dashboardRoutes = require('./routes/dashboard');
+const inboxRoutes = require('./routes/inbox');
+const planningSessionRoutes = require('./routes/planning-session');
+const captureRoutes = require('./routes/capture');
+const familyNotesRoutes = require('./routes/family-notes');
+const handoffsRoutes = require('./routes/handoffs');
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {
@@ -58,19 +66,106 @@ app.use('/api/ai', aiRoutes);
 app.use('/api/checklists', checklistRoutes);
 app.use('/api/telegram', telegramRoutes);
 app.use('/api/google', googleCalendarRoutes);
+app.use('/api/notifications', notificationRoutes);
+app.use('/api/conflicts', conflictRoutes);
+app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/inbox', inboxRoutes);
+app.use('/api/planning-session', planningSessionRoutes);
+app.use('/api/capture', captureRoutes);
+app.use('/api/family-notes', familyNotesRoutes);
+app.use('/api/handoffs', handoffsRoutes);
 
 // WebSocket connection
 io.on('connection', (socket) => {
   console.log('Client connected:', socket.id);
   
-  socket.on('disconnect', () => {
-    console.log('Client disconnected:', socket.id);
-  });
-  
   // Join family room for real-time updates
   socket.on('join-family', (familyId) => {
     socket.join(`family-${familyId}`);
     console.log(`Socket ${socket.id} joined family-${familyId}`);
+  });
+
+  // Planning Session WebSocket Events
+  socket.on('join-planning-session', (sessionId) => {
+    socket.join(`planning-session-${sessionId}`);
+    console.log(`Socket ${socket.id} joined planning session ${sessionId}`);
+    
+    // Notify other participants that someone joined
+    socket.to(`planning-session-${sessionId}`).emit('partner-joined', {
+      id: socket.id,
+      timestamp: new Date().toISOString()
+    });
+  });
+
+  socket.on('leave-planning-session', (sessionId) => {
+    socket.leave(`planning-session-${sessionId}`);
+    console.log(`Socket ${socket.id} left planning session ${sessionId}`);
+    
+    // Notify other participants that someone left
+    socket.to(`planning-session-${sessionId}`).emit('partner-left', socket.id);
+  });
+
+  // Real-time progress updates
+  socket.on('progress-update', (data) => {
+    const { sessionId, progress, timestamp } = data;
+    
+    // Broadcast progress update to other session participants
+    socket.to(`planning-session-${sessionId}`).emit('progress-updated', {
+      sessionId,
+      progress,
+      timestamp,
+      updatedBy: socket.id
+    });
+  });
+
+  // Quadrant-specific updates
+  socket.on('quadrant-update', (data) => {
+    const { sessionId, quadrantId, updates, timestamp } = data;
+    
+    // Broadcast quadrant changes to other participants
+    socket.to(`planning-session-${sessionId}`).emit('quadrant-changed', {
+      sessionId,
+      quadrantId,
+      updates,
+      timestamp,
+      userId: socket.id
+    });
+  });
+
+  // Item claiming for real-time coordination
+  socket.on('item-claimed', (data) => {
+    const { sessionId, itemType, itemId, claimedBy, timestamp } = data;
+    
+    // Broadcast item claim to other participants
+    socket.to(`planning-session-${sessionId}`).emit('item-claimed', {
+      sessionId,
+      itemType,
+      itemId,
+      claimedBy,
+      timestamp
+    });
+  });
+
+  // Session state changes
+  socket.on('session-pause', (sessionId) => {
+    socket.to(`planning-session-${sessionId}`).emit('session-paused');
+  });
+
+  socket.on('session-resume', (sessionId) => {
+    socket.to(`planning-session-${sessionId}`).emit('session-resumed');
+  });
+
+  socket.on('session-complete', (sessionId) => {
+    socket.to(`planning-session-${sessionId}`).emit('session-completed');
+  });
+
+  // Handle disconnection from planning sessions
+  socket.on('disconnect', () => {
+    console.log('Client disconnected:', socket.id);
+    
+    // Notify all planning sessions that this user disconnected
+    // Note: In production, you'd want to track which sessions this socket was in
+    socket.broadcast.emit('partner-left', socket.id);
   });
 });
 
@@ -84,10 +179,36 @@ app.use((err, req, res, next) => {
 });
 
 // Scheduled tasks
-// Morning brief at 6:30 AM
+const notificationService = require('./services/notificationService');
+
+// Daily brief - morning (6:30 AM)
 cron.schedule('30 6 * * *', async () => {
-  console.log('Generating morning brief...');
-  // TODO: Implement morning brief generation
+  console.log('Generating daily briefs...');
+  try {
+    await notificationService.sendDailyBrief();
+  } catch (error) {
+    console.error('Daily brief error:', error);
+  }
+});
+
+// Evening prep notifications (8:00 PM)
+cron.schedule('0 20 * * *', async () => {
+  console.log('Sending evening preparation notifications...');
+  try {
+    await notificationService.sendEveningPrep();
+  } catch (error) {
+    console.error('Evening prep error:', error);
+  }
+});
+
+// Responsibility check every 30 minutes
+cron.schedule('*/30 * * * *', async () => {
+  console.log('Checking for unclaimed responsibilities...');
+  try {
+    await notificationService.sendResponsibilityAlert();
+  } catch (error) {
+    console.error('Responsibility alert error:', error);
+  }
 });
 
 // Telegram event reminders every 5 minutes
@@ -226,6 +347,41 @@ cron.schedule('*/15 * * * *', async () => {
     }
   } catch (error) {
     console.error('Automated sync error:', error);
+  }
+});
+
+// Conflict detection every 30 minutes
+cron.schedule('*/30 * * * *', async () => {
+  console.log('Running automated conflict detection...');
+  
+  try {
+    const conflictService = require('./services/conflictService');
+    
+    // Detect conflicts for the next 7 days
+    const now = new Date();
+    const nextWeek = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+    
+    const conflicts = await conflictService.detectAllConflicts(
+      now.toISOString(), 
+      nextWeek.toISOString()
+    );
+    
+    console.log(`Detected ${conflicts.length} conflicts`);
+    
+    // Send notifications for critical conflicts
+    const criticalConflicts = conflicts.filter(c => c.severity === 'critical');
+    if (criticalConflicts.length > 0) {
+      console.log(`Found ${criticalConflicts.length} critical conflicts, sending alerts`);
+      
+      // TODO: Send notifications via WebSocket, Telegram, etc.
+      io.emit('critical-conflicts', {
+        conflicts: criticalConflicts,
+        timestamp: new Date().toISOString()
+      });
+    }
+    
+  } catch (error) {
+    console.error('Automated conflict detection error:', error);
   }
 });
 

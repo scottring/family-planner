@@ -3,6 +3,9 @@ import { format, startOfWeek, addDays, addWeeks, subWeeks, isSameDay } from 'dat
 import MealCard from './MealCard';
 import MealSuggestions from './MealSuggestions';
 import ShoppingList from './ShoppingList';
+import AiPlanGenerator from './AiPlanGenerator';
+import AiPlanReview from './AiPlanReview';
+import MealPlannerChat from './MealPlannerChat';
 import { useMeals } from '../../services/meals';
 
 const MealPlanner = () => {
@@ -11,12 +14,16 @@ const MealPlanner = () => {
   const [loading, setLoading] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [showShoppingList, setShowShoppingList] = useState(false);
+  const [showAiGenerator, setShowAiGenerator] = useState(false);
+  const [showAiPlanReview, setShowAiPlanReview] = useState(false);
+  const [showChat, setShowChat] = useState(false);
+  const [generatedPlan, setGeneratedPlan] = useState(null);
   const [selectedMealSlot, setSelectedMealSlot] = useState(null);
   const [draggedMeal, setDraggedMeal] = useState(null);
 
   const { fetchWeekMeals, createMeal, updateMeal, deleteMeal } = useMeals();
 
-  const mealTypes = ['breakfast', 'lunch', 'dinner'];
+  const mealTypes = ['breakfast', 'lunch', 'dinner', 'snacks'];
   const weekDays = Array.from({ length: 7 }, (_, i) => addDays(currentWeek, i));
 
   useEffect(() => {
@@ -128,11 +135,58 @@ const MealPlanner = () => {
     setDraggedMeal(null);
   };
 
+  const handleAiPlanGenerated = (plan) => {
+    setGeneratedPlan(plan);
+    setShowAiGenerator(false);
+    setShowAiPlanReview(true);
+  };
+
+  const handleAiPlanSynced = (result) => {
+    setShowAiPlanReview(false);
+    setGeneratedPlan(null);
+    // Refresh the meal data
+    loadWeekMeals();
+    alert(`Successfully synced ${result.mealsCreated} meals to your planner!`);
+  };
+
+  const handleChatMealPlanUpdate = (mealPlan) => {
+    // Handle meal plan updates from chat
+    // The chat component will handle adding meals to the database
+    // We just need to refresh the meal data
+    loadWeekMeals();
+  };
+
+  const handleMealFeedback = async (mealId, feedback) => {
+    try {
+      const response = await fetch('/api/meals/feedback', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('auth-token')}`
+        },
+        body: JSON.stringify({
+          mealId,
+          ...feedback
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to submit feedback');
+      }
+
+      console.log('Meal feedback submitted successfully');
+    } catch (error) {
+      console.error('Error submitting meal feedback:', error);
+      throw error;
+    }
+  };
+
   const getMealTypeColor = (mealType) => {
     switch (mealType) {
       case 'breakfast': return 'bg-yellow-100 border-yellow-200';
       case 'lunch': return 'bg-blue-100 border-blue-200';
       case 'dinner': return 'bg-purple-100 border-purple-200';
+      case 'snacks': return 'bg-green-100 border-green-200';
       default: return 'bg-gray-100 border-gray-200';
     }
   };
@@ -142,6 +196,7 @@ const MealPlanner = () => {
       case 'breakfast': return '🌅';
       case 'lunch': return '☀️';
       case 'dinner': return '🌙';
+      case 'snacks': return '🍎';
       default: return '🍽️';
     }
   };
@@ -166,6 +221,18 @@ const MealPlanner = () => {
         </div>
         
         <div className="flex space-x-4">
+          <button
+            onClick={() => setShowChat(true)}
+            className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors font-medium"
+          >
+            💬 Chat with AI
+          </button>
+          <button
+            onClick={() => setShowAiGenerator(true)}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+          >
+            🤖 AI Plan Generator
+          </button>
           <button
             onClick={() => setShowShoppingList(true)}
             className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
@@ -227,6 +294,7 @@ const MealPlanner = () => {
                       onDragStart={(e) => handleDragStart(e, meal)}
                       onDragEnd={handleDragEnd}
                       isDragging={draggedMeal?.id === meal.id}
+                      onFeedback={handleMealFeedback}
                     />
                   ) : (
                     <button
@@ -283,6 +351,43 @@ const MealPlanner = () => {
           endDate={format(addDays(currentWeek, 6), 'yyyy-MM-dd')}
           onClose={() => setShowShoppingList(false)}
         />
+      )}
+
+      {/* AI Plan Generator Modal */}
+      {showAiGenerator && (
+        <AiPlanGenerator
+          startDate={format(currentWeek, 'yyyy-MM-dd')}
+          onClose={() => setShowAiGenerator(false)}
+          onPlanGenerated={handleAiPlanGenerated}
+        />
+      )}
+
+      {/* AI Plan Review Modal */}
+      {showAiPlanReview && generatedPlan && (
+        <AiPlanReview
+          mealPlan={generatedPlan}
+          startDate={format(currentWeek, 'yyyy-MM-dd')}
+          onClose={() => {
+            setShowAiPlanReview(false);
+            setGeneratedPlan(null);
+          }}
+          onPlanSynced={handleAiPlanSynced}
+        />
+      )}
+
+      {/* Meal Planning Chat Modal */}
+      {showChat && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-7xl w-full max-h-[90vh] relative">
+            <button
+              onClick={() => setShowChat(false)}
+              className="absolute top-4 right-4 text-gray-500 hover:text-gray-700 z-10 bg-white rounded-full p-1 shadow-md"
+            >
+              ✕
+            </button>
+            <MealPlannerChat onMealPlanUpdate={handleChatMealPlanUpdate} />
+          </div>
+        </div>
       )}
     </div>
   );

@@ -1,4 +1,4 @@
-import { Clock, MapPin, Users, CheckSquare, ChevronRight, AlertTriangle, Brain, Sparkles, Timer, ArrowUp } from 'lucide-react';
+import { Clock, MapPin, Users, CheckSquare, ChevronRight, AlertTriangle, Brain, Sparkles, Timer, ArrowUp, RotateCcw } from 'lucide-react';
 import { useState } from 'react';
 import { aiService } from '../../services/ai';
 
@@ -9,7 +9,11 @@ const eventTypeColors = {
   social: 'border-l-purple-500 bg-white',
   work: 'border-l-yellow-500 bg-white',
   personal: 'border-l-gray-500 bg-white',
-  family: 'border-l-pink-500 bg-white'
+  family: 'border-l-pink-500 bg-white',
+  routine: 'border-l-indigo-500 bg-indigo-50',
+  bedtime: 'border-l-purple-500 bg-purple-50',
+  morning: 'border-l-orange-500 bg-orange-50',
+  hygiene: 'border-l-cyan-500 bg-cyan-50'
 };
 
 const eventTypeIcons = {
@@ -19,13 +23,46 @@ const eventTypeIcons = {
   social: '👥',
   work: '💼',
   personal: '👤',
-  family: '👨‍👩‍👧‍👦'
+  family: '👨‍👩‍👧‍👦',
+  routine: '📋',
+  bedtime: '🌙',
+  morning: '🌅',
+  hygiene: '🧼'
 };
 
 const EventCard = ({ event, onClick, compact = false, showDetails = true, onEventUpdate }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isEnriching, setIsEnriching] = useState(false);
   const [enrichmentError, setEnrichmentError] = useState(null);
+
+  // Helper functions for recurring events
+  const isRecurringInstance = () => {
+    return !!event.parent_recurring_id;
+  };
+
+  const isRecurringTemplate = () => {
+    return !!event.is_recurring;
+  };
+
+  const getRecurrenceText = () => {
+    if (!event.recurrence_type) return '';
+    
+    switch (event.recurrence_type) {
+      case 'daily':
+        return 'Daily';
+      case 'weekly':
+        return 'Weekly';
+      case 'weekdays':
+        return 'Weekdays';
+      case 'custom':
+        const days = event.recurrence_days || [];
+        const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+        const selectedDays = days.map(day => dayNames[day]).join(', ');
+        return `Custom (${selectedDays})`;
+      default:
+        return 'Recurring';
+    }
+  };
 
   const formatTime = (timeStr) => {
     const [hour, minute] = timeStr.split(':').map(Number);
@@ -130,24 +167,36 @@ const EventCard = ({ event, onClick, compact = false, showDetails = true, onEven
   if (compact) {
     return (
       <div
-        className={`border-l-4 ${eventTypeColors[event.type]} border border-gray-200 rounded-lg p-3 cursor-pointer hover:shadow-md transition-all`}
+        className={`border-l-4 ${eventTypeColors[event.type] || eventTypeColors[event.event_type] || eventTypeColors.personal} border border-gray-200 rounded-lg p-3 cursor-pointer hover:shadow-md transition-all`}
         onClick={handleCardClick}
       >
         <div className="flex items-center justify-between">
           <div className="flex-1 min-w-0">
             <div className="flex items-center space-x-2">
-              <span className="text-lg">{eventTypeIcons[event.type]}</span>
+              <span className="text-lg">{eventTypeIcons[event.type] || eventTypeIcons[event.event_type] || eventTypeIcons.personal}</span>
               <h4 className="font-medium text-gray-800 truncate">{event.title}</h4>
+              {(isRecurringInstance() || isRecurringTemplate()) && (
+                <div className="flex items-center text-indigo-600">
+                  <RotateCcw className="h-3 w-3" />
+                </div>
+              )}
             </div>
             <div className="flex items-center space-x-4 mt-1 text-sm text-gray-600">
               <span className="flex items-center">
                 <Clock className="h-3 w-3 mr-1" />
-                {formatTime(event.time)}
+                {formatTime(event.time || event.start_time)}
               </span>
-              <span className="flex items-center truncate">
-                <MapPin className="h-3 w-3 mr-1" />
-                {event.location}
-              </span>
+              {event.location && (
+                <span className="flex items-center truncate">
+                  <MapPin className="h-3 w-3 mr-1" />
+                  {event.location}
+                </span>
+              )}
+              {(isRecurringInstance() || isRecurringTemplate()) && (
+                <span className="text-indigo-600 text-xs">
+                  {getRecurrenceText()}
+                </span>
+              )}
             </div>
           </div>
           <ChevronRight className="h-4 w-4 text-gray-400 flex-shrink-0" />
@@ -158,7 +207,7 @@ const EventCard = ({ event, onClick, compact = false, showDetails = true, onEven
 
   return (
     <div
-      className={`border-l-4 ${eventTypeColors[event.type]} border border-gray-200 rounded-lg transition-all hover:shadow-md ${
+      className={`border-l-4 ${eventTypeColors[event.type] || eventTypeColors[event.event_type] || eventTypeColors.personal} border border-gray-200 rounded-lg transition-all hover:shadow-md ${
         onClick ? 'cursor-pointer' : ''
       } ${isUpcoming() ? 'ring-2 ring-blue-200' : ''}`}
       onClick={handleCardClick}
@@ -169,10 +218,16 @@ const EventCard = ({ event, onClick, compact = false, showDetails = true, onEven
             {/* Header */}
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center space-x-2">
-                <span className="text-xl">{eventTypeIcons[event.type]}</span>
+                <span className="text-xl">{eventTypeIcons[event.type] || eventTypeIcons[event.event_type] || eventTypeIcons.personal}</span>
                 <h3 className="font-semibold text-gray-800">{event.title}</h3>
-                {event.checklist && event.checklist.length > 0 && (
+                {(event.checklist && event.checklist.length > 0) || (event.structured_checklist && event.structured_checklist.length > 0) && (
                   <CheckSquare className="h-4 w-4 text-gray-400" />
+                )}
+                {(isRecurringInstance() || isRecurringTemplate()) && (
+                  <div className="flex items-center text-indigo-600 text-xs bg-indigo-100 px-2 py-1 rounded-full">
+                    <RotateCcw className="h-3 w-3 mr-1" />
+                    <span>{getRecurrenceText()}</span>
+                  </div>
                 )}
                 {isUpcoming() && (
                   <div className="flex items-center text-orange-600 text-xs bg-orange-100 px-2 py-1 rounded-full">
@@ -241,11 +296,11 @@ const EventCard = ({ event, onClick, compact = false, showDetails = true, onEven
             )}
 
             {/* Checklist indicator */}
-            {event.checklist && event.checklist.length > 0 && (
+            {((event.checklist && event.checklist.length > 0) || (event.structured_checklist && event.structured_checklist.length > 0)) && (
               <div className="flex items-center space-x-2 text-sm">
                 <CheckSquare className="h-4 w-4 text-blue-500" />
                 <span className="text-gray-600">
-                  {event.checklist.length} item{event.checklist.length !== 1 ? 's' : ''} to prepare
+                  {(event.structured_checklist?.length || event.checklist?.length || 0)} item{(event.structured_checklist?.length || event.checklist?.length || 0) !== 1 ? 's' : ''} to prepare
                 </span>
               </div>
             )}
@@ -328,7 +383,30 @@ const EventCard = ({ event, onClick, compact = false, showDetails = true, onEven
               </div>
             )}
 
-            {event.checklist && event.checklist.length > 0 && (
+            {/* Checklist display - prioritize structured_checklist over checklist */}
+            {(event.structured_checklist && event.structured_checklist.length > 0) ? (
+              <div>
+                <h4 className="font-medium text-gray-900 mb-2">Routine Checklist</h4>
+                <div className="space-y-2">
+                  {event.structured_checklist.map((item, index) => (
+                    <label key={index} className="flex items-start space-x-2 text-sm">
+                      <input type="checkbox" className="rounded mt-1" />
+                      <div className="flex-1">
+                        <span>{item.text}</span>
+                        {item.conditional && (
+                          <span className="ml-2 px-2 py-1 bg-yellow-100 text-yellow-800 text-xs rounded">
+                            Conditional
+                          </span>
+                        )}
+                        {item.category && (
+                          <span className="ml-2 text-xs text-gray-500">({item.category})</span>
+                        )}
+                      </div>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            ) : (event.checklist && event.checklist.length > 0) && (
               <div>
                 <h4 className="font-medium text-gray-900 mb-2">Preparation Checklist</h4>
                 <div className="space-y-1">
