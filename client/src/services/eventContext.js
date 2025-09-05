@@ -492,12 +492,43 @@ export const isEventWithinPreparationWindow = (event, hoursThreshold = 4) => {
 /**
  * Get the next upcoming event that needs coordination
  * @param {Array} events - Array of events
- * @returns {Object|null} - Next event needing coordination
+ * @returns {Object|null} - Next event needing coordination (current, upcoming, or recently ended)
  */
 export const getNextEventNeedingCoordination = (events) => {
   if (!events || events.length === 0) return null;
   
   const now = new Date();
+  
+  // First priority: Check for CURRENT events (happening now)
+  const currentEvent = events.find(event => {
+    const startTime = new Date(event.start_time);
+    const endTime = new Date(event.end_time || event.start_time);
+    // Add 1 hour to end time if no explicit end time
+    if (!event.end_time) {
+      endTime.setHours(endTime.getHours() + 1);
+    }
+    return startTime <= now && endTime >= now;
+  });
+  
+  if (currentEvent) {
+    return { ...currentEvent, status: 'current' };
+  }
+  
+  // Second priority: Check for recently ended events (within 1 hour) for follow-up
+  const recentlyEndedEvent = events.find(event => {
+    const endTime = new Date(event.end_time || event.start_time);
+    if (!event.end_time) {
+      endTime.setHours(endTime.getHours() + 1);
+    }
+    const hoursSinceEnd = (now - endTime) / (1000 * 60 * 60);
+    return hoursSinceEnd > 0 && hoursSinceEnd <= 1;
+  });
+  
+  if (recentlyEndedEvent) {
+    return { ...recentlyEndedEvent, status: 'recently_ended' };
+  }
+  
+  // Third priority: Next event within preparation window (4 hours)
   const upcomingEvents = events
     .filter(event => {
       const eventTime = new Date(event.start_time);
@@ -508,7 +539,16 @@ export const getNextEventNeedingCoordination = (events) => {
   // Find the next event within the preparation window
   for (const event of upcomingEvents) {
     if (isEventWithinPreparationWindow(event)) {
-      return event;
+      return { ...event, status: 'upcoming' };
+    }
+  }
+  
+  // Fourth priority: If no events in prep window, show the very next event if within 8 hours
+  if (upcomingEvents.length > 0) {
+    const nextEvent = upcomingEvents[0];
+    const hoursUntil = (new Date(nextEvent.start_time) - now) / (1000 * 60 * 60);
+    if (hoursUntil <= 8) {
+      return { ...nextEvent, status: 'next' };
     }
   }
   

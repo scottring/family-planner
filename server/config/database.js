@@ -871,6 +871,42 @@ function initializeDatabase() {
 
   console.log('Added calendar_selections table for storing specific Google calendar IDs and context mappings');
 
+  // Add user templates table for comprehensive Templates & Checklists system
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS user_templates (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+      name TEXT NOT NULL,
+      category TEXT CHECK(category IN ('preparation', 'during', 'follow-up', 'routine', 'sop')) DEFAULT 'preparation',
+      phase TEXT CHECK(phase IN ('pre', 'during', 'post', 'all')) DEFAULT 'pre',
+      icon TEXT DEFAULT '📋',
+      items TEXT NOT NULL DEFAULT '[]',
+      estimated_time INTEGER DEFAULT 0,
+      event_types TEXT DEFAULT '[]',
+      tags TEXT DEFAULT '[]',
+      usage_count INTEGER DEFAULT 0,
+      last_used DATETIME,
+      is_public BOOLEAN DEFAULT FALSE,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  // Add template applications tracking table
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS template_applications (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      template_id INTEGER REFERENCES user_templates(id) ON DELETE CASCADE,
+      event_id INTEGER REFERENCES events(id) ON DELETE CASCADE,
+      phase TEXT CHECK(phase IN ('pre', 'during', 'post')) NOT NULL,
+      applied_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      completion_rate REAL DEFAULT 0.0,
+      feedback_score INTEGER CHECK(feedback_score >= 1 AND feedback_score <= 5),
+      notes TEXT,
+      time_taken_minutes INTEGER
+    )
+  `);
+
   // Add preparation timelines table for persistent timeline storage
   db.exec(`
     CREATE TABLE IF NOT EXISTS preparation_timelines (
@@ -1027,9 +1063,22 @@ function initializeDatabase() {
     CREATE INDEX IF NOT EXISTS idx_timeline_pattern_insights_confidence_score ON timeline_pattern_insights(confidence_score);
     CREATE INDEX IF NOT EXISTS idx_timeline_pattern_insights_strength ON timeline_pattern_insights(strength);
     CREATE INDEX IF NOT EXISTS idx_timeline_pattern_insights_last_observed ON timeline_pattern_insights(last_observed);
+    
+    CREATE INDEX IF NOT EXISTS idx_user_templates_user_id ON user_templates(user_id);
+    CREATE INDEX IF NOT EXISTS idx_user_templates_category ON user_templates(category);
+    CREATE INDEX IF NOT EXISTS idx_user_templates_phase ON user_templates(phase);
+    CREATE INDEX IF NOT EXISTS idx_user_templates_usage_count ON user_templates(usage_count);
+    CREATE INDEX IF NOT EXISTS idx_user_templates_last_used ON user_templates(last_used);
+    CREATE INDEX IF NOT EXISTS idx_user_templates_created_at ON user_templates(created_at);
+    
+    CREATE INDEX IF NOT EXISTS idx_template_applications_template_id ON template_applications(template_id);
+    CREATE INDEX IF NOT EXISTS idx_template_applications_event_id ON template_applications(event_id);
+    CREATE INDEX IF NOT EXISTS idx_template_applications_phase ON template_applications(phase);
+    CREATE INDEX IF NOT EXISTS idx_template_applications_applied_at ON template_applications(applied_at);
   `);
 
   console.log('Added timeline pattern tracking tables: timeline_usage_patterns, timeline_suggestions, user_suggestion_preferences, timeline_pattern_insights');
+  console.log('Added user templates system tables: user_templates, template_applications');
 
   // Add missing columns to family_members table
   try {

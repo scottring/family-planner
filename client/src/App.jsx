@@ -18,6 +18,7 @@ import MealPlanner from './components/meals/MealPlanner';
 import EventDetailPage from './pages/EventDetailPage';
 import SmartInbox from './components/inbox/SmartInbox';
 import PlanningSession from './components/planning/PlanningSession';
+import TemplatesPage from './pages/TemplatesPage';
 import { useAuthStore } from './stores/authStore';
 import './App.css';
 
@@ -58,6 +59,7 @@ function App() {
             <Route path="calendar-settings" element={<CalendarSettingsPage />} />
             <Route path="event/:id" element={<EventDetailPage />} />
             <Route path="tasks" element={<TasksPage />} />
+            <Route path="templates" element={<TemplatesPage />} />
             <Route path="meals" element={<MealPlanner />} />
             <Route path="planning" element={<PlanningSession />} />
             <Route path="family" element={<FamilyPage />} />

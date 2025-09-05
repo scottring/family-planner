@@ -148,6 +148,11 @@ const DailyPage = () => {
       <div className="container mx-auto px-4 py-6 max-w-4xl">
         {/* Header */}
         <div className="bg-gradient-to-r from-blue-500 to-purple-600 rounded-xl shadow-lg p-6 mb-6 text-white">
+          {/* Page Title */}
+          <div className="text-center mb-4">
+            <h1 className="text-3xl font-bold text-white">Today's Timeline</h1>
+          </div>
+          
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
             {/* Date Navigation */}
             <div className="flex items-center space-x-4">
@@ -160,10 +165,10 @@ const DailyPage = () => {
               </button>
               
               <div className="text-center">
-                <h1 className="text-2xl font-bold text-white">
+                <h2 className="text-xl font-semibold text-white">
                   {format(selectedDate, 'EEEE')}
-                </h1>
-                <p className="text-white/90">
+                </h2>
+                <p className="text-white/90 text-sm -mt-1">
                   {format(selectedDate, 'MMMM d, yyyy')}
                 </p>
               </div>
@@ -236,11 +241,6 @@ const DailyPage = () => {
 
         {/* Unified Timeline View */}
         <div className="mb-8">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center space-x-2">
-            <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
-            <span>Today's Timeline</span>
-          </h2>
-          
           {allEventsWithStatus.length === 0 ? (
             <div className="bg-white rounded-xl border border-gray-200 p-8 text-center">
               <Calendar className="h-12 w-12 text-gray-400 mx-auto mb-4" />

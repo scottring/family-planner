@@ -18,6 +18,10 @@ import {
 import { format, parseISO } from 'date-fns';
 import PreparationTimeline from '../coordinator/PreparationTimeline';
 import PostEventTimeline from '../coordinator/PostEventTimeline';
+import TemplateSelector from '../templates/TemplateSelector';
+import TemplateEditor from '../templates/TemplateEditor';
+import DuringEventChecklist from '../templates/DuringEventChecklist';
+import { useTemplateStore } from '../../stores/templateStore';
 
 const eventTypeColors = {
   school: 'border-l-blue-500 bg-white',
@@ -55,6 +59,14 @@ const EventCard = ({
   const [isHovered, setIsHovered] = useState(false);
   const [showPrep, setShowPrep] = useState(false);
   const [showFollowUp, setShowFollowUp] = useState(false);
+  const [showDuringTasks, setShowDuringTasks] = useState(false);
+  const [showTemplateSelector, setShowTemplateSelector] = useState(false);
+  const [showTemplateEditor, setShowTemplateEditor] = useState(false);
+  const [templatePhase, setTemplatePhase] = useState('pre');
+  const [duringEventTasks, setDuringEventTasks] = useState([]);
+  
+  // Template store
+  const { applyTemplateToEvent } = useTemplateStore();
 
   const formatTime = (timeStr) => {
     if (!timeStr) return '';
@@ -138,6 +150,37 @@ const EventCard = ({
     }
   };
 
+  // Template handlers
+  const openTemplateSelector = (phase) => {
+    setTemplatePhase(phase);
+    setShowTemplateSelector(true);
+  };
+
+  const handleTemplateSelect = async (template) => {
+    try {
+      await applyTemplateToEvent(template.id, event.id, templatePhase);
+      
+      // If it's a during-event template, set the tasks for the checklist
+      if (templatePhase === 'during' && template.items) {
+        setDuringEventTasks(template.items);
+        setShowDuringTasks(true);
+      }
+      
+      setShowTemplateSelector(false);
+    } catch (error) {
+      console.error('Error applying template:', error);
+    }
+  };
+
+  const handleCreateNewTemplate = () => {
+    setShowTemplateSelector(false);
+    setShowTemplateEditor(true);
+  };
+
+  const handleCloseTemplateEditor = () => {
+    setShowTemplateEditor(false);
+  };
+
   if (variant === 'small' && !isExpanded) {
     return (
       <div
@@ -218,17 +261,26 @@ const EventCard = ({
       onMouseLeave={() => setIsHovered(false)}
     >
       {/* Preparation Bar - At the very top edge */}
-      <button
-        onClick={() => setShowPrep(!showPrep)}
-        className={`w-full flex items-center justify-between px-4 py-2 text-xs font-medium transition-all duration-200 border-b border-gray-200 ${
-          showPrep 
-            ? 'bg-blue-100 text-blue-800' 
-            : 'bg-blue-50 hover:bg-blue-100 text-blue-700'
-        }`}
-      >
-        <span>➕ Add preparation</span>
-        <span className="text-xs opacity-75">{showPrep ? 'hide' : 'show'}</span>
-      </button>
+      <div className={`w-full flex items-center justify-between border-b border-gray-200 ${
+        showPrep 
+          ? 'bg-blue-100' 
+          : 'bg-blue-50 hover:bg-blue-100'
+      }`}>
+        <button
+          onClick={() => setShowPrep(!showPrep)}
+          className="flex-1 flex items-center justify-between px-4 py-2 text-xs font-medium transition-all duration-200 text-blue-700"
+        >
+          <span>📋 Preparation</span>
+          <span className="text-xs opacity-75">{showPrep ? 'hide' : 'show'}</span>
+        </button>
+        <button
+          onClick={() => openTemplateSelector('pre')}
+          className="px-3 py-2 text-xs font-medium text-blue-600 hover:text-blue-800 hover:bg-blue-200 transition-colors"
+          title="Add from template"
+        >
+          ➕ Template
+        </button>
+      </div>
       
       {showPrep && (
         <div className="bg-blue-50 border-b border-blue-200 p-4 animate-in slide-in-from-top-2 duration-200">
@@ -406,6 +458,62 @@ const EventCard = ({
         )}
       </div>
 
+      {/* During Event Section - Only show when event is current */}
+      {event.status === 'current' && (
+        <div className="bg-green-50 border-t border-b border-green-200">
+          <div className="flex items-center justify-between">
+            <button
+              onClick={() => setShowDuringTasks(!showDuringTasks)}
+              className="flex-1 flex items-center justify-between px-4 py-2 text-xs font-medium transition-all duration-200 text-green-700"
+            >
+              <span>📋 Event Checklist</span>
+              <span className="text-xs opacity-75">{showDuringTasks ? 'hide' : 'show'}</span>
+            </button>
+            <button
+              onClick={() => openTemplateSelector('during')}
+              className="px-3 py-2 text-xs font-medium text-green-600 hover:text-green-800 hover:bg-green-200 transition-colors"
+              title="Add from template"
+            >
+              ➕ Template
+            </button>
+          </div>
+          
+          {showDuringTasks && (
+            <div className="p-4 animate-in slide-in-from-top-2 duration-200">
+              {duringEventTasks.length > 0 ? (
+                <DuringEventChecklist 
+                  tasks={duringEventTasks} 
+                  event={event}
+                  onTaskToggle={(taskIndex, completed) => {
+                    // Handle task completion
+                    console.log('Task toggled:', taskIndex, completed);
+                  }}
+                  onAddNote={(taskIndex, note) => {
+                    // Handle note addition
+                    console.log('Note added:', taskIndex, note);
+                  }}
+                  onComplete={(completionData) => {
+                    // Handle checklist completion
+                    console.log('Checklist completed:', completionData);
+                    setShowDuringTasks(false);
+                  }}
+                />
+              ) : (
+                <div className="text-sm text-green-700 text-center py-4">
+                  <p>No during-event tasks yet</p>
+                  <button 
+                    onClick={() => openTemplateSelector('during')}
+                    className="mt-2 text-xs bg-green-600 text-white px-3 py-1 rounded-md hover:bg-green-700 transition-colors"
+                  >
+                    Add Checklist
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Preparation Timeline (for expanded view) */}
       {isExpanded && event.ai_enriched && variant !== 'small' && (
         <div className="px-6 pb-6">
@@ -443,17 +551,45 @@ const EventCard = ({
         </div>
       )}
       
-      <button
-        onClick={() => setShowFollowUp(!showFollowUp)}
-        className={`w-full flex items-center justify-between px-4 py-2 text-xs font-medium transition-all duration-200 border-t border-gray-200 ${
-          showFollowUp 
-            ? 'bg-purple-100 text-purple-800' 
-            : 'bg-purple-50 hover:bg-purple-100 text-purple-700'
-        }`}
-      >
-        <span>➕ Add follow-up</span>
-        <span className="text-xs opacity-75">{showFollowUp ? 'hide' : 'show'}</span>
-      </button>
+      <div className={`w-full flex items-center justify-between border-t border-gray-200 ${
+        showFollowUp 
+          ? 'bg-purple-100' 
+          : 'bg-purple-50 hover:bg-purple-100'
+      }`}>
+        <button
+          onClick={() => setShowFollowUp(!showFollowUp)}
+          className="flex-1 flex items-center justify-between px-4 py-2 text-xs font-medium transition-all duration-200 text-purple-700"
+        >
+          <span>📋 Follow-up</span>
+          <span className="text-xs opacity-75">{showFollowUp ? 'hide' : 'show'}</span>
+        </button>
+        <button
+          onClick={() => openTemplateSelector('post')}
+          className="px-3 py-2 text-xs font-medium text-purple-600 hover:text-purple-800 hover:bg-purple-200 transition-colors"
+          title="Add from template"
+        >
+          ➕ Template
+        </button>
+      </div>
+
+      {/* Template Selector Modal */}
+      {showTemplateSelector && (
+        <TemplateSelector
+          phase={templatePhase}
+          event={event}
+          onSelect={handleTemplateSelect}
+          onClose={() => setShowTemplateSelector(false)}
+          onCreateNew={handleCreateNewTemplate}
+        />
+      )}
+
+      {/* Template Editor Modal */}
+      {showTemplateEditor && (
+        <TemplateEditor
+          template={null}
+          onClose={handleCloseTemplateEditor}
+        />
+      )}
     </div>
   );
 };
