@@ -30,12 +30,14 @@ const PlanningSession = () => {
     pauseSession,
     resumeSession,
     completeSession,
+    cancelSession,
     saveProgress,
     loadSession
   } = usePlanningStore();
 
   const [currentQuadrant, setCurrentQuadrant] = useState(0);
   const [showSettings, setShowSettings] = useState(false);
+  const [showResumedAlert, setShowResumedAlert] = useState(false);
   const [sessionSettings, setSessionSettings] = useState({
     duration: 90, // minutes
     autoSave: true,
@@ -88,10 +90,16 @@ const PlanningSession = () => {
 
   const handleStartSession = async () => {
     try {
-      await startSession({
+      const session = await startSession({
         participants: [user.id, ...familyMembers.filter(m => m.id !== user.id).map(m => m.id)],
         settings: sessionSettings
       });
+      
+      // Show alert if session was resumed
+      if (session.resumed) {
+        setShowResumedAlert(true);
+        setTimeout(() => setShowResumedAlert(false), 5000);
+      }
     } catch (error) {
       console.error('Failed to start planning session:', error);
     }
@@ -128,6 +136,23 @@ const PlanningSession = () => {
 
   return (
     <div className="max-w-7xl mx-auto p-6 space-y-6">
+      {/* Resumed Session Alert */}
+      {showResumedAlert && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+          <div className="flex items-center">
+            <div className="flex-shrink-0">
+              <RefreshCw className="h-5 w-5 text-blue-400" />
+            </div>
+            <div className="ml-3">
+              <h3 className="text-sm font-medium text-blue-800">Session Resumed</h3>
+              <p className="text-sm text-blue-700 mt-1">
+                You've rejoined an existing planning session that was already in progress.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Session Header */}
       <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6">
         <div className="flex items-center justify-between mb-4">
@@ -258,6 +283,12 @@ const PlanningSession = () => {
                 >
                   <RefreshCw className="h-4 w-4" />
                   <span>Save Progress</span>
+                </button>
+                <button
+                  onClick={cancelSession}
+                  className="flex items-center space-x-2 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors"
+                >
+                  <span>End Session</span>
                 </button>
               </>
             )}

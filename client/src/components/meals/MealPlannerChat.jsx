@@ -112,9 +112,9 @@ const MealPlannerChat = ({ onMealPlanUpdate, onClose }) => {
               <h2 className="text-lg font-semibold text-purple-800">💬 Chat with AI Chef</h2>
               <button
                 onClick={onClose}
-                className="text-gray-400 hover:text-gray-600 text-2xl"
+                className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
               >
-                ×
+                <X className="h-5 w-5" />
               </button>
             </div>
             <p className="text-sm text-purple-600 mt-1">I know your family's preferences and meal history</p>

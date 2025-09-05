@@ -107,15 +107,16 @@ export const useTaskStore = create((set, get) => ({
     
     if (!task) return;
 
+    const newStatus = task.status === 'completed' ? 'pending' : 'completed';
     const updatedTaskData = {
       ...task,
-      completed: !task.completed,
+      status: newStatus,
     };
 
     // Optimistic update
     set((state) => ({
       tasks: state.tasks.map((t) =>
-        t.id === taskId ? { ...t, completed: !t.completed } : t
+        t.id === taskId ? { ...t, status: newStatus } : t
       ),
     }));
 
@@ -123,9 +124,10 @@ export const useTaskStore = create((set, get) => ({
       await taskAPI.updateTask(taskId, updatedTaskData);
     } catch (error) {
       // Revert on error
+      const revertStatus = newStatus === 'completed' ? 'pending' : 'completed';
       set((state) => ({
         tasks: state.tasks.map((t) =>
-          t.id === taskId ? { ...t, completed: !updatedTaskData.completed } : t
+          t.id === taskId ? { ...t, status: revertStatus } : t
         ),
         error: error.response?.data?.message || 'Failed to update task',
       }));
@@ -133,9 +135,9 @@ export const useTaskStore = create((set, get) => ({
   },
 
   // Get tasks by status
-  getTasksByStatus: (completed = false) => {
+  getTasksByStatus: (status = 'pending') => {
     const state = get();
-    return state.tasks.filter((task) => task.completed === completed);
+    return state.tasks.filter((task) => task.status === status);
   },
 
   // Get tasks by priority
@@ -155,9 +157,9 @@ export const useTaskStore = create((set, get) => ({
     const state = get();
     const now = new Date();
     return state.tasks.filter((task) => 
-      !task.completed && 
-      task.dueDate && 
-      new Date(task.dueDate) < now
+      task.status !== 'completed' && 
+      task.due_date && 
+      new Date(task.due_date) < now
     );
   },
 
@@ -166,9 +168,9 @@ export const useTaskStore = create((set, get) => ({
     const state = get();
     const today = new Date().toDateString();
     return state.tasks.filter((task) => 
-      !task.completed && 
-      task.dueDate && 
-      new Date(task.dueDate).toDateString() === today
+      task.status !== 'completed' && 
+      task.due_date && 
+      new Date(task.due_date).toDateString() === today
     );
   },
 
@@ -190,8 +192,8 @@ export const useTaskStore = create((set, get) => ({
   getTaskStats: () => {
     const state = get();
     const total = state.tasks.length;
-    const completed = state.tasks.filter((task) => task.completed).length;
-    const pending = total - completed;
+    const completed = state.tasks.filter((task) => task.status === 'completed').length;
+    const pending = state.tasks.filter((task) => task.status === 'pending').length;
     const overdue = get().getOverdueTasks().length;
     const dueToday = get().getTasksDueToday().length;
 

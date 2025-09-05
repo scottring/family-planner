@@ -537,6 +537,16 @@ function initializeDatabase() {
       db.exec("ALTER TABLE events ADD COLUMN priority INTEGER DEFAULT 3 CHECK(priority >= 1 AND priority <= 5)");
       console.log('Added priority column to events table');
     }
+    
+    if (!columnNames.includes('checklist')) {
+      db.exec("ALTER TABLE events ADD COLUMN checklist TEXT DEFAULT '[]'");
+      console.log('Added checklist column to events table');
+    }
+    
+    if (!columnNames.includes('created_at')) {
+      db.exec('ALTER TABLE events ADD COLUMN created_at DATETIME DEFAULT CURRENT_TIMESTAMP');
+      console.log('Added created_at column to events table');
+    }
   } catch (error) {
     console.log('Migration completed or columns already exist');
   }
@@ -574,6 +584,11 @@ function initializeDatabase() {
     if (!userColumnNames.includes('telegram_settings')) {
       db.exec("ALTER TABLE users ADD COLUMN telegram_settings TEXT DEFAULT '{\"notifications_enabled\": true, \"reminder_minutes\": 30}'");
       console.log('Added telegram_settings column to users table');
+    }
+    
+    if (!userColumnNames.includes('family_id')) {
+      db.exec('ALTER TABLE users ADD COLUMN family_id INTEGER');
+      console.log('Added family_id column to users table');
     }
   } catch (error) {
     console.log('User table migration completed or columns already exist');
@@ -617,6 +632,11 @@ function initializeDatabase() {
     if (!taskColumnNames.includes('completion_actions')) {
       db.exec("ALTER TABLE tasks ADD COLUMN completion_actions TEXT DEFAULT '[]'");
       console.log('Added completion_actions column to tasks table');
+    }
+    
+    if (!taskColumnNames.includes('completed')) {
+      db.exec('ALTER TABLE tasks ADD COLUMN completed BOOLEAN DEFAULT FALSE');
+      console.log('Added completed column to tasks table');
     }
   } catch (error) {
     console.log('Task table migration completed or columns already exist');
@@ -750,6 +770,256 @@ function initializeDatabase() {
   `);
 
   console.log('Added meal learning tables: meal_history, meal_feedback, family_meal_preferences, meal_patterns');
+
+  // Add calendar account management tables
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS calendar_accounts (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      google_account_email TEXT NOT NULL,
+      access_token TEXT,
+      refresh_token TEXT,
+      calendar_id TEXT,
+      display_name TEXT,
+      is_active BOOLEAN DEFAULT 1,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (user_id) REFERENCES users(id)
+    )
+  `);
+
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS calendar_contexts (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      context_name TEXT NOT NULL,
+      calendar_account_id INTEGER,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (user_id) REFERENCES users(id),
+      FOREIGN KEY (calendar_account_id) REFERENCES calendar_accounts(id),
+      UNIQUE(user_id, context_name)
+    )
+  `);
+
+  // Create indexes for calendar account management
+  db.exec(`
+    CREATE INDEX IF NOT EXISTS idx_calendar_accounts_user_id ON calendar_accounts(user_id);
+    CREATE INDEX IF NOT EXISTS idx_calendar_accounts_email ON calendar_accounts(google_account_email);
+    CREATE INDEX IF NOT EXISTS idx_calendar_accounts_active ON calendar_accounts(is_active);
+    CREATE INDEX IF NOT EXISTS idx_calendar_contexts_user_id ON calendar_contexts(user_id);
+    CREATE INDEX IF NOT EXISTS idx_calendar_contexts_context_name ON calendar_contexts(context_name);
+    CREATE INDEX IF NOT EXISTS idx_calendar_contexts_account_id ON calendar_contexts(calendar_account_id);
+  `);
+
+  console.log('Added calendar account management tables: calendar_accounts, calendar_contexts');
+
+  // Add calendar selections table to store specific Google calendar IDs selected for each account
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS calendar_selections (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      calendar_account_id INTEGER NOT NULL,
+      google_calendar_id TEXT NOT NULL,
+      google_calendar_name TEXT,
+      context_name TEXT NOT NULL CHECK(context_name IN ('work', 'personal', 'family')),
+      is_selected BOOLEAN DEFAULT 1,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (calendar_account_id) REFERENCES calendar_accounts(id) ON DELETE CASCADE,
+      UNIQUE(calendar_account_id, google_calendar_id, context_name)
+    )
+  `);
+
+  // Create indexes for calendar selections
+  db.exec(`
+    CREATE INDEX IF NOT EXISTS idx_calendar_selections_account_id ON calendar_selections(calendar_account_id);
+    CREATE INDEX IF NOT EXISTS idx_calendar_selections_google_calendar_id ON calendar_selections(google_calendar_id);
+    CREATE INDEX IF NOT EXISTS idx_calendar_selections_context_name ON calendar_selections(context_name);
+    CREATE INDEX IF NOT EXISTS idx_calendar_selections_is_selected ON calendar_selections(is_selected);
+  `);
+
+  console.log('Added calendar_selections table for storing specific Google calendar IDs and context mappings');
+
+  // Add preparation timelines table for persistent timeline storage
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS preparation_timelines (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      event_id INTEGER REFERENCES events(id) ON DELETE CASCADE,
+      timeline_data TEXT NOT NULL DEFAULT '[]',
+      event_pattern TEXT,
+      confidence INTEGER DEFAULT 100,
+      completed_tasks TEXT DEFAULT '[]',
+      template_id INTEGER,
+      is_custom BOOLEAN DEFAULT FALSE,
+      created_by INTEGER REFERENCES users(id),
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(event_id)
+    )
+  `);
+
+  // Create indexes for preparation timelines
+  db.exec(`
+    CREATE INDEX IF NOT EXISTS idx_preparation_timelines_event_id ON preparation_timelines(event_id);
+    CREATE INDEX IF NOT EXISTS idx_preparation_timelines_template_id ON preparation_timelines(template_id);
+    CREATE INDEX IF NOT EXISTS idx_preparation_timelines_created_by ON preparation_timelines(created_by);
+    CREATE INDEX IF NOT EXISTS idx_preparation_timelines_updated_at ON preparation_timelines(updated_at);
+  `);
+
+  console.log('Added preparation_timelines table for persistent timeline storage');
+
+  // Add timeline usage patterns table for smart suggestions
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS timeline_usage_patterns (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      event_id INTEGER REFERENCES events(id) ON DELETE CASCADE,
+      event_type TEXT NOT NULL,
+      event_pattern TEXT NOT NULL,
+      recurring_event_id INTEGER,
+      user_id INTEGER REFERENCES users(id) NOT NULL,
+      task_id TEXT NOT NULL,
+      task_text TEXT NOT NULL,
+      task_category TEXT DEFAULT 'preparation',
+      original_time_offset INTEGER NOT NULL,
+      actual_time_offset INTEGER,
+      was_completed BOOLEAN DEFAULT FALSE,
+      completion_time DATETIME,
+      was_skipped BOOLEAN DEFAULT FALSE,
+      was_added_custom BOOLEAN DEFAULT FALSE,
+      time_adjustment_minutes INTEGER DEFAULT 0,
+      difficulty_rating INTEGER CHECK(difficulty_rating >= 1 AND difficulty_rating <= 5),
+      usefulness_rating INTEGER CHECK(usefulness_rating >= 1 AND usefulness_rating <= 5),
+      notes TEXT,
+      weather_conditions TEXT,
+      day_of_week INTEGER,
+      time_of_day TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  // Add suggestion tracking table
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS timeline_suggestions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER REFERENCES users(id) NOT NULL,
+      suggestion_type TEXT NOT NULL CHECK(suggestion_type IN (
+        'add_frequent_task',
+        'adjust_timing',
+        'remove_unused_task',
+        'template_improvement',
+        'seasonal_adjustment',
+        'recurring_pattern'
+      )),
+      suggestion_title TEXT NOT NULL,
+      suggestion_description TEXT NOT NULL,
+      suggestion_data TEXT DEFAULT '{}',
+      confidence_score REAL DEFAULT 0.0 CHECK(confidence_score >= 0.0 AND confidence_score <= 1.0),
+      priority TEXT DEFAULT 'medium' CHECK(priority IN ('low', 'medium', 'high')),
+      status TEXT DEFAULT 'pending' CHECK(status IN ('pending', 'shown', 'accepted', 'dismissed', 'permanently_dismissed')),
+      event_pattern TEXT,
+      applicable_events TEXT DEFAULT '[]',
+      shown_count INTEGER DEFAULT 0,
+      shown_at DATETIME,
+      responded_at DATETIME,
+      expires_at DATETIME,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  // Add user suggestion preferences table
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS user_suggestion_preferences (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+      suggestion_frequency TEXT DEFAULT 'normal' CHECK(suggestion_frequency IN ('minimal', 'normal', 'frequent')),
+      auto_apply_low_risk BOOLEAN DEFAULT FALSE,
+      show_timing_suggestions BOOLEAN DEFAULT TRUE,
+      show_task_suggestions BOOLEAN DEFAULT TRUE,
+      show_template_suggestions BOOLEAN DEFAULT TRUE,
+      dismissed_suggestion_types TEXT DEFAULT '[]',
+      learning_mode BOOLEAN DEFAULT TRUE,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(user_id)
+    )
+  `);
+
+  // Add pattern insights table for discovered patterns
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS timeline_pattern_insights (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER REFERENCES users(id) NOT NULL,
+      pattern_type TEXT NOT NULL CHECK(pattern_type IN (
+        'frequently_added_task',
+        'frequently_skipped_task',
+        'timing_preference',
+        'seasonal_pattern',
+        'day_of_week_pattern',
+        'event_type_pattern'
+      )),
+      pattern_name TEXT NOT NULL,
+      pattern_description TEXT NOT NULL,
+      pattern_data TEXT DEFAULT '{}',
+      confidence_score REAL DEFAULT 0.0 CHECK(confidence_score >= 0.0 AND confidence_score <= 1.0),
+      observation_count INTEGER DEFAULT 1,
+      last_observed DATETIME DEFAULT CURRENT_TIMESTAMP,
+      first_observed DATETIME DEFAULT CURRENT_TIMESTAMP,
+      event_pattern TEXT,
+      applicable_to TEXT DEFAULT 'all',
+      strength TEXT DEFAULT 'medium' CHECK(strength IN ('weak', 'medium', 'strong')),
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  // Create indexes for pattern tracking tables
+  db.exec(`
+    CREATE INDEX IF NOT EXISTS idx_timeline_usage_patterns_event_id ON timeline_usage_patterns(event_id);
+    CREATE INDEX IF NOT EXISTS idx_timeline_usage_patterns_user_id ON timeline_usage_patterns(user_id);
+    CREATE INDEX IF NOT EXISTS idx_timeline_usage_patterns_event_type ON timeline_usage_patterns(event_type);
+    CREATE INDEX IF NOT EXISTS idx_timeline_usage_patterns_event_pattern ON timeline_usage_patterns(event_pattern);
+    CREATE INDEX IF NOT EXISTS idx_timeline_usage_patterns_task_category ON timeline_usage_patterns(task_category);
+    CREATE INDEX IF NOT EXISTS idx_timeline_usage_patterns_was_completed ON timeline_usage_patterns(was_completed);
+    CREATE INDEX IF NOT EXISTS idx_timeline_usage_patterns_created_at ON timeline_usage_patterns(created_at);
+    
+    CREATE INDEX IF NOT EXISTS idx_timeline_suggestions_user_id ON timeline_suggestions(user_id);
+    CREATE INDEX IF NOT EXISTS idx_timeline_suggestions_status ON timeline_suggestions(status);
+    CREATE INDEX IF NOT EXISTS idx_timeline_suggestions_suggestion_type ON timeline_suggestions(suggestion_type);
+    CREATE INDEX IF NOT EXISTS idx_timeline_suggestions_priority ON timeline_suggestions(priority);
+    CREATE INDEX IF NOT EXISTS idx_timeline_suggestions_confidence_score ON timeline_suggestions(confidence_score);
+    CREATE INDEX IF NOT EXISTS idx_timeline_suggestions_created_at ON timeline_suggestions(created_at);
+    
+    CREATE INDEX IF NOT EXISTS idx_user_suggestion_preferences_user_id ON user_suggestion_preferences(user_id);
+    
+    CREATE INDEX IF NOT EXISTS idx_timeline_pattern_insights_user_id ON timeline_pattern_insights(user_id);
+    CREATE INDEX IF NOT EXISTS idx_timeline_pattern_insights_pattern_type ON timeline_pattern_insights(pattern_type);
+    CREATE INDEX IF NOT EXISTS idx_timeline_pattern_insights_confidence_score ON timeline_pattern_insights(confidence_score);
+    CREATE INDEX IF NOT EXISTS idx_timeline_pattern_insights_strength ON timeline_pattern_insights(strength);
+    CREATE INDEX IF NOT EXISTS idx_timeline_pattern_insights_last_observed ON timeline_pattern_insights(last_observed);
+  `);
+
+  console.log('Added timeline pattern tracking tables: timeline_usage_patterns, timeline_suggestions, user_suggestion_preferences, timeline_pattern_insights');
+
+  // Add missing columns to family_members table
+  try {
+    const familyTableInfo = db.prepare("PRAGMA table_info(family_members)").all();
+    const familyColumnNames = familyTableInfo.map(column => column.name);
+    
+    if (!familyColumnNames.includes('age')) {
+      db.exec('ALTER TABLE family_members ADD COLUMN age INTEGER');
+      console.log('Added age column to family_members table');
+    }
+    
+    if (!familyColumnNames.includes('avatar')) {
+      db.exec('ALTER TABLE family_members ADD COLUMN avatar TEXT');
+      console.log('Added avatar column to family_members table');
+    }
+    
+    if (!familyColumnNames.includes('color')) {
+      db.exec("ALTER TABLE family_members ADD COLUMN color TEXT DEFAULT '#3B82F6'");
+      console.log('Added color column to family_members table');
+    }
+  } catch (error) {
+    console.log('Family members table migration completed or columns already exist');
+  }
 }
 
 // Initialize database on startup

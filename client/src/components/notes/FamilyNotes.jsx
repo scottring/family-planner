@@ -301,9 +301,17 @@ const FamilyNotes = ({ className = "" }) => {
         {showAddForm && (
           <div className="mb-6">
             <NoteForm
-              onSave={(formData) => {
-                setNewNote(formData);
-                createNote();
+              onSave={async (formData) => {
+                if (!formData.content.trim()) return;
+                
+                try {
+                  const response = await api.post('/family-notes', formData);
+                  setNotes([response.data, ...notes]);
+                  setShowAddForm(false);
+                } catch (err) {
+                  console.error('Error creating note:', err);
+                  setError('Failed to create note');
+                }
               }}
               onCancel={() => setShowAddForm(false)}
             />

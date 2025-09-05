@@ -4,8 +4,7 @@ const Database = require('better-sqlite3');
 const path = require('path');
 const auth = require('../middleware/auth');
 
-const dbPath = path.join(__dirname, '../family_symphony.db');
-const db = new Database(dbPath);
+const db = require('../config/database');
 
 // Mock weather service for demonstration
 const getWeatherData = async () => {
@@ -106,9 +105,9 @@ router.get('/summary', auth, async (req, res) => {
         COUNT(DISTINCT t.id) as active_tasks,
         COUNT(DISTINCT e.id) as today_events
       FROM users u
-      LEFT JOIN tasks t ON (t.assigned_to = u.username AND t.completed = 0)
+      LEFT JOIN tasks t ON (t.assigned_to = u.id AND t.completed = 0)
       LEFT JOIN events e ON (
-        (e.assigned_to = u.username OR e.organizer = u.username) 
+        (e.assigned_to = u.id) 
         AND date(e.start_time) = date('now', 'localtime')
       )
       GROUP BY u.id, u.username, u.full_name
@@ -398,9 +397,9 @@ router.get('/family-workload', auth, async (req, res) => {
         COUNT(DISTINCT e.id) as today_events,
         COUNT(DISTINCT CASE WHEN e.checklist IS NOT NULL AND e.checklist != '[]' THEN e.id END) as events_need_prep
       FROM users u
-      LEFT JOIN tasks t ON (t.assigned_to = u.username AND t.completed = 0)
+      LEFT JOIN tasks t ON (t.assigned_to = u.id AND t.completed = 0)
       LEFT JOIN events e ON (
-        (e.assigned_to = u.username OR e.organizer = u.username) 
+        (e.assigned_to = u.id) 
         AND date(e.start_time) = date('now', 'localtime')
       )
       GROUP BY u.id, u.username, u.full_name, u.email

@@ -351,18 +351,25 @@ const EventDetailPage = () => {
               />
             ) : (
               <div className="space-y-2">
-                {event.resources && typeof event.resources === 'string' ? (
-                  event.resources.split('\n').map((resource, index) => (
-                    <div key={index} className="flex items-center space-x-2">
-                      <span className="text-gray-600">•</span>
-                      <a href={resource.startsWith('http') ? resource : '#'} 
-                         className="text-blue-600 hover:underline"
-                         target="_blank"
-                         rel="noopener noreferrer">
-                        {resource}
-                      </a>
-                    </div>
-                  ))
+                {event.resources ? (
+                  (() => {
+                    // Handle both string and object cases
+                    const resourcesString = typeof event.resources === 'string' 
+                      ? event.resources 
+                      : JSON.stringify(event.resources);
+                    
+                    return resourcesString.split('\n').filter(resource => resource.trim()).map((resource, index) => (
+                      <div key={index} className="flex items-center space-x-2">
+                        <span className="text-gray-600">•</span>
+                        <a href={resource.trim().startsWith('http') ? resource.trim() : '#'} 
+                           className="text-blue-600 hover:underline"
+                           target="_blank"
+                           rel="noopener noreferrer">
+                          {resource.trim()}
+                        </a>
+                      </div>
+                    ));
+                  })()
                 ) : (
                   <p className="text-gray-500">No resources added</p>
                 )}

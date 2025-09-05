@@ -1,6 +1,6 @@
 /**
- * Event Context Service - Provides intelligent event analysis and suggestions
- * Based on event patterns, timing, and family-specific routines
+ * Event Context Service - Server-side version
+ * Provides intelligent event analysis and suggestions for preparation timelines
  */
 
 // Family-specific constants for the Kaufman family
@@ -115,7 +115,7 @@ const EVENT_PATTERNS = {
  * @param {Object} event - Event object with title, description, location, etc.
  * @returns {Object|null} - Matching pattern or null if no match
  */
-export const analyzeEventPattern = (event) => {
+const analyzeEventPattern = (event) => {
   if (!event) return null;
   
   const searchText = `${event.title || ''} ${event.description || ''}`.toLowerCase();
@@ -171,7 +171,7 @@ const calculateConfidence = (searchText, pattern) => {
  * @param {Object} pattern - Optional pattern analysis result
  * @returns {Object} - Timeline with specific times and activities
  */
-export const generatePreparationTimeline = (event, pattern = null) => {
+const generatePreparationTimeline = (event, pattern = null) => {
   if (!event || !event.start_time) return null;
   
   const eventTime = new Date(event.start_time);
@@ -194,7 +194,7 @@ export const generatePreparationTimeline = (event, pattern = null) => {
     const techCheckTime = new Date(eventTime);
     techCheckTime.setMinutes(techCheckTime.getMinutes() - 5);
     timeline.push({
-      time: techCheckTime,
+      time: techCheckTime.toISOString(),
       activity: 'Join meeting early, test audio/video',
       type: 'tech_check',
       duration: 5
@@ -205,7 +205,7 @@ export const generatePreparationTimeline = (event, pattern = null) => {
       const setupTime = new Date(eventTime);
       setupTime.setMinutes(setupTime.getMinutes() - 8);
       timeline.push({
-        time: setupTime,
+        time: setupTime.toISOString(),
         activity: 'Tidy background, close unnecessary apps, silence phone',
         type: 'workspace_setup',
         duration: 3
@@ -217,7 +217,7 @@ export const generatePreparationTimeline = (event, pattern = null) => {
       const reviewTime = new Date(eventTime);
       reviewTime.setMinutes(reviewTime.getMinutes() - 15);
       timeline.push({
-        time: reviewTime,
+        time: reviewTime.toISOString(),
         activity: 'Review meeting agenda, notes, and materials',
         type: 'document_review',
         duration: analysis.virtualPrep.documentReview
@@ -228,7 +228,7 @@ export const generatePreparationTimeline = (event, pattern = null) => {
     const refreshTime = new Date(eventTime);
     refreshTime.setMinutes(refreshTime.getMinutes() - 20);
     timeline.push({
-      time: refreshTime,
+      time: refreshTime.toISOString(),
       activity: 'Quick break - water, restroom, stretch',
       type: 'refresh',
       duration: 5
@@ -246,7 +246,7 @@ export const generatePreparationTimeline = (event, pattern = null) => {
       const dogCareTime = new Date(departureTime);
       dogCareTime.setMinutes(dogCareTime.getMinutes() - FAMILY_CONFIG.dogCareTime);
       timeline.push({
-        time: dogCareTime,
+        time: dogCareTime.toISOString(),
         activity: 'Dog care routine (let out, feed if needed)',
         type: 'dog_care',
         duration: FAMILY_CONFIG.dogCareTime
@@ -257,7 +257,7 @@ export const generatePreparationTimeline = (event, pattern = null) => {
     const prepStartTime = new Date(departureTime);
     prepStartTime.setMinutes(prepStartTime.getMinutes() - prepTime);
     timeline.push({
-      time: prepStartTime,
+      time: prepStartTime.toISOString(),
       activity: getPreparationActivity(analysis),
       type: 'preparation',
       duration: prepTime
@@ -265,7 +265,7 @@ export const generatePreparationTimeline = (event, pattern = null) => {
     
     // Departure
     timeline.push({
-      time: departureTime,
+      time: departureTime.toISOString(),
       activity: `Leave for ${event.title}`,
       type: 'departure',
       duration: 0
@@ -282,14 +282,14 @@ export const generatePreparationTimeline = (event, pattern = null) => {
   
   // Event start
   timeline.push({
-    time: eventTime,
+    time: eventTime.toISOString(),
     activity: `${event.title} begins`,
     type: 'event_start',
     duration: 0
   });
   
   // Sort timeline chronologically
-  timeline.sort((a, b) => a.time - b.time);
+  timeline.sort((a, b) => new Date(a.time) - new Date(b.time));
   
   return {
     timeline,
@@ -338,7 +338,7 @@ const calculateMealTime = (eventTime, mealConsiderations) => {
     dinnerTime.setMinutes(dinnerTime.getMinutes() - minutesBefore);
     
     return {
-      time: dinnerTime,
+      time: dinnerTime.toISOString(),
       activity: 'Dinner time (eat before event)',
       type: 'meal',
       duration: FAMILY_CONFIG.mealPrepTime,
@@ -352,7 +352,7 @@ const calculateMealTime = (eventTime, mealConsiderations) => {
     mealTime.setMinutes(mealTime.getMinutes() - 60);
     
     return {
-      time: mealTime,
+      time: mealTime.toISOString(),
       activity: 'Light snack/meal (avoid heavy food)',
       type: 'meal',
       duration: 15,
@@ -363,166 +363,9 @@ const calculateMealTime = (eventTime, mealConsiderations) => {
   return null;
 };
 
-/**
- * Get contextual suggestions for an event
- * @param {Object} event - Event object
- * @returns {Object} - Suggestions object with various recommendations
- */
-export const getContextualSuggestions = (event) => {
-  const analysis = analyzeEventPattern(event);
-  const timeline = generatePreparationTimeline(event, analysis);
-  
-  const suggestions = {
-    pattern: analysis,
-    timeline,
-    packingList: analysis?.packingList || [],
-    mealSuggestions: getMealSuggestions(event, analysis),
-    weatherConsiderations: getWeatherConsiderations(event, analysis),
-    transportationNotes: getTransportationNotes(event, analysis),
-    familySpecificNotes: getFamilySpecificNotes(event, analysis)
-  };
-  
-  return suggestions;
-};
-
-/**
- * Generate meal-related suggestions
- */
-const getMealSuggestions = (event, analysis) => {
-  if (!analysis?.mealConsiderations) return null;
-  
-  const eventTime = new Date(event.start_time);
-  const eventHour = eventTime.getHours();
-  
-  const suggestions = [];
-  
-  if (analysis.mealConsiderations.dinnerBefore) {
-    suggestions.push('Plan early dinner before leaving');
-  }
-  
-  if (analysis.mealConsiderations.dinnerAfter) {
-    suggestions.push('Plan dinner for after the event');
-  }
-  
-  if (analysis.mealConsiderations.snacks) {
-    suggestions.push('Pack healthy snacks and extra water');
-  }
-  
-  if (analysis.mealConsiderations.hydration === 'high') {
-    suggestions.push('Ensure extra hydration - pack multiple water bottles');
-  }
-  
-  return suggestions.length > 0 ? suggestions : null;
-};
-
-/**
- * Generate weather-related considerations
- */
-const getWeatherConsiderations = (event, analysis) => {
-  if (!analysis?.weatherDependent) return null;
-  
-  return {
-    checkWeather: true,
-    suggestions: [
-      'Check weather forecast before leaving',
-      'Pack appropriate weather gear',
-      'Consider backup indoor activities if outdoor event'
-    ]
-  };
-};
-
-/**
- * Generate transportation notes
- */
-const getTransportationNotes = (event, analysis) => {
-  const notes = [];
-  
-  if (analysis?.transportation === 'parent_required') {
-    notes.push('Parent transportation required');
-  }
-  
-  if (analysis?.arrivalBuffer) {
-    notes.push(`Arrive ${analysis.arrivalBuffer} minutes early`);
-  }
-  
-  if (event.location) {
-    notes.push('Confirm location and parking availability');
-  }
-  
-  return notes.length > 0 ? notes : null;
-};
-
-/**
- * Generate family-specific notes
- */
-const getFamilySpecificNotes = (event, analysis) => {
-  const notes = [];
-  
-  // Twin-specific considerations
-  if (event.attendees?.includes('Kaleb') && event.attendees?.includes('Ella')) {
-    notes.push('Both twins attending - pack for two');
-  } else if (event.attendees?.includes('Kaleb') || event.attendees?.includes('Ella')) {
-    notes.push('Single child event - coordinate with other parent/child');
-  }
-  
-  // Dog considerations
-  if (FAMILY_CONFIG.hasDog) {
-    notes.push('Remember dog care routine before leaving');
-  }
-  
-  return notes.length > 0 ? notes : null;
-};
-
-/**
- * Check if event is within preparation window (should show coordinator)
- * @param {Object} event - Event object
- * @param {number} hoursThreshold - Hours threshold (default 4)
- * @returns {boolean} - Whether event is within preparation window
- */
-export const isEventWithinPreparationWindow = (event, hoursThreshold = 4) => {
-  if (!event || !event.start_time) return false;
-  
-  const now = new Date();
-  const eventTime = new Date(event.start_time);
-  const diffHours = (eventTime - now) / (1000 * 60 * 60);
-  
-  return diffHours > 0 && diffHours <= hoursThreshold;
-};
-
-/**
- * Get the next upcoming event that needs coordination
- * @param {Array} events - Array of events
- * @returns {Object|null} - Next event needing coordination
- */
-export const getNextEventNeedingCoordination = (events) => {
-  if (!events || events.length === 0) return null;
-  
-  const now = new Date();
-  const upcomingEvents = events
-    .filter(event => {
-      const eventTime = new Date(event.start_time);
-      return eventTime > now;
-    })
-    .sort((a, b) => new Date(a.start_time) - new Date(b.start_time));
-  
-  // Find the next event within the preparation window
-  for (const event of upcomingEvents) {
-    if (isEventWithinPreparationWindow(event)) {
-      return event;
-    }
-  }
-  
-  return null;
-};
-
-// Export the service object
-export const eventContextService = {
+module.exports = {
   analyzeEventPattern,
   generatePreparationTimeline,
-  getContextualSuggestions,
-  isEventWithinPreparationWindow,
-  getNextEventNeedingCoordination,
-  FAMILY_CONFIG
+  FAMILY_CONFIG,
+  EVENT_PATTERNS
 };
-
-export default eventContextService;

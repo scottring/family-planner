@@ -5,7 +5,7 @@ import { useEventStore } from '../stores/eventStore';
 import { Mic, Plus, Calendar, ClipboardList } from 'lucide-react';
 
 // Main components
-import DailyItinerary from '../components/itinerary/DailyItinerary';
+import TodaysTimeline from '../components/itinerary/TodaysTimeline';
 import EventCoordinator from '../components/coordinator/EventCoordinator';
 import TodaysHandoffs from '../components/handoffs/TodaysHandoffs';
 import FamilyNotes from '../components/notes/FamilyNotes';
@@ -98,17 +98,17 @@ const Dashboard = () => {
         <FamilyNotes />
       </div>
 
-      {/* Daily Itinerary - THE MAIN CENTERPIECE */}
+      {/* Today's Timeline - THE MAIN CENTERPIECE */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden mx-2 sm:mx-0">
         <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-200 bg-gray-50">
           <h2 className="text-xl sm:text-2xl font-bold text-gray-900 flex items-center space-x-2">
             <Calendar className="h-5 w-5 sm:h-6 sm:w-6 text-blue-600" />
             <span>Today's Schedule</span>
           </h2>
-          <p className="text-gray-600 mt-1 text-sm sm:text-base">Your complete daily itinerary</p>
+          <p className="text-gray-600 mt-1 text-sm sm:text-base">A focused view of your day's events</p>
         </div>
         <div className="p-3 sm:p-6">
-          <DailyItinerary />
+          <TodaysTimeline />
         </div>
       </div>
     </div>

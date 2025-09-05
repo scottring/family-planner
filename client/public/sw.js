@@ -1,10 +1,13 @@
-// Service Worker for Web Push Notifications
-const CACHE_NAME = 'family-planner-v1';
+// Service Worker for Timeline Multi-Modal Access
+const CACHE_NAME = 'family-planner-timeline-v2';
+const DATA_CACHE_NAME = 'timeline-data-v2';
+
+// Core app files to cache
 const urlsToCache = [
   '/',
-  '/static/js/bundle.js',
-  '/static/css/main.css',
-  '/manifest.json'
+  '/manifest.json',
+  '/offline.html',
+  // Timeline-specific assets will be cached dynamically
 ];
 
 // Install event - cache resources
@@ -48,27 +51,102 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// Fetch event - serve from cache, fallback to network
+// API endpoints that should use network-first strategy
+const API_ENDPOINTS = [
+  '/api/calendar/events/',
+  '/api/tasks/',
+  '/api/meals/'
+];
+
+// Fetch event - handle different caching strategies
 self.addEventListener('fetch', (event) => {
   // Skip non-GET requests and chrome-extension requests
   if (event.request.method !== 'GET' || event.request.url.startsWith('chrome-extension')) {
     return;
   }
 
-  event.respondWith(
-    caches.match(event.request)
-      .then((response) => {
-        // Return cached version or fetch from network
-        return response || fetch(event.request);
-      })
-      .catch(() => {
-        // Fallback for offline scenarios
-        if (event.request.destination === 'document') {
-          return caches.match('/');
-        }
-      })
-  );
+  const { request } = event;
+  const url = new URL(request.url);
+
+  // Handle API requests with network-first strategy
+  if (API_ENDPOINTS.some(endpoint => url.pathname.startsWith(endpoint))) {
+    event.respondWith(networkFirstStrategy(request));
+    return;
+  }
+
+  // Handle app shell with cache-first strategy
+  if (request.destination === 'document' || 
+      request.destination === 'script' || 
+      request.destination === 'style') {
+    event.respondWith(cacheFirstStrategy(request));
+    return;
+  }
+
+  // Default to network-first for everything else
+  event.respondWith(networkFirstStrategy(request));
 });
+
+// Network-first strategy (good for API data)
+async function networkFirstStrategy(request) {
+  const cache = await caches.open(DATA_CACHE_NAME);
+  
+  try {
+    const networkResponse = await fetch(request);
+    
+    // Cache successful responses
+    if (networkResponse.ok) {
+      await cache.put(request, networkResponse.clone());
+    }
+    
+    return networkResponse;
+  } catch (error) {
+    console.log('[SW] Network failed, trying cache:', request.url);
+    
+    // If network fails, try cache
+    const cachedResponse = await cache.match(request);
+    if (cachedResponse) {
+      return cachedResponse;
+    }
+    
+    // If no cache, return offline page for navigation requests
+    if (request.destination === 'document') {
+      const offlinePage = await cache.match('/offline.html') || await cache.match('/');
+      return offlinePage || new Response('Offline', { status: 503 });
+    }
+    
+    throw error;
+  }
+}
+
+// Cache-first strategy (good for app shell)
+async function cacheFirstStrategy(request) {
+  const cache = await caches.open(CACHE_NAME);
+  const cachedResponse = await cache.match(request);
+  
+  if (cachedResponse) {
+    return cachedResponse;
+  }
+  
+  try {
+    const networkResponse = await fetch(request);
+    
+    if (networkResponse.ok) {
+      await cache.put(request, networkResponse.clone());
+    }
+    
+    return networkResponse;
+  } catch (error) {
+    console.log('[SW] Cache and network both failed:', request.url);
+    
+    // Return offline page for navigation requests
+    if (request.destination === 'document') {
+      const offlinePage = await cache.match('/offline.html') || await cache.match('/');
+      return offlinePage || new Response('Offline', { status: 503 });
+    }
+    
+    throw error;
+  }
+}
 
 // Push event - handle incoming push notifications
 self.addEventListener('push', (event) => {
@@ -188,22 +266,44 @@ self.addEventListener('notificationclose', (event) => {
 
 // Background sync event (for offline functionality)
 self.addEventListener('sync', (event) => {
-  console.log('Background sync event:', event.tag);
+  console.log('[SW] Background sync event:', event.tag);
   
-  if (event.tag === 'background-sync-notifications') {
-    event.waitUntil(
-      // Perform background sync tasks
-      syncNotifications()
-    );
+  if (event.tag === 'timeline-sync') {
+    event.waitUntil(syncTimelineData());
+  } else if (event.tag === 'background-sync-notifications') {
+    event.waitUntil(syncNotifications());
   }
 });
+
+// Sync timeline data when back online
+async function syncTimelineData() {
+  try {
+    console.log('[SW] Syncing timeline data...');
+    
+    // Get pending updates from clients
+    const clients = await self.clients.matchAll();
+    
+    // Notify all clients to sync their pending updates
+    clients.forEach(client => {
+      client.postMessage({
+        type: 'SYNC_TIMELINE_DATA'
+      });
+    });
+    
+    console.log('[SW] Timeline sync completed');
+    return Promise.resolve();
+  } catch (error) {
+    console.error('[SW] Timeline sync failed:', error);
+    return Promise.reject(error);
+  }
+}
 
 // Helper function for background sync
 async function syncNotifications() {
   try {
     // Get pending notifications from IndexedDB or similar storage
     // Send them when back online
-    console.log('Syncing notifications...');
+    console.log('[SW] Syncing notifications...');
     
     // This would integrate with your backend API
     // const response = await fetch('/api/notifications/sync');
@@ -211,7 +311,7 @@ async function syncNotifications() {
     
     return Promise.resolve();
   } catch (error) {
-    console.error('Background sync failed:', error);
+    console.error('[SW] Background sync failed:', error);
     return Promise.reject(error);
   }
 }

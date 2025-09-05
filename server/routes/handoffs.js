@@ -385,4 +385,45 @@ router.get('/users', auth, (req, res) => {
   }
 });
 
+// Get available users and family members for assignment
+router.get('/assignable-people', auth, (req, res) => {
+  try {
+    // Get users (excluding current user)
+    const users = db.prepare(`
+      SELECT id, username as name, full_name, 'user' as type
+      FROM users 
+      WHERE id != ?
+      ORDER BY full_name ASC
+    `).all(req.user.id);
+
+    // Get family members
+    const familyMembers = db.prepare(`
+      SELECT id, name, type, 'family_member' as source_type
+      FROM family_members 
+      ORDER BY name ASC
+    `).all();
+
+    // Combine both lists
+    const assignablePeople = [
+      ...users.map(user => ({
+        id: `user_${user.id}`,
+        name: user.full_name || user.name,
+        type: 'user',
+        original_id: user.id
+      })),
+      ...familyMembers.map(member => ({
+        id: `family_${member.id}`,
+        name: member.name,
+        type: member.type === 'parent' ? 'parent' : member.type === 'child' ? 'child' : 'other',
+        original_id: member.id
+      }))
+    ];
+    
+    res.json(assignablePeople);
+  } catch (error) {
+    console.error('Error fetching assignable people:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
 module.exports = router;

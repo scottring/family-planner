@@ -106,10 +106,55 @@ router.post('/import', authMiddleware, async (req, res) => {
   try {
     const { calendarId = 'primary', timeMin, timeMax } = req.body;
     
+    console.log(`Importing events from calendar: ${calendarId}`);
+    console.log(`Time range: ${timeMin} to ${timeMax}`);
+    
     const events = await googleCalendarService.fetchEvents(req.user.id, calendarId, {
       timeMin,
       timeMax
     });
+    
+    console.log(`Fetched ${events.length} events from ${calendarId}`);
+    
+    // Determine category based on calendar ID
+    const getEventCategory = (calId) => {
+      const calIdLower = calId?.toLowerCase() || '';
+      
+      // For shared calendars, the ID might be an email or a long string
+      console.log(`Determining category for calendar ID: "${calId}"`);
+      console.log(`Calendar ID length: ${calId ? calId.length : 0}`);
+      
+      // Work calendars - check for work-related domains
+      if (calIdLower.includes('stacksdata.com') || 
+          calIdLower.includes('g suite') ||
+          calId === 'scott.kaufman@stacksdata.com') {
+        console.log(`  -> Categorized as WORK (matched work domain)`);
+        return 'work';
+      }
+      
+      // Family calendars - check for the specific family calendar ID and family-related keywords
+      const familyCalendarId = '968af23c5d1acee7a12984884621b46e0ce34fe003438217a5cb6ffcfb26cd2b@group.calendar.google.com';
+      
+      console.log(`  Comparing with family calendar ID: "${familyCalendarId}"`);
+      console.log(`  Exact match: ${calId === familyCalendarId}`);
+      console.log(`  Contains family: ${calIdLower.includes('family')}`);
+      console.log(`  Contains 968af23c5d1a: ${calIdLower.includes('968af23c5d1a')}`);
+      
+      if (calId === familyCalendarId ||
+          calIdLower.includes('family') || 
+          calIdLower.includes('shared') ||
+          calIdLower.includes('iris') ||
+          calIdLower.includes('968af23c5d1a')) {  // Partial match for the family calendar ID
+        console.log(`  -> Categorized as FAMILY`);
+        return 'family';
+      }
+      
+      // Default to personal
+      console.log(`  -> Categorized as PERSONAL (default)`);
+      return 'personal';
+    };
+    
+    const eventCategory = getEventCategory(calendarId);
     
     // Store events in local database
     const importResults = {
@@ -120,45 +165,67 @@ router.post('/import', authMiddleware, async (req, res) => {
     
     for (const event of events) {
       try {
-        // Check if event already exists
+        // Check if event already exists for this user
         const existing = db.prepare(
-          'SELECT id FROM events WHERE google_event_id = ?'
-        ).get(event.google_event_id);
+          'SELECT id FROM events WHERE google_event_id = ? AND created_by = ?'
+        ).get(event.google_event_id, req.user.id);
         
         if (existing) {
+          console.log(`  Skipping existing event: ${event.title} (ID: ${event.google_event_id})`);
           importResults.skipped++;
           continue;
         }
         
-        // Insert new event
-        db.prepare(`
+        console.log(`  Importing event: ${event.title} (Category: ${eventCategory})`);
+        
+        // Insert new event with calendar_id and category
+        const insertStmt = db.prepare(`
           INSERT INTO events (
-            user_id, title, description, location, 
-            start_time, end_time, type, google_event_id
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        `).run(
+            created_by, title, description, location, 
+            start_time, end_time, event_type, google_event_id,
+            calendar_id, category
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `);
+        
+        const insertResult = insertStmt.run(
           req.user.id,
-          event.title,
-          event.description,
-          event.location,
+          event.title || 'Untitled Event',
+          event.description || '',
+          event.location || '',
           event.start_time,
           event.end_time,
           'google',
-          event.google_event_id
+          event.google_event_id,
+          calendarId, // Store the actual calendar ID
+          eventCategory // Store the determined category
         );
+        
+        console.log(`  Successfully imported event ID: ${insertResult.lastInsertRowid}`);
         
         importResults.imported++;
       } catch (error) {
+        console.error(`Error importing event "${event.title || 'Unknown'}":`, error.message);
         importResults.errors.push({
-          event: event.title,
+          event: event.title || 'Unknown Event',
+          googleEventId: event.google_event_id,
           error: error.message
         });
       }
     }
     
+    console.log(`Import complete. Results:`, {
+      imported: importResults.imported,
+      skipped: importResults.skipped,
+      errors: importResults.errors.length,
+      calendarId,
+      category: eventCategory
+    });
+    
     res.json({
       success: true,
-      results: importResults
+      results: importResults,
+      calendar: calendarId,
+      category: eventCategory
     });
   } catch (error) {
     res.status(500).json({ error: error.message });

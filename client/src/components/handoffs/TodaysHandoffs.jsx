@@ -32,10 +32,10 @@ const TodaysHandoffs = ({ className = "" }) => {
 
   const fetchAvailableUsers = async () => {
     try {
-      const response = await api.get('/handoffs/users');
+      const response = await api.get('/handoffs/assignable-people');
       setAvailableUsers(response.data);
     } catch (err) {
-      console.error('Error fetching users:', err);
+      console.error('Error fetching assignable people:', err);
     }
   };
 
@@ -82,7 +82,12 @@ const TodaysHandoffs = ({ className = "" }) => {
   };
 
   const getPriorityColor = (priority) => {
-    switch (priority?.toLowerCase()) {
+    // Handle null, undefined, or non-string priority values
+    if (!priority || typeof priority !== 'string') {
+      return 'text-gray-600 bg-gray-50';
+    }
+    
+    switch (priority.toLowerCase()) {
       case 'high': return 'text-red-600 bg-red-50';
       case 'urgent': return 'text-red-800 bg-red-100';
       case 'medium': return 'text-yellow-600 bg-yellow-50';
@@ -96,7 +101,19 @@ const TodaysHandoffs = ({ className = "" }) => {
 
     const handleReassign = () => {
       if (selectedUser) {
-        onReassign(item.id, parseInt(selectedUser));
+        // Extract the actual user ID from the composite ID
+        // For users: "user_123" -> 123
+        // For family members: We'll need to handle this differently since they can't be assigned tasks/events yet
+        let actualUserId;
+        if (selectedUser.startsWith('user_')) {
+          actualUserId = parseInt(selectedUser.replace('user_', ''));
+        } else {
+          // For now, family members can't be assigned events/tasks in the current system
+          alert('Family member assignment is not yet supported for events/tasks. Please select a user.');
+          return;
+        }
+        
+        onReassign(item.id, actualUserId);
         setShowReassign(false);
         setSelectedUser('');
       }
@@ -162,10 +179,10 @@ const TodaysHandoffs = ({ className = "" }) => {
               onChange={(e) => setSelectedUser(e.target.value)}
               className="flex-1 px-3 py-1 border rounded text-sm"
             >
-              <option value="">Select user...</option>
-              {availableUsers.map(user => (
-                <option key={user.id} value={user.id}>
-                  {user.full_name || user.username}
+              <option value="">Select person...</option>
+              {availableUsers.map(person => (
+                <option key={person.id} value={person.id}>
+                  {person.name} {person.type !== 'user' && `(${person.type})`}
                 </option>
               ))}
             </select>

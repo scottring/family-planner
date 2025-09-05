@@ -23,7 +23,7 @@ const TasksPage = () => {
     items: ['']
   });
 
-  const { tasks, fetchTasks, createTask, updateTask, deleteTask } = useTaskStore();
+  const { tasks, fetchTasks, addTask, updateTask, deleteTask } = useTaskStore();
   const { user } = useAuthStore();
 
   useEffect(() => {
@@ -43,7 +43,7 @@ const TasksPage = () => {
   const handleCreateTask = async (e) => {
     e.preventDefault();
     try {
-      await createTask(newTask);
+      await addTask(newTask);
       setNewTask({
         title: '',
         description: '',
@@ -59,7 +59,8 @@ const TasksPage = () => {
 
   const handleToggleComplete = async (task) => {
     try {
-      await updateTask(task.id, { completed: !task.completed });
+      const newStatus = task.status === 'completed' ? 'pending' : 'completed';
+      await updateTask(task.id, { status: newStatus });
     } catch (error) {
       console.error('Error updating task:', error);
     }
@@ -118,8 +119,9 @@ const TasksPage = () => {
 
   const handleCreateFromTemplate = async (template) => {
     try {
-      const response = await api.post('/api/checklists', {
+      const response = await api.post('/api/checklists/instances', {
         template_id: template.id,
+        title: template.name,
         event_id: null // Can be linked to an event later
       });
       // Show success message
@@ -179,13 +181,22 @@ const TasksPage = () => {
       <div className="bg-white rounded-2xl shadow-lg p-6">
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-3xl font-bold text-gray-900">Tasks & Checklists</h1>
-          <button
-            onClick={() => activeTab === 'tasks' ? setShowNewTask(true) : setShowNewTemplate(true)}
-            className="flex items-center space-x-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
-          >
-            <Plus className="h-5 w-5" />
-            <span>Add {activeTab === 'tasks' ? 'Task' : 'Template'}</span>
-          </button>
+          <div className="flex items-center space-x-3">
+            <button
+              onClick={() => setShowNewTask(true)}
+              className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              <Plus className="h-5 w-5" />
+              <span>Add Task</span>
+            </button>
+            <button
+              onClick={() => setShowNewTemplate(true)}
+              className="flex items-center space-x-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+            >
+              <ListChecks className="h-5 w-5" />
+              <span>Add Checklist</span>
+            </button>
+          </div>
         </div>
 
         {/* Tabs */}
@@ -307,7 +318,7 @@ const TasksPage = () => {
                 <div
                   key={task.id}
                   className={`bg-white rounded-xl shadow-md p-6 transition-all hover:shadow-lg ${
-                    task.completed ? 'opacity-75' : ''
+                    task.status === 'completed' ? 'opacity-75' : ''
                   }`}
                 >
                   <div className="flex items-start justify-between">
@@ -315,18 +326,18 @@ const TasksPage = () => {
                       <button
                         onClick={() => handleToggleComplete(task)}
                         className={`mt-1 w-6 h-6 rounded-md border-2 transition-colors ${
-                          task.completed
+                          task.status === 'completed'
                             ? 'bg-primary-600 border-primary-600'
                             : 'border-gray-300 hover:border-primary-400'
                         }`}
                       >
-                        {task.completed && (
+                        {task.status === 'completed' && (
                           <Check className="h-4 w-4 text-white mx-auto" />
                         )}
                       </button>
                       <div className="flex-1">
                         <h3 className={`text-lg font-semibold ${
-                          task.completed ? 'line-through text-gray-500' : 'text-gray-900'
+                          task.status === 'completed' ? 'line-through text-gray-500' : 'text-gray-900'
                         }`}>
                           {task.title}
                         </h3>

@@ -40,7 +40,7 @@ router.get('/events', auth, (req, res) => {
 });
 
 // Create a new event
-router.post('/events', auth, (req, res) => {
+router.post('/events', auth, async (req, res) => {
   try {
     const eventData = req.body;
     
@@ -67,7 +67,7 @@ router.post('/events', auth, (req, res) => {
       eventData.location || null,
       eventData.category || 'personal',
       eventData.event_type || 'general',
-      eventData.attendees || null,
+      typeof eventData.attendees === 'object' ? db.stringifyJSON(eventData.attendees) : eventData.attendees || null,
       eventData.notes || null,
       typeof eventData.resources === 'object' ? db.stringifyJSON(eventData.resources) : eventData.resources || null,
       typeof eventData.checklist === 'object' ? db.stringifyJSON(eventData.checklist) : eventData.checklist || null,
@@ -89,6 +89,52 @@ router.post('/events', auth, (req, res) => {
     newEvent.checklist_completed_items = db.parseJSON(newEvent.checklist_completed_items) || [];
     newEvent.recurrence_days = db.parseJSON(newEvent.recurrence_days) || [];
     
+    // Attempt to sync to Google Calendar if user has it configured
+    try {
+      const googleCalendarService = require('../services/googleCalendar');
+      
+      // Check if user has Google Calendar configured
+      const user = db.prepare('SELECT sync_enabled, google_tokens FROM users WHERE id = ?').get(req.user.id);
+      
+      if (user && user.sync_enabled && user.google_tokens) {
+        console.log('Syncing new event to Google Calendar...');
+        
+        // Determine which calendar to use based on event category
+        let calendarId = 'primary'; // Default to primary calendar
+        
+        // Try to map categories to specific calendars
+        if (eventData.category === 'work') {
+          // For work events, try to use a work calendar if available
+          // This could be enhanced with user preferences
+          calendarId = 'primary';
+        } else if (eventData.category === 'family') {
+          // For family events, might want to use a shared family calendar
+          calendarId = 'primary';
+        }
+        
+        const googleEvent = await googleCalendarService.createEvent(req.user.id, newEvent, calendarId);
+        
+        if (googleEvent && googleEvent.google_event_id) {
+          // Update the local event with the Google Calendar event ID
+          db.prepare(`
+            UPDATE events 
+            SET google_event_id = ?, last_synced = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP 
+            WHERE id = ?
+          `).run(googleEvent.google_event_id, newEvent.id);
+          
+          // Update the response event object
+          newEvent.google_event_id = googleEvent.google_event_id;
+          newEvent.last_synced = new Date().toISOString();
+          
+          console.log(`✅ Event synced to Google Calendar with ID: ${googleEvent.google_event_id}`);
+        }
+      }
+    } catch (syncError) {
+      // Log the sync error but don't fail the event creation
+      console.warn('⚠️  Failed to sync event to Google Calendar:', syncError.message);
+      // Could optionally set a flag on the event to retry sync later
+    }
+    
     res.status(201).json(newEvent);
   } catch (error) {
     console.error('Create event error:', error);
@@ -97,7 +143,7 @@ router.post('/events', auth, (req, res) => {
 });
 
 // Update an event
-router.put('/events/:id', auth, (req, res) => {
+router.put('/events/:id', auth, async (req, res) => {
   try {
     const eventId = parseInt(req.params.id);
     const updates = req.body;
@@ -161,6 +207,41 @@ router.put('/events/:id', auth, (req, res) => {
     updatedEvent.checklist_completed_items = db.parseJSON(updatedEvent.checklist_completed_items) || [];
     updatedEvent.recurrence_days = db.parseJSON(updatedEvent.recurrence_days) || [];
     
+    // Attempt to sync changes to Google Calendar if the event is synced
+    if (event.google_event_id) {
+      try {
+        const googleCalendarService = require('../services/googleCalendar');
+        
+        // Check if user has Google Calendar configured
+        const user = db.prepare('SELECT sync_enabled, google_tokens FROM users WHERE id = ?').get(req.user.id);
+        
+        if (user && user.sync_enabled && user.google_tokens) {
+          console.log('Syncing event updates to Google Calendar...');
+          
+          // Determine calendar ID (default to primary for now)
+          const calendarId = 'primary';
+          
+          const googleEvent = await googleCalendarService.updateEvent(req.user.id, event.google_event_id, updatedEvent, calendarId);
+          
+          if (googleEvent) {
+            // Update the last_synced time
+            db.prepare(`
+              UPDATE events 
+              SET last_synced = CURRENT_TIMESTAMP 
+              WHERE id = ?
+            `).run(eventId);
+            
+            updatedEvent.last_synced = new Date().toISOString();
+            
+            console.log(`✅ Event updates synced to Google Calendar`);
+          }
+        }
+      } catch (syncError) {
+        // Log the sync error but don't fail the event update
+        console.warn('⚠️  Failed to sync event updates to Google Calendar:', syncError.message);
+      }
+    }
+    
     res.json(updatedEvent);
   } catch (error) {
     console.error('Update event error:', error);
@@ -169,7 +250,7 @@ router.put('/events/:id', auth, (req, res) => {
 });
 
 // Delete an event
-router.delete('/events/:id', auth, (req, res) => {
+router.delete('/events/:id', auth, async (req, res) => {
   try {
     const eventId = parseInt(req.params.id);
     
@@ -179,7 +260,32 @@ router.delete('/events/:id', auth, (req, res) => {
       return res.status(404).json({ message: 'Event not found' });
     }
     
-    // Delete the event
+    // Attempt to delete from Google Calendar if the event is synced
+    if (event.google_event_id) {
+      try {
+        const googleCalendarService = require('../services/googleCalendar');
+        
+        // Check if user has Google Calendar configured
+        const user = db.prepare('SELECT sync_enabled, google_tokens FROM users WHERE id = ?').get(req.user.id);
+        
+        if (user && user.sync_enabled && user.google_tokens) {
+          console.log('Deleting event from Google Calendar...');
+          
+          // Determine calendar ID (default to primary for now)
+          const calendarId = 'primary';
+          
+          await googleCalendarService.deleteEvent(req.user.id, event.google_event_id, calendarId);
+          
+          console.log(`✅ Event deleted from Google Calendar`);
+        }
+      } catch (syncError) {
+        // Log the sync error but don't fail the event deletion
+        console.warn('⚠️  Failed to delete event from Google Calendar:', syncError.message);
+        // Continue with local deletion even if Google Calendar deletion fails
+      }
+    }
+    
+    // Delete the event from local database
     db.prepare('DELETE FROM events WHERE id = ?').run(eventId);
     
     res.status(204).send();
@@ -410,7 +516,7 @@ router.put('/events/:id/logistics', auth, (req, res) => {
       db.stringifyJSON(packing_list || []),
       parking_info || null,
       db.stringifyJSON(contacts || []),
-      Boolean(weather_dependent) || false,
+      weather_dependent ? 1 : 0,
       db.stringifyJSON(meal_requirements || {}),
       eventId
     );
@@ -786,6 +892,321 @@ router.post('/events/recurring/from-template', auth, (req, res) => {
   } catch (error) {
     console.error('Create from template error:', error);
     res.status(500).json({ message: error.message || 'Internal server error' });
+  }
+});
+
+// === PREPARATION TIMELINE API ENDPOINTS ===
+
+// Get preparation timeline for an event
+router.get('/events/:eventId/timeline', auth, (req, res) => {
+  try {
+    const eventId = parseInt(req.params.eventId);
+    
+    // Check if event exists
+    const event = db.prepare('SELECT * FROM events WHERE id = ?').get(eventId);
+    if (!event) {
+      return res.status(404).json({ message: 'Event not found' });
+    }
+
+    // Get saved timeline from database
+    const timelineRecord = db.prepare('SELECT * FROM preparation_timelines WHERE event_id = ?').get(eventId);
+    
+    if (timelineRecord) {
+      // Return saved timeline
+      const timeline = db.parseJSON(timelineRecord.timeline_data) || [];
+      const completedTasks = db.parseJSON(timelineRecord.completed_tasks) || [];
+      
+      res.json({
+        eventId,
+        timeline,
+        eventPattern: timelineRecord.event_pattern,
+        confidence: timelineRecord.confidence,
+        isCustom: timelineRecord.is_custom,
+        templateId: timelineRecord.template_id,
+        completedTasks,
+        updatedAt: timelineRecord.updated_at
+      });
+    } else {
+      // Generate timeline using event context service and save it
+      const eventContextService = require('../services/eventContext');
+      const timelineData = eventContextService.generatePreparationTimeline(event);
+      
+      if (timelineData) {
+        // Save the generated timeline to database
+        const insertStmt = db.prepare(`
+          INSERT INTO preparation_timelines (
+            event_id, timeline_data, event_pattern, confidence, is_custom, created_by
+          ) VALUES (?, ?, ?, ?, ?, ?)
+        `);
+        
+        insertStmt.run(
+          eventId,
+          db.stringifyJSON(timelineData.timeline),
+          timelineData.eventPattern,
+          timelineData.confidence,
+          false,
+          req.user.id
+        );
+        
+        res.json({
+          eventId,
+          timeline: timelineData.timeline,
+          eventPattern: timelineData.eventPattern,
+          confidence: timelineData.confidence,
+          isCustom: false,
+          templateId: null,
+          completedTasks: [],
+          updatedAt: new Date().toISOString()
+        });
+      } else {
+        res.status(500).json({ message: 'Unable to generate timeline' });
+      }
+    }
+  } catch (error) {
+    console.error('Get timeline error:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
+// Update preparation timeline for an event
+router.put('/events/:eventId/timeline', auth, (req, res) => {
+  try {
+    const eventId = parseInt(req.params.eventId);
+    const { 
+      timeline, 
+      completedTasks, 
+      eventPattern, 
+      confidence, 
+      isCustom, 
+      templateId 
+    } = req.body;
+    
+    // Check if event exists
+    const event = db.prepare('SELECT * FROM events WHERE id = ?').get(eventId);
+    if (!event) {
+      return res.status(404).json({ message: 'Event not found' });
+    }
+
+    // Check if timeline record already exists
+    const existingTimeline = db.prepare('SELECT * FROM preparation_timelines WHERE event_id = ?').get(eventId);
+    
+    if (existingTimeline) {
+      // Update existing timeline
+      const updateStmt = db.prepare(`
+        UPDATE preparation_timelines 
+        SET timeline_data = ?, 
+            completed_tasks = ?, 
+            event_pattern = ?,
+            confidence = ?,
+            is_custom = ?,
+            template_id = ?,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE event_id = ?
+      `);
+      
+      updateStmt.run(
+        db.stringifyJSON(timeline || []),
+        db.stringifyJSON(completedTasks || []),
+        eventPattern || existingTimeline.event_pattern,
+        confidence || existingTimeline.confidence,
+        isCustom !== undefined ? isCustom : existingTimeline.is_custom,
+        templateId || existingTimeline.template_id,
+        eventId
+      );
+    } else {
+      // Create new timeline record
+      const insertStmt = db.prepare(`
+        INSERT INTO preparation_timelines (
+          event_id, timeline_data, completed_tasks, event_pattern, 
+          confidence, is_custom, template_id, created_by
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      `);
+      
+      insertStmt.run(
+        eventId,
+        db.stringifyJSON(timeline || []),
+        db.stringifyJSON(completedTasks || []),
+        eventPattern || 'general',
+        confidence || 100,
+        isCustom || false,
+        templateId || null,
+        req.user.id
+      );
+    }
+
+    // Get updated timeline
+    const updatedTimeline = db.prepare('SELECT * FROM preparation_timelines WHERE event_id = ?').get(eventId);
+    
+    const response = {
+      eventId,
+      timeline: db.parseJSON(updatedTimeline.timeline_data) || [],
+      eventPattern: updatedTimeline.event_pattern,
+      confidence: updatedTimeline.confidence,
+      isCustom: updatedTimeline.is_custom,
+      templateId: updatedTimeline.template_id,
+      completedTasks: db.parseJSON(updatedTimeline.completed_tasks) || [],
+      updatedAt: updatedTimeline.updated_at
+    };
+
+    res.json(response);
+  } catch (error) {
+    console.error('Update timeline error:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
+// Apply template to event timeline
+router.post('/events/:eventId/timeline/template', auth, (req, res) => {
+  try {
+    const eventId = parseInt(req.params.eventId);
+    const { templateId } = req.body;
+    
+    if (!templateId) {
+      return res.status(400).json({ message: 'Template ID is required' });
+    }
+
+    // Check if event exists
+    const event = db.prepare('SELECT * FROM events WHERE id = ?').get(eventId);
+    if (!event) {
+      return res.status(404).json({ message: 'Event not found' });
+    }
+
+    // TODO: Implement template system
+    // For now, we'll generate a basic timeline based on template type
+    const eventContextService = require('../services/eventContext');
+    const timelineData = eventContextService.generatePreparationTimeline(event);
+    
+    if (!timelineData) {
+      return res.status(500).json({ message: 'Unable to generate timeline from template' });
+    }
+
+    // Check if timeline record already exists
+    const existingTimeline = db.prepare('SELECT * FROM preparation_timelines WHERE event_id = ?').get(eventId);
+    
+    if (existingTimeline) {
+      // Update existing timeline with template
+      const updateStmt = db.prepare(`
+        UPDATE preparation_timelines 
+        SET timeline_data = ?, 
+            event_pattern = ?,
+            confidence = ?,
+            template_id = ?,
+            is_custom = false,
+            completed_tasks = '[]',
+            updated_at = CURRENT_TIMESTAMP
+        WHERE event_id = ?
+      `);
+      
+      updateStmt.run(
+        db.stringifyJSON(timelineData.timeline),
+        timelineData.eventPattern,
+        timelineData.confidence,
+        templateId,
+        eventId
+      );
+    } else {
+      // Create new timeline record with template
+      const insertStmt = db.prepare(`
+        INSERT INTO preparation_timelines (
+          event_id, timeline_data, event_pattern, confidence, 
+          template_id, is_custom, created_by
+        ) VALUES (?, ?, ?, ?, ?, false, ?)
+      `);
+      
+      insertStmt.run(
+        eventId,
+        db.stringifyJSON(timelineData.timeline),
+        timelineData.eventPattern,
+        timelineData.confidence,
+        templateId,
+        req.user.id
+      );
+    }
+
+    // Get updated timeline
+    const updatedTimeline = db.prepare('SELECT * FROM preparation_timelines WHERE event_id = ?').get(eventId);
+    
+    const response = {
+      eventId,
+      timeline: db.parseJSON(updatedTimeline.timeline_data) || [],
+      eventPattern: updatedTimeline.event_pattern,
+      confidence: updatedTimeline.confidence,
+      isCustom: updatedTimeline.is_custom,
+      templateId: updatedTimeline.template_id,
+      completedTasks: db.parseJSON(updatedTimeline.completed_tasks) || [],
+      updatedAt: updatedTimeline.updated_at
+    };
+
+    res.json(response);
+  } catch (error) {
+    console.error('Apply template to timeline error:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
+// Update task completion status
+router.post('/events/:eventId/timeline/task-completion', auth, (req, res) => {
+  try {
+    const eventId = parseInt(req.params.eventId);
+    const { taskIndex, completed } = req.body;
+    
+    if (taskIndex === undefined || completed === undefined) {
+      return res.status(400).json({ message: 'Task index and completion status are required' });
+    }
+
+    // Check if event exists
+    const event = db.prepare('SELECT * FROM events WHERE id = ?').get(eventId);
+    if (!event) {
+      return res.status(404).json({ message: 'Event not found' });
+    }
+
+    // Get current timeline
+    const timelineRecord = db.prepare('SELECT * FROM preparation_timelines WHERE event_id = ?').get(eventId);
+    if (!timelineRecord) {
+      return res.status(404).json({ message: 'Timeline not found' });
+    }
+
+    // Parse current completed tasks
+    let completedTasks = db.parseJSON(timelineRecord.completed_tasks) || [];
+    
+    if (completed) {
+      // Add to completed tasks if not already present
+      if (!completedTasks.includes(taskIndex)) {
+        completedTasks.push(taskIndex);
+      }
+    } else {
+      // Remove from completed tasks
+      completedTasks = completedTasks.filter(index => index !== taskIndex);
+    }
+
+    // Update timeline with new completion status
+    const updateStmt = db.prepare(`
+      UPDATE preparation_timelines 
+      SET completed_tasks = ?,
+          updated_at = CURRENT_TIMESTAMP
+      WHERE event_id = ?
+    `);
+
+    updateStmt.run(db.stringifyJSON(completedTasks), eventId);
+
+    // Get updated timeline
+    const updatedTimeline = db.prepare('SELECT * FROM preparation_timelines WHERE event_id = ?').get(eventId);
+    
+    const response = {
+      eventId,
+      timeline: db.parseJSON(updatedTimeline.timeline_data) || [],
+      eventPattern: updatedTimeline.event_pattern,
+      confidence: updatedTimeline.confidence,
+      isCustom: updatedTimeline.is_custom,
+      templateId: updatedTimeline.template_id,
+      completedTasks: db.parseJSON(updatedTimeline.completed_tasks) || [],
+      updatedAt: updatedTimeline.updated_at
+    };
+
+    res.json(response);
+  } catch (error) {
+    console.error('Update task completion error:', error);
+    res.status(500).json({ message: 'Internal server error' });
   }
 });
 

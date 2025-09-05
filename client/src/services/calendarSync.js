@@ -8,26 +8,36 @@ const api = axios.create({
   withCredentials: true
 });
 
-// Add auth token to requests
-api.interceptors.request.use(
-  (config) => {
-    const token = localStorage.getItem('auth-token');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-    return config;
-  },
-  (error) => Promise.reject(error)
-);
+// Create axios instance for calendar accounts API
+const accountsApi = axios.create({
+  baseURL: `${API_BASE}/calendar-accounts`,
+  withCredentials: true
+});
 
-// Handle auth errors
-api.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    // Don't redirect here - let React Router handle it
-    return Promise.reject(error);
-  }
-);
+// Add auth token to requests for both APIs
+const addAuthInterceptor = (axiosInstance) => {
+  axiosInstance.interceptors.request.use(
+    (config) => {
+      const token = localStorage.getItem('auth-token');
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+      }
+      return config;
+    },
+    (error) => Promise.reject(error)
+  );
+
+  axiosInstance.interceptors.response.use(
+    (response) => response,
+    (error) => {
+      // Don't redirect here - let React Router handle it
+      return Promise.reject(error);
+    }
+  );
+};
+
+addAuthInterceptor(api);
+addAuthInterceptor(accountsApi);
 
 class CalendarSyncService {
   // Get OAuth URL for Google Calendar authentication
@@ -247,6 +257,240 @@ class CalendarSyncService {
       timeMin: this.formatDate(startDate),
       timeMax: this.formatDate(endDate)
     });
+  }
+
+  // ======= Multiple Account Management Methods =======
+
+  // Get all connected calendar accounts
+  async getCalendarAccounts() {
+    try {
+      const response = await accountsApi.get('/');
+      return response.data;
+    } catch (error) {
+      console.error('Error getting calendar accounts:', error);
+      throw new Error(error.response?.data?.message || 'Failed to fetch calendar accounts');
+    }
+  }
+
+  // Get context assignments
+  async getContextAssignments() {
+    try {
+      const response = await accountsApi.get('/contexts');
+      return response.data;
+    } catch (error) {
+      console.error('Error getting context assignments:', error);
+      throw new Error(error.response?.data?.message || 'Failed to fetch context assignments');
+    }
+  }
+
+  // Add a new calendar account
+  async addCalendarAccount(displayName, mockMode = false) {
+    try {
+      const response = await accountsApi.post('/add', {
+        displayName,
+        mockMode
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error adding calendar account:', error);
+      throw new Error(error.response?.data?.message || 'Failed to add calendar account');
+    }
+  }
+
+  // Remove a calendar account
+  async removeCalendarAccount(accountId) {
+    try {
+      const response = await accountsApi.delete(`/${accountId}`);
+      return response.data;
+    } catch (error) {
+      console.error('Error removing calendar account:', error);
+      throw new Error(error.response?.data?.message || 'Failed to remove calendar account');
+    }
+  }
+
+  // Set account as default for a context
+  async setAccountContext(accountId, context) {
+    try {
+      const response = await accountsApi.put(`/${accountId}/context`, {
+        context
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error setting account context:', error);
+      throw new Error(error.response?.data?.message || 'Failed to set account context');
+    }
+  }
+
+  // Remove context assignment
+  async removeAccountContext(accountId, context) {
+    try {
+      const response = await accountsApi.delete(`/${accountId}/context/${context}`);
+      return response.data;
+    } catch (error) {
+      console.error('Error removing account context:', error);
+      throw new Error(error.response?.data?.message || 'Failed to remove account context');
+    }
+  }
+
+  // Get account for a specific context
+  async getAccountForContext(context) {
+    try {
+      const response = await accountsApi.get(`/context/${context}`);
+      return response.data;
+    } catch (error) {
+      console.error('Error getting account for context:', error);
+      throw new Error(error.response?.data?.message || 'Failed to get account for context');
+    }
+  }
+
+  // Update account display name
+  async updateAccountDisplayName(accountId, displayName) {
+    try {
+      const response = await accountsApi.put(`/${accountId}/name`, {
+        displayName
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error updating account name:', error);
+      throw new Error(error.response?.data?.message || 'Failed to update account name');
+    }
+  }
+
+  // Get account status
+  async getAccountStatus(accountId) {
+    try {
+      const response = await accountsApi.get(`/${accountId}/status`);
+      return response.data;
+    } catch (error) {
+      console.error('Error getting account status:', error);
+      throw new Error(error.response?.data?.message || 'Failed to get account status');
+    }
+  }
+
+  // Create event in specific account/context
+  async createEventInContext(eventData, context = 'personal') {
+    try {
+      // First get the account for the context
+      const contextAccount = await this.getAccountForContext(context);
+      
+      if (!contextAccount.account) {
+        throw new Error(`No calendar account assigned to ${context} context`);
+      }
+
+      // Create the event using the appropriate calendar ID
+      const eventWithCalendar = {
+        ...eventData,
+        calendarId: contextAccount.account.calendar_id
+      };
+
+      return this.createEvent(eventWithCalendar);
+    } catch (error) {
+      console.error('Error creating event in context:', error);
+      throw new Error(error.response?.data?.message || 'Failed to create event in context');
+    }
+  }
+
+  // Sync all connected accounts
+  async syncAllAccounts() {
+    try {
+      const accounts = await this.getCalendarAccounts();
+      const syncResults = [];
+
+      for (const account of accounts) {
+        try {
+          const result = await this.syncCalendar(account.calendar_id);
+          syncResults.push({
+            account: account,
+            result: result,
+            success: true
+          });
+        } catch (error) {
+          syncResults.push({
+            account: account,
+            error: error.message,
+            success: false
+          });
+        }
+      }
+
+      return {
+        results: syncResults,
+        totalAccounts: accounts.length,
+        successfulSyncs: syncResults.filter(r => r.success).length
+      };
+    } catch (error) {
+      console.error('Error syncing all accounts:', error);
+      throw new Error('Failed to sync all accounts');
+    }
+  }
+
+  // Get calendars for a specific account
+  async getAccountCalendars(accountId) {
+    try {
+      const response = await accountsApi.get(`/${accountId}/calendars`);
+      return response.data;
+    } catch (error) {
+      console.error('Error getting account calendars:', error);
+      throw new Error(error.response?.data?.message || 'Failed to fetch account calendars');
+    }
+  }
+
+  // Save calendar selections for a specific account
+  async saveAccountCalendarSelections(accountId, selections) {
+    try {
+      const response = await accountsApi.put(`/${accountId}/calendars`, {
+        selections
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error saving calendar selections:', error);
+      throw new Error(error.response?.data?.message || 'Failed to save calendar selections');
+    }
+  }
+
+  // Get the current active account for creating events
+  async getActiveAccountForNewEvent(eventCategory = 'personal') {
+    try {
+      // Map event categories to contexts
+      const contextMap = {
+        'work': 'work',
+        'business': 'work', 
+        'professional': 'work',
+        'family': 'family',
+        'personal': 'personal',
+        'default': 'personal'
+      };
+
+      const context = contextMap[eventCategory.toLowerCase()] || 'personal';
+      const contextAccount = await this.getAccountForContext(context);
+      
+      if (contextAccount.account) {
+        return {
+          accountId: contextAccount.account.id,
+          calendarId: contextAccount.account.calendar_id,
+          displayName: contextAccount.account.displayName,
+          email: contextAccount.account.email,
+          context: context
+        };
+      }
+
+      // Fallback to first available account
+      const accounts = await this.getCalendarAccounts();
+      if (accounts.length > 0) {
+        return {
+          accountId: accounts[0].id,
+          calendarId: accounts[0].calendar_id,
+          displayName: accounts[0].display_name,
+          email: accounts[0].google_account_email,
+          context: 'fallback'
+        };
+      }
+
+      throw new Error('No calendar accounts available');
+    } catch (error) {
+      console.error('Error getting active account:', error);
+      throw new Error('Failed to determine active calendar account');
+    }
   }
 }
 

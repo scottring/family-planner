@@ -12,12 +12,17 @@ import {
   Truck,
   Users,
   Sun,
-  Cloud
+  Cloud,
+  FileCheck,
+  Sparkles,
+  Edit3
 } from 'lucide-react';
 import { useEventStore } from '../../stores/eventStore';
 import { useTaskStore } from '../../stores/taskStore';
 import { useConflictStore } from '../../stores/conflictStore';
 import { useFamilyStore } from '../../stores/familyStore';
+import EventFormWithTemplates from '../events/EventFormWithTemplates';
+import TimelinePreview from '../events/TimelinePreview';
 
 const WeekPlanner = ({ sessionId, onProgress, onComplete }) => {
   const [selectedDate, setSelectedDate] = useState(null);
@@ -28,6 +33,13 @@ const WeekPlanner = ({ sessionId, onProgress, onComplete }) => {
   const [selectedConflict, setSelectedConflict] = useState(null);
   const [preparationChecklist, setPreparationChecklist] = useState([]);
   const [completedPrep, setCompletedPrep] = useState(new Set());
+  
+  // New template-related state
+  const [showEventForm, setShowEventForm] = useState(false);
+  const [editingEvent, setEditingEvent] = useState(null);
+  const [showTimelineModal, setShowTimelineModal] = useState(false);
+  const [selectedEventForTimeline, setSelectedEventForTimeline] = useState(null);
+  const [eventTimelines, setEventTimelines] = useState(new Map());
 
   const { events, fetchEvents, updateEvent } = useEventStore();
   const { tasks, fetchTasks } = useTaskStore();

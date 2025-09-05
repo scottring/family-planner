@@ -33,15 +33,15 @@ export const useFamilyStore = create((set, get) => ({
   fetchFamilyMembers: async () => {
     set({ loading: true, error: null });
     try {
-      // In a real implementation, this would make an API call
-      // const response = await api.get('/family/members');
-      // set({ familyMembers: response.data, loading: false });
-      
-      // For now, use mock data
-      get().initializeMockData();
+      const response = await api.get('/family/members');
+      set({ familyMembers: response.data, loading: false });
     } catch (error) {
       set({ error: error.message, loading: false });
       console.error('Error fetching family members:', error);
+      // If no family members exist, show empty list instead of mock data
+      if (error.response?.status === 404 || error.response?.status === 500) {
+        set({ familyMembers: [] });
+      }
     }
   },
 
@@ -75,8 +75,64 @@ export const useFamilyStore = create((set, get) => ({
     const familyMembers = get().familyMembers;
     // In a real app, this might filter based on age, permissions, etc.
     return familyMembers.filter(member => member.type === 'parent' || member.type === 'child');
+  },
+
+  // Add new family member
+  addFamilyMember: async (memberData) => {
+    set({ loading: true, error: null });
+    try {
+      const response = await api.post('/family/members', memberData);
+      const newMember = response.data;
+      const currentMembers = get().familyMembers;
+      set({ 
+        familyMembers: [...currentMembers, newMember],
+        loading: false 
+      });
+      return newMember;
+    } catch (error) {
+      set({ error: error.message, loading: false });
+      console.error('Error adding family member:', error);
+      throw error;
+    }
+  },
+
+  // Update family member
+  updateFamilyMember: async (id, memberData) => {
+    set({ loading: true, error: null });
+    try {
+      const response = await api.put(`/family/members/${id}`, memberData);
+      const updatedMember = response.data;
+      const currentMembers = get().familyMembers;
+      const updatedMembers = currentMembers.map(member => 
+        member.id === id ? updatedMember : member
+      );
+      set({ 
+        familyMembers: updatedMembers,
+        loading: false 
+      });
+      return updatedMember;
+    } catch (error) {
+      set({ error: error.message, loading: false });
+      console.error('Error updating family member:', error);
+      throw error;
+    }
+  },
+
+  // Delete family member
+  deleteFamilyMember: async (id) => {
+    set({ loading: true, error: null });
+    try {
+      await api.delete(`/family/members/${id}`);
+      const currentMembers = get().familyMembers;
+      const updatedMembers = currentMembers.filter(member => member.id !== id);
+      set({ 
+        familyMembers: updatedMembers,
+        loading: false 
+      });
+    } catch (error) {
+      set({ error: error.message, loading: false });
+      console.error('Error deleting family member:', error);
+      throw error;
+    }
   }
 }));
-
-// Initialize mock data when the store is created
-useFamilyStore.getState().initializeMockData();

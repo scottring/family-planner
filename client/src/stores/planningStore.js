@@ -29,12 +29,17 @@ export const usePlanningStore = create(
         set({ 
           currentSession: session,
           isSessionActive: true,
-          sessionProgress: {},
+          sessionProgress: session.progress || {},
           lastSaved: new Date().toISOString()
         });
         
         // Initialize WebSocket for real-time collaboration
         get().initializeWebSocket(session.id);
+        
+        // If this was a resumed session, indicate that to the user
+        if (session.resumed) {
+          console.log('Resumed existing planning session:', session.id);
+        }
         
         return session;
       } catch (error) {
@@ -105,6 +110,31 @@ export const usePlanningStore = create(
         return response.data;
       } catch (error) {
         console.error('Failed to complete session:', error);
+        throw error;
+      }
+    },
+    
+    cancelSession: async () => {
+      try {
+        const { currentSession } = get();
+        if (!currentSession) return;
+        
+        // Cancel session on server
+        const response = await api.post(`/planning-session/${currentSession.id}/cancel`);
+        
+        set({ 
+          currentSession: null,
+          isSessionActive: false,
+          sessionProgress: {},
+          connectedPartners: []
+        });
+        
+        // Disconnect WebSocket
+        get().disconnectWebSocket();
+        
+        return response.data;
+      } catch (error) {
+        console.error('Failed to cancel session:', error);
         throw error;
       }
     },

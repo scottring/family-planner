@@ -41,10 +41,15 @@ const notificationRoutes = require('./routes/notifications');
 const conflictRoutes = require('./routes/conflicts');
 const dashboardRoutes = require('./routes/dashboard');
 const inboxRoutes = require('./routes/inbox');
-const planningSessionRoutes = require('./routes/planning-session');
+const planningSessionRoutes = require('./routes/planning');
 const captureRoutes = require('./routes/capture');
 const familyNotesRoutes = require('./routes/family-notes');
 const handoffsRoutes = require('./routes/handoffs');
+const calendarAccountsRoutes = require('./routes/calendar-accounts');
+const checklistTemplateRoutes = require('./routes/checklist-templates');
+const timelineTemplateRoutes = require('./routes/timeline-templates');
+const timelineSuggestionsRoutes = require('./routes/timeline-suggestions');
+const voiceTimelineRoutes = require('./routes/voice-timeline');
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {
@@ -74,6 +79,11 @@ app.use('/api/planning-session', planningSessionRoutes);
 app.use('/api/capture', captureRoutes);
 app.use('/api/family-notes', familyNotesRoutes);
 app.use('/api/handoffs', handoffsRoutes);
+app.use('/api/calendar-accounts', calendarAccountsRoutes);
+app.use(checklistTemplateRoutes);
+app.use(timelineTemplateRoutes);
+app.use(timelineSuggestionsRoutes);
+app.use('/api/voice-timeline', voiceTimelineRoutes);
 
 // WebSocket connection
 io.on('connection', (socket) => {
@@ -157,6 +167,67 @@ io.on('connection', (socket) => {
 
   socket.on('session-complete', (sessionId) => {
     socket.to(`planning-session-${sessionId}`).emit('session-completed');
+  });
+
+  // === PREPARATION TIMELINE WEBSOCKET EVENTS ===
+  
+  // Join event timeline room for real-time updates
+  socket.on('join-timeline', (eventId) => {
+    socket.join(`timeline-${eventId}`);
+    console.log(`Socket ${socket.id} joined timeline for event ${eventId}`);
+  });
+
+  socket.on('leave-timeline', (eventId) => {
+    socket.leave(`timeline-${eventId}`);
+    console.log(`Socket ${socket.id} left timeline for event ${eventId}`);
+  });
+
+  // Timeline update events
+  socket.on('timeline-updated', (data) => {
+    const { eventId, timeline, completedTasks, updatedAt } = data;
+    
+    console.log(`Timeline updated for event ${eventId} by socket ${socket.id}`);
+    
+    // Broadcast timeline update to other clients viewing the same event
+    socket.to(`timeline-${eventId}`).emit('timeline-updated', {
+      eventId,
+      timeline,
+      completedTasks,
+      updatedAt,
+      updatedBy: socket.id
+    });
+  });
+
+  // Task completion events
+  socket.on('task-completed', (data) => {
+    const { eventId, taskIndex, completed, userId, timestamp } = data;
+    
+    console.log(`Task ${taskIndex} ${completed ? 'completed' : 'uncompleted'} for event ${eventId}`);
+    
+    // Broadcast task completion to other clients
+    socket.to(`timeline-${eventId}`).emit('task-completion-updated', {
+      eventId,
+      taskIndex,
+      completed,
+      userId,
+      timestamp,
+      updatedBy: socket.id
+    });
+  });
+
+  // Timeline customization events
+  socket.on('timeline-customized', (data) => {
+    const { eventId, customTimeline, isCustom } = data;
+    
+    console.log(`Timeline customized for event ${eventId}`);
+    
+    // Broadcast customization to other clients
+    socket.to(`timeline-${eventId}`).emit('timeline-customized', {
+      eventId,
+      customTimeline,
+      isCustom,
+      updatedBy: socket.id
+    });
   });
 
   // Handle disconnection from planning sessions

@@ -4,8 +4,7 @@ const Database = require('better-sqlite3');
 const path = require('path');
 const auth = require('../middleware/auth');
 
-const dbPath = path.join(__dirname, '../family_symphony.db');
-const db = new Database(dbPath);
+const db = require('../config/database');
 
 // Initialize planning sessions table
 db.exec(`
@@ -72,17 +71,41 @@ router.post('/start', auth, async (req, res) => {
 
     // Check if there's already an active session for this family
     const activeSessionQuery = db.prepare(`
-      SELECT id FROM planning_sessions 
+      SELECT id, organizer_id, start_time, participants, settings, progress FROM planning_sessions 
       WHERE family_id = ? AND status = 'active'
       ORDER BY created_at DESC LIMIT 1
     `);
     const activeSession = activeSessionQuery.get(user.family_id);
 
     if (activeSession) {
-      return res.status(409).json({ 
-        message: 'An active planning session already exists',
-        sessionId: activeSession.id 
-      });
+      // Allow resuming if user is the organizer or a participant
+      const isOrganizer = activeSession.organizer_id === organizerId;
+      const participants = JSON.parse(activeSession.participants || '[]');
+      const isParticipant = participants.includes(organizerId);
+      
+      if (isOrganizer || isParticipant) {
+        // Return the existing session instead of error
+        return res.json({
+          id: activeSession.id,
+          family_id: user.family_id,
+          organizer_id: activeSession.organizer_id,
+          participants: JSON.parse(activeSession.participants || '[]'),
+          start_time: activeSession.start_time,
+          duration_minutes: duration, // Use requested duration
+          status: 'active',
+          settings: JSON.parse(activeSession.settings || '{}'),
+          progress: JSON.parse(activeSession.progress || '{}'),
+          created_at: activeSession.start_time,
+          resumed: true // Flag to indicate this was resumed
+        });
+      } else {
+        // User not authorized to join existing session
+        return res.status(409).json({ 
+          message: 'An active planning session already exists and you are not a participant',
+          sessionId: activeSession.id,
+          canJoin: false
+        });
+      }
     }
 
     // Create new session
@@ -353,6 +376,48 @@ router.post('/:sessionId/resume', auth, async (req, res) => {
   }
 });
 
+// POST /api/planning-session/:sessionId/cancel - Cancel/end session
+router.post('/:sessionId/cancel', auth, async (req, res) => {
+  try {
+    const { sessionId } = req.params;
+
+    // Verify session exists and user has access
+    const sessionQuery = db.prepare(`
+      SELECT s.*, u.family_id
+      FROM planning_sessions s
+      JOIN users u ON s.family_id = u.family_id
+      WHERE s.id = ? AND u.id = ? AND s.status = 'active'
+    `);
+    const session = sessionQuery.get(sessionId, req.user.id);
+
+    if (!session) {
+      return res.status(404).json({ message: 'Active planning session not found or access denied' });
+    }
+
+    // Update session status to cancelled
+    const updateSession = db.prepare(`
+      UPDATE planning_sessions 
+      SET status = 'cancelled', end_time = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
+      WHERE id = ?
+    `);
+    
+    updateSession.run(sessionId);
+
+    res.json({ 
+      success: true, 
+      status: 'cancelled',
+      message: 'Planning session has been cancelled'
+    });
+
+  } catch (error) {
+    console.error('Cancel session error:', error);
+    res.status(500).json({ 
+      message: 'Failed to cancel planning session',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+});
+
 // POST /api/planning-session/:sessionId/complete - Complete session
 router.post('/:sessionId/complete', auth, async (req, res) => {
   try {
@@ -441,7 +506,7 @@ router.get('/analytics', auth, async (req, res) => {
     if (member_id && member_id !== 'all') {
       tasksQuery = `
         SELECT * FROM tasks t
-        JOIN users u ON t.assigned_to = u.username
+        JOIN users u ON t.assigned_to = u.id
         WHERE u.family_id = ? AND u.id = ?
         AND t.created_at BETWEEN ? AND ?
         ORDER BY t.created_at ASC
@@ -450,7 +515,7 @@ router.get('/analytics', auth, async (req, res) => {
 
       eventsQuery = `
         SELECT * FROM events e
-        JOIN users u ON (e.assigned_to = u.username OR e.organizer = u.username)
+        JOIN users u ON (e.assigned_to = u.id)
         WHERE u.family_id = ? AND u.id = ?
         AND e.start_time BETWEEN ? AND ?
         ORDER BY e.start_time ASC
@@ -459,7 +524,7 @@ router.get('/analytics', auth, async (req, res) => {
     } else {
       tasksQuery = `
         SELECT t.*, u.id as user_id, u.username, u.full_name FROM tasks t
-        JOIN users u ON t.assigned_to = u.username
+        JOIN users u ON t.assigned_to = u.id
         WHERE u.family_id = ?
         AND t.created_at BETWEEN ? AND ?
         ORDER BY t.created_at ASC
@@ -468,7 +533,7 @@ router.get('/analytics', auth, async (req, res) => {
 
       eventsQuery = `
         SELECT e.*, u.id as user_id, u.username, u.full_name FROM events e
-        JOIN users u ON (e.assigned_to = u.username OR e.organizer = u.username)
+        JOIN users u ON (e.assigned_to = u.id)
         WHERE u.family_id = ?
         AND e.start_time BETWEEN ? AND ?
         ORDER BY e.start_time ASC

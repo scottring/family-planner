@@ -10,6 +10,7 @@ import WeeklyPage from './pages/WeeklyPage';
 import BriefPage from './pages/BriefPage';
 import ChecklistsPage from './pages/ChecklistsPage';
 import CalendarView from './components/calendar/CalendarView';
+import CalendarSettingsPage from './pages/CalendarSettingsPage';
 import TasksPage from './pages/TasksPage';
 import FamilyPage from './pages/FamilyPage';
 import Settings from './pages/Settings';
@@ -54,6 +55,7 @@ function App() {
             <Route path="inbox" element={<SmartInbox />} />
             <Route path="daily" element={<DailyPage />} />
             <Route path="calendar" element={<CalendarView />} />
+            <Route path="calendar-settings" element={<CalendarSettingsPage />} />
             <Route path="event/:id" element={<EventDetailPage />} />
             <Route path="tasks" element={<TasksPage />} />
             <Route path="meals" element={<MealPlanner />} />

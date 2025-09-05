@@ -3,11 +3,148 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Vite + React</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+    
+    <!-- PWA Configuration -->
+    <link rel="manifest" href="/manifest.json" />
+    <meta name="theme-color" content="#4f46e5" />
+    <meta name="background-color" content="#ffffff" />
+    
+    <!-- App Information -->
+    <title>Family Planner - Preparation Timeline</title>
+    <meta name="description" content="Multi-modal preparation timeline manager for busy families" />
+    <meta name="keywords" content="family planner, timeline, preparation, mobile, tablet, voice" />
+    
+    <!-- Mobile App Configuration -->
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="Prep Timeline" />
+    
+    <!-- Touch Icons for iOS -->
+    <link rel="apple-touch-icon" href="/icon-152x152.png" />
+    <link rel="apple-touch-icon" sizes="72x72" href="/icon-72x72.png" />
+    <link rel="apple-touch-icon" sizes="96x96" href="/icon-96x96.png" />
+    <link rel="apple-touch-icon" sizes="128x128" href="/icon-128x128.png" />
+    <link rel="apple-touch-icon" sizes="144x144" href="/icon-144x144.png" />
+    <link rel="apple-touch-icon" sizes="152x152" href="/icon-152x152.png" />
+    <link rel="apple-touch-icon" sizes="192x192" href="/icon-192x192.png" />
+    <link rel="apple-touch-icon" sizes="384x384" href="/icon-384x384.png" />
+    <link rel="apple-touch-icon" sizes="512x512" href="/icon-512x512.png" />
+    
+    <!-- Microsoft Tiles -->
+    <meta name="msapplication-TileColor" content="#4f46e5" />
+    <meta name="msapplication-TileImage" content="/icon-144x144.png" />
+    
+    <!-- Preconnect for performance -->
+    <link rel="preconnect" href="/api" />
+    
+    <!-- Accessibility -->
+    <meta name="color-scheme" content="light dark" />
+    
+    <!-- Prevent zoom on form inputs (mobile) -->
+    <style>
+      input, select, textarea {
+        font-size: 16px !important;
+      }
+      
+      @media (prefers-reduced-motion: reduce) {
+        * {
+          animation-duration: 0.01ms !important;
+          animation-iteration-count: 1 !important;
+          transition-duration: 0.01ms !important;
+        }
+      }
+      
+      /* Loading styles */
+      .app-loading {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+        z-index: 9999;
+      }
+      
+      .loading-content {
+        text-align: center;
+      }
+      
+      .loading-spinner {
+        width: 40px;
+        height: 40px;
+        border: 3px solid rgba(255, 255, 255, 0.3);
+        border-top: 3px solid white;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+        margin: 0 auto 1rem;
+      }
+      
+      @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+      }
+    </style>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <!-- Loading screen while app initializes -->
+      <div class="app-loading">
+        <div class="loading-content">
+          <div class="loading-spinner"></div>
+          <h2>Family Planner</h2>
+          <p>Loading your timeline...</p>
+        </div>
+      </div>
+    </div>
     <script type="module" src="/src/main.jsx"></script>
+    
+    <!-- Service Worker Registration -->
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js')
+            .then((registration) => {
+              console.log('SW registered: ', registration);
+              
+              // Listen for updates
+              registration.addEventListener('updatefound', () => {
+                const newWorker = registration.installing;
+                newWorker.addEventListener('statechange', () => {
+                  if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                    // New version available
+                    console.log('New version available');
+                    if (confirm('A new version is available. Reload to update?')) {
+                      window.location.reload();
+                    }
+                  }
+                });
+              });
+            })
+            .catch((registrationError) => {
+              console.log('SW registration failed: ', registrationError);
+            });
+        });
+        
+        // Listen for messages from service worker
+        navigator.serviceWorker.addEventListener('message', (event) => {
+          console.log('Message from SW:', event.data);
+          
+          if (event.data.type === 'SYNC_TIMELINE_DATA') {
+            // Trigger sync of pending timeline updates
+            window.dispatchEvent(new CustomEvent('timeline-sync-requested'));
+          } else if (event.data.type === 'REFRESH_TIMELINE_DATA') {
+            // Refresh timeline data
+            window.dispatchEvent(new CustomEvent('timeline-refresh-requested'));
+          }
+        });
+      }
+    </script>
   </body>
 </html>

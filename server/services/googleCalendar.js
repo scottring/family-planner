@@ -121,6 +121,12 @@ class GoogleCalendarService {
       
       const response = await this.calendar.calendarList.list();
       
+      // Log all calendars for debugging
+      console.log('Google Calendar API returned calendars:');
+      response.data.items.forEach(cal => {
+        console.log(`  - ${cal.summary} (ID: ${cal.id}, Primary: ${cal.primary || false}, AccessRole: ${cal.accessRole})`);
+      });
+      
       return response.data.items.map(calendar => ({
         id: calendar.id,
         name: calendar.summary,

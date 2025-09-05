@@ -1,0 +1,135 @@
+{
+  "name": "Family Planner - Preparation Timeline",
+  "short_name": "Prep Timeline",
+  "description": "Multi-modal preparation timeline manager for busy families",
+  "start_url": "/",
+  "display": "standalone",
+  "theme_color": "#4f46e5",
+  "background_color": "#ffffff",
+  "orientation": "portrait-primary",
+  "scope": "/",
+  "lang": "en-US",
+  "categories": ["productivity", "lifestyle"],
+  "icons": [
+    {
+      "src": "icon-72x72.png",
+      "sizes": "72x72",
+      "type": "image/png",
+      "purpose": "maskable any"
+    },
+    {
+      "src": "icon-96x96.png",
+      "sizes": "96x96",
+      "type": "image/png",
+      "purpose": "maskable any"
+    },
+    {
+      "src": "icon-128x128.png",
+      "sizes": "128x128",
+      "type": "image/png",
+      "purpose": "maskable any"
+    },
+    {
+      "src": "icon-144x144.png",
+      "sizes": "144x144",
+      "type": "image/png",
+      "purpose": "maskable any"
+    },
+    {
+      "src": "icon-152x152.png",
+      "sizes": "152x152",
+      "type": "image/png",
+      "purpose": "maskable any"
+    },
+    {
+      "src": "icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable any"
+    },
+    {
+      "src": "icon-384x384.png",
+      "sizes": "384x384",
+      "type": "image/png",
+      "purpose": "maskable any"
+    },
+    {
+      "src": "icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable any"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Kitchen Dashboard",
+      "short_name": "Kitchen",
+      "description": "Large tablet view perfect for kitchen use",
+      "url": "/?mode=tablet",
+      "icons": [
+        {
+          "src": "icon-96x96.png",
+          "sizes": "96x96"
+        }
+      ]
+    },
+    {
+      "name": "Mobile Timeline",
+      "short_name": "Mobile",
+      "description": "Quick mobile timeline view",
+      "url": "/?mode=mobile",
+      "icons": [
+        {
+          "src": "icon-96x96.png",
+          "sizes": "96x96"
+        }
+      ]
+    },
+    {
+      "name": "Smart Watch",
+      "short_name": "Watch",
+      "description": "Simplified view for smart watches",
+      "url": "/?mode=watch",
+      "icons": [
+        {
+          "src": "icon-72x72.png",
+          "sizes": "72x72"
+        }
+      ]
+    }
+  ],
+  "prefer_related_applications": false,
+  "related_applications": [],
+  "features": [
+    "offline-support",
+    "push-notifications",
+    "background-sync",
+    "voice-commands"
+  ],
+  "screenshots": [
+    {
+      "src": "screenshot-mobile.png",
+      "sizes": "320x568",
+      "type": "image/png",
+      "platform": "narrow",
+      "label": "Mobile timeline view with swipe gestures"
+    },
+    {
+      "src": "screenshot-tablet.png",
+      "sizes": "1024x768",
+      "type": "image/png",
+      "platform": "wide",
+      "label": "Kitchen dashboard view with large touch targets"
+    }
+  ],
+  "share_target": {
+    "action": "/share",
+    "method": "POST",
+    "enctype": "multipart/form-data",
+    "params": {
+      "title": "title",
+      "text": "text",
+      "url": "url"
+    }
+  }
+}
