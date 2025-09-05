@@ -258,6 +258,13 @@
   font-weight: var(--font-weight-medium);
   box-shadow: var(--shadow-sm);
   transition: all var(--duration-fast) var(--ease-out);
+  /* Ensure events are visible */
+  visibility: visible !important;
+  opacity: 1 !important;
+  display: block !important;
+  position: relative !important;
+  color: white !important;
+  min-height: 20px;
 }
 
 .family-calendar .rbc-event:hover {
@@ -321,13 +328,71 @@
   text-align: center;
 }
 
-/* Calendar Event Colors */
-.rbc-event-work { background: var(--color-primary-500); }
-.rbc-event-personal { background: var(--color-secondary-500); }
-.rbc-event-family { background: var(--color-accent-warm); }
-.rbc-event-health { background: var(--color-success-500); }
-.rbc-event-school { background: var(--color-info-500); }
-.rbc-event-sports { background: var(--color-accent-cool); }
+/* Calendar Event Colors with fallbacks */
+.rbc-event-work, 
+.family-calendar .rbc-event-work { 
+  background: #3b82f6 !important; 
+  background: var(--color-primary-500, #3b82f6) !important; 
+}
+.rbc-event-personal,
+.family-calendar .rbc-event-personal { 
+  background: #a855f7 !important;
+  background: var(--color-secondary-500, #a855f7) !important; 
+}
+.rbc-event-family,
+.family-calendar .rbc-event-family { 
+  background: #f59e0b !important;
+  background: var(--color-accent-warm, #f59e0b) !important; 
+}
+.rbc-event-health,
+.family-calendar .rbc-event-health { 
+  background: #10b981 !important;
+  background: var(--color-success-500, #10b981) !important; 
+}
+.rbc-event-school,
+.family-calendar .rbc-event-school { 
+  background: #3b82f6 !important;
+  background: var(--color-info-500, #3b82f6) !important; 
+}
+.rbc-event-sports,
+.family-calendar .rbc-event-sports { 
+  background: #06b6d4 !important;
+  background: var(--color-accent-cool, #06b6d4) !important; 
+}
+
+/* Default event style if no category */
+.family-calendar .rbc-event {
+  background: #3b82f6 !important;
+}
+
+/* Ensure event containers are visible */
+.family-calendar .rbc-day-slot .rbc-events-container {
+  visibility: visible !important;
+  position: relative !important;
+  z-index: 2 !important;
+}
+
+.family-calendar .rbc-event-content {
+  visibility: visible !important;
+  color: white !important;
+}
+
+.family-calendar .rbc-time-view .rbc-event {
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+/* Month view specific fixes */
+.family-calendar .rbc-month-view .rbc-event {
+  background: #3b82f6 !important;
+  color: white !important;
+  padding: 2px 4px !important;
+  display: block !important;
+}
+
+.family-calendar .rbc-row-segment {
+  display: flex !important;
+}
 
 /* ===== UTILITY OVERRIDES ===== */
 @layer utilities {
@@ -544,6 +609,108 @@
     font-size: 16px; /* Prevents zoom on iOS */
     padding: 12px;
   }
+}
+
+/* ===== CALENDAR IMPROVEMENTS ===== */
+.family-calendar .rbc-event {
+  font-size: 11px !important;
+  line-height: 1.3 !important;
+  padding: 3px 6px !important;
+  border-radius: 6px !important;
+  font-weight: 500 !important;
+  transition: all 0.2s ease-in-out !important;
+  cursor: pointer !important;
+  min-height: 20px !important;
+}
+
+.family-calendar .rbc-event:hover {
+  transform: scale(1.02) !important;
+  z-index: 10 !important;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important;
+  opacity: 1 !important;
+}
+
+.family-calendar .rbc-day-slot .rbc-events-container {
+  margin-right: 4px !important;
+}
+
+.family-calendar .rbc-event-content {
+  font-weight: 500 !important;
+  overflow: visible !important;
+}
+
+.family-calendar .rbc-addons-dnd .rbc-addons-dnd-resizable-month-event {
+  border-left: 4px solid rgba(255,255,255,0.4) !important;
+}
+
+.family-calendar .rbc-show-more {
+  color: #374151 !important;
+  font-weight: 500 !important;
+  font-size: 10px !important;
+  padding: 2px 4px !important;
+  background: rgba(0,0,0,0.05) !important;
+  border-radius: 4px !important;
+}
+
+.family-calendar .rbc-month-view {
+  border: 1px solid #e5e7eb !important;
+  border-radius: 8px !important;
+  overflow: hidden !important;
+}
+
+.family-calendar .rbc-header {
+  background: #f8fafc !important;
+  border-bottom: 1px solid #e5e7eb !important;
+  padding: 12px 8px !important;
+  font-weight: 600 !important;
+  color: #374151 !important;
+}
+
+.family-calendar .rbc-today {
+  background-color: rgba(59, 130, 246, 0.05) !important;
+}
+
+.family-calendar .rbc-off-range-bg {
+  background: #f9fafb !important;
+}
+
+.family-calendar .rbc-date-cell {
+  text-align: right !important;
+  padding: 8px !important;
+  font-weight: 500 !important;
+  color: #6b7280 !important;
+}
+
+.family-calendar .rbc-date-cell.rbc-now {
+  color: #2563eb !important;
+  font-weight: 700 !important;
+}
+
+/* Tooltip styling */
+[title] {
+  position: relative;
+}
+
+/* Better event spacing in month view */
+.family-calendar .rbc-month-view .rbc-row {
+  min-height: 120px !important;
+}
+
+.family-calendar .rbc-month-view .rbc-date-cell {
+  min-height: 24px !important;
+}
+
+/* Week and day view improvements */
+.family-calendar .rbc-time-view .rbc-event {
+  border: none !important;
+  border-radius: 4px !important;
+  padding: 2px 6px !important;
+}
+
+.family-calendar .rbc-agenda-view table {
+  border: 1px solid #e5e7eb !important;
+  border-radius: 8px !important;
+  overflow: hidden !important;
 }
 
 /* ===== HIGH DPI / RETINA DISPLAY OPTIMIZATIONS ===== */
