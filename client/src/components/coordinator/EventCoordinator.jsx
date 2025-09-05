@@ -19,6 +19,7 @@ import { useEventStore } from '../../stores/eventStore';
 import { useAuthStore } from '../../stores/authStore';
 import { eventContextService } from '../../services/eventContext';
 import PreparationTimeline from './PreparationTimeline';
+import PostEventTimeline from './PostEventTimeline';
 
 const EventCoordinator = ({ className = '' }) => {
   const { events } = useEventStore();
@@ -117,7 +118,7 @@ const EventCoordinator = ({ className = '' }) => {
 
   return (
     <div className={`${className}`}>
-      {/* Preparation Timeline - Show First */}
+      {/* Preparation Timeline - Show BEFORE Event Card */}
       <PreparationTimeline event={coordinatorEvent} className="mb-4" />
       
       {/* Main Coordinator Card */}
@@ -336,6 +337,9 @@ const EventCoordinator = ({ className = '' }) => {
           )}
         </div>
       </div>
+      
+      {/* Post-Event Timeline - Show After Event Card */}
+      <PostEventTimeline event={coordinatorEvent} className="mt-4" />
 
     </div>
   );
