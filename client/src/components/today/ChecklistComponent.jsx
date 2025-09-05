@@ -38,13 +38,28 @@ const ChecklistComponent = ({
   const getChecklistItems = () => {
     if (!event) return [];
     
+    // Helper to ensure we always return an array
+    const ensureArray = (value) => {
+      if (!value) return [];
+      if (Array.isArray(value)) return value;
+      if (typeof value === 'string') {
+        try {
+          const parsed = JSON.parse(value);
+          return Array.isArray(parsed) ? parsed : [];
+        } catch {
+          return [];
+        }
+      }
+      return [];
+    };
+    
     switch (type) {
       case 'before':
-        return event.preparation_checklist || event.checklist || [];
+        return ensureArray(event.preparation_checklist || event.checklist);
       case 'during':
-        return event.during_checklist || [];
+        return ensureArray(event.during_checklist);
       case 'after':
-        return event.after_checklist || event.followup_checklist || [];
+        return ensureArray(event.after_checklist || event.followup_checklist);
       default:
         return [];
     }

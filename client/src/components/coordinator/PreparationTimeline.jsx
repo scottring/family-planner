@@ -23,8 +23,13 @@ import {
 } from 'lucide-react';
 import { eventContextService } from '../../services/eventContext';
 import PreparationCustomizer from './PreparationCustomizer';
+import { useEventTemplateStore } from '../../stores/eventTemplateStore';
+import { useAuthStore } from '../../stores/authStore';
 
 const PreparationTimeline = ({ event, className = '', socket }) => {
+  const { user } = useAuthStore();
+  const templateStore = useEventTemplateStore();
+  
   const [currentTime, setCurrentTime] = useState(new Date());
   const [completedTasks, setCompletedTasks] = useState(new Set());
   const [showCustomizer, setShowCustomizer] = useState(false);
@@ -35,6 +40,9 @@ const PreparationTimeline = ({ event, className = '', socket }) => {
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [pendingUpdates, setPendingUpdates] = useState([]);
   const [isCollapsed, setIsCollapsed] = useState(true); // Start collapsed by default
+  const [templateSuggestion, setTemplateSuggestion] = useState(null);
+  const [usingTemplate, setUsingTemplate] = useState(false);
+  const [templateApplied, setTemplateApplied] = useState(false);
 
   // Database integration functions
   const fetchTimelineFromDatabase = async () => {
@@ -187,12 +195,181 @@ const PreparationTimeline = ({ event, className = '', socket }) => {
     };
   }, [pendingUpdates]);
 
+  // Check for and apply event template
+  const checkForTemplate = async () => {
+    if (!event || !user || templateApplied) return;
+
+    try {
+      // Analyze event pattern
+      const analysis = eventContextService.analyzeEventPattern(event);
+      if (!analysis) return;
+
+      const eventType = event.title?.toLowerCase() || 'generic';
+      
+      // Try to get existing template
+      const template = await templateStore.getTemplateByType(
+        eventType,
+        analysis.patternName,
+        70 // Min confidence threshold
+      );
+
+      if (template) {
+        setTemplateSuggestion({
+          template,
+          confidence: template.confidence,
+          usageCount: template.usage_count,
+          lastUsed: template.last_used_at,
+          reason: `Found template from ${template.usage_count} previous ${analysis.patternName} event${template.usage_count > 1 ? 's' : ''}`
+        });
+
+        // Auto-apply template if confidence is high
+        if (template.confidence >= 85) {
+          await applyTemplate(template);
+          setUsingTemplate(true);
+          setTemplateApplied(true);
+        }
+      } else {
+        // Look for pattern-based suggestions
+        const suggestion = await templateStore.suggestTemplate(event);
+        if (suggestion) {
+          setTemplateSuggestion(suggestion);
+        }
+      }
+    } catch (error) {
+      console.warn('Error checking for template:', error);
+    }
+  };
+
+  const applyTemplate = async (template) => {
+    try {
+      setLoading(true);
+      
+      const preparationTimeline = Array.isArray(template.preparation_timeline)
+        ? template.preparation_timeline
+        : JSON.parse(template.preparation_timeline || '[]');
+
+      // Convert template timeline to actual timeline with current event timing
+      const eventTime = new Date(event.start_time);
+      const currentTimeline = preparationTimeline.map(task => ({
+        ...task,
+        time: new Date(eventTime.getTime() - (task.minutesBefore || 60) * 60 * 1000),
+        id: task.id || task.activity
+      }));
+
+      // Set as current timeline
+      setCustomTimeline(currentTimeline);
+      setTimelineData({
+        timeline: currentTimeline,
+        eventPattern: template.event_pattern,
+        confidence: template.confidence,
+        isCustom: true,
+        templateId: template.id,
+        templateUsageCount: template.usage_count
+      });
+
+      // Update template usage statistics
+      if (template.id && !template.id.toString().startsWith('offline-')) {
+        templateStore.updateUsageStats(template.id);
+      }
+
+      setLoading(false);
+      return true;
+    } catch (error) {
+      console.error('Error applying template:', error);
+      setError('Failed to apply template');
+      setLoading(false);
+      return false;
+    }
+  };
+
+  // Save current timeline as template
+  const saveAsTemplate = async (timeline, eventPattern) => {
+    if (!event || !user || !timeline) return;
+
+    try {
+      const eventType = event.title?.toLowerCase() || 'generic';
+      
+      // Convert timeline to template format
+      const templateTimeline = timeline.map(task => ({
+        id: task.id || task.activity,
+        activity: task.activity,
+        type: task.type,
+        minutesBefore: Math.round((new Date(event.start_time) - new Date(task.time)) / (60 * 1000)),
+        duration: task.duration || 0,
+        note: task.note,
+        priority: task.priority || 5
+      }));
+
+      // Calculate completion rate from current session
+      const completionRate = completedTasks.size / Math.max(timeline.length, 1);
+
+      await templateStore.saveTemplate(
+        eventType,
+        eventPattern || 'custom',
+        templateTimeline,
+        [], // Post-event timeline will be handled separately
+        {
+          confidence: 85, // High confidence for user-created templates
+          completionRate
+        }
+      );
+
+      return true;
+    } catch (error) {
+      console.error('Error saving template:', error);
+      return false;
+    }
+  };
+
   // Fetch timeline from database on mount
   useEffect(() => {
     if (event?.id) {
       fetchTimelineFromDatabase();
+      checkForTemplate();
     }
   }, [event?.id]);
+
+  // Submit learning data when event is near or complete
+  useEffect(() => {
+    const submitLearningData = async () => {
+      if (!event || !usingTemplate || !timelineData?.templateId) return;
+      
+      const eventTime = new Date(event.start_time);
+      const now = new Date();
+      const minutesUntilEvent = (eventTime - now) / (60 * 1000);
+      
+      // Submit learning data when event starts or after completion
+      if (minutesUntilEvent <= 0) {
+        try {
+          const taskActions = JSON.parse(localStorage.getItem(`task-actions-${event.id}`) || '[]');
+          
+          if (taskActions.length > 0) {
+            const analysis = eventContextService.analyzeEventPattern(event);
+            const eventType = event.title?.toLowerCase() || 'generic';
+            const eventPattern = analysis?.patternName || 'custom';
+            
+            await templateStore.learnFromUserActions(
+              event.id,
+              eventType,
+              eventPattern,
+              taskActions
+            );
+            
+            // Clear the stored actions
+            localStorage.removeItem(`task-actions-${event.id}`);
+          }
+        } catch (error) {
+          console.warn('Failed to submit learning data:', error);
+        }
+      }
+    };
+    
+    // Check learning data submission every minute
+    const learningInterval = setInterval(submitLearningData, 60000);
+    submitLearningData(); // Check immediately
+    
+    return () => clearInterval(learningInterval);
+  }, [event, usingTemplate, timelineData, templateStore]);
 
   // WebSocket listeners for real-time updates
   useEffect(() => {
@@ -366,6 +543,26 @@ const PreparationTimeline = ({ event, className = '', socket }) => {
     // Optimistically update UI
     setCompletedTasks(newCompleted);
     
+    // Record learning data for template improvement
+    if (usingTemplate && timelineData?.templateId) {
+      const task = timeline[index];
+      const action = wasCompleted ? 'uncompleted' : 'completed';
+      
+      // Record the action for learning
+      const taskAction = {
+        taskId: task.id || task.activity,
+        action,
+        timing: Math.round((new Date() - new Date(task.time)) / (60 * 1000)), // Minutes from scheduled time
+        taskType: task.type,
+        originalMinutesBefore: task.minutesBefore || 60
+      };
+
+      // Store for batch learning update
+      const existingActions = JSON.parse(localStorage.getItem(`task-actions-${event.id}`) || '[]');
+      existingActions.push(taskAction);
+      localStorage.setItem(`task-actions-${event.id}`, JSON.stringify(existingActions));
+    }
+    
     // Save to database
     const completedTasksArray = Array.from(newCompleted);
     await saveTimelineToDatabase(timeline, completedTasksArray, currentTimelineData?.isCustom || false);
@@ -390,6 +587,27 @@ const PreparationTimeline = ({ event, className = '', socket }) => {
     // Save to database
     const completedTasksArray = Array.from(completedTasks);
     await saveTimelineToDatabase(newTimeline, completedTasksArray, true);
+    
+    // Save as template for future use
+    try {
+      const analysis = eventContextService.analyzeEventPattern(event);
+      const eventPattern = analysis?.patternName || 'custom';
+      
+      const success = await saveAsTemplate(newTimeline, eventPattern);
+      if (success) {
+        setUsingTemplate(true);
+        setTemplateSuggestion({
+          template: {
+            event_type: event.title?.toLowerCase() || 'generic',
+            event_pattern: eventPattern,
+            confidence: 85
+          },
+          reason: 'Saved as template for future events'
+        });
+      }
+    } catch (error) {
+      console.warn('Failed to save timeline as template:', error);
+    }
     
     // Emit WebSocket event for real-time sync
     if (socket) {
@@ -416,14 +634,21 @@ const PreparationTimeline = ({ event, className = '', socket }) => {
               </div>
               <div className="text-left">
                 <h3 className="text-lg font-bold text-gray-900">Preparation Timeline</h3>
-                <p className="text-sm text-indigo-600">
-                  {eventPattern === 'custom' ? 'Customized timeline' :
-                   eventPattern !== 'general' ? (
-                    <>
-                      {eventPattern} event • {confidence}% confidence
-                    </>
-                  ) : 'General event preparation'}
-                </p>
+                <div className="flex flex-col space-y-1">
+                  <p className="text-sm text-indigo-600">
+                    {eventPattern === 'custom' ? 'Customized timeline' :
+                     eventPattern !== 'general' ? (
+                      <>
+                        {eventPattern} event • {confidence}% confidence
+                      </>
+                    ) : 'General event preparation'}
+                  </p>
+                  {usingTemplate && timelineData?.templateUsageCount && (
+                    <p className="text-xs text-green-600 font-medium">
+                      Using saved template ({timelineData.templateUsageCount} previous uses)
+                    </p>
+                  )}
+                </div>
               </div>
               <div className="p-1">
                 {isCollapsed ? (
@@ -473,6 +698,45 @@ const PreparationTimeline = ({ event, className = '', socket }) => {
             </div>
           </div>
         </div>
+
+      {/* Template Suggestion Banner */}
+      {templateSuggestion && !usingTemplate && !isCollapsed && (
+        <div className="px-6 py-3 bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-blue-200">
+          <div className="flex items-center justify-between">
+            <div className="flex items-start space-x-3">
+              <div className="p-1 bg-blue-100 rounded">
+                <Star className="h-4 w-4 text-blue-600" />
+              </div>
+              <div>
+                <h4 className="text-sm font-semibold text-blue-900">Smart Template Available</h4>
+                <p className="text-xs text-blue-700 mt-1">
+                  {templateSuggestion.reason} • {templateSuggestion.confidence}% confidence
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center space-x-2">
+              <button
+                onClick={() => setTemplateSuggestion(null)}
+                className="text-xs text-blue-600 hover:text-blue-800 px-2 py-1"
+              >
+                Dismiss
+              </button>
+              <button
+                onClick={async () => {
+                  const success = await applyTemplate(templateSuggestion.template);
+                  if (success) {
+                    setUsingTemplate(true);
+                    setTemplateSuggestion(null);
+                  }
+                }}
+                className="text-xs bg-blue-600 text-white px-3 py-1 rounded-md hover:bg-blue-700 transition-colors"
+              >
+                Use Template
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Timeline - Collapsible */}
       {!isCollapsed && (

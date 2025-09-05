@@ -107,41 +107,63 @@
     
     <!-- Service Worker Registration -->
     <script>
+      // Check if we're in development mode
+      const isDevelopment = window.location.hostname === 'localhost' || 
+                           window.location.hostname === '127.0.0.1' ||
+                           window.location.port === '5173';
+      
       if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-          navigator.serviceWorker.register('/sw.js')
-            .then((registration) => {
-              console.log('SW registered: ', registration);
-              
-              // Listen for updates
-              registration.addEventListener('updatefound', () => {
-                const newWorker = registration.installing;
-                newWorker.addEventListener('statechange', () => {
-                  if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                    // New version available
-                    console.log('New version available');
-                    if (confirm('A new version is available. Reload to update?')) {
-                      window.location.reload();
+        window.addEventListener('load', async () => {
+          if (isDevelopment) {
+            // In development, unregister all service workers to prevent caching issues
+            console.log('Development mode: Unregistering all service workers...');
+            const registrations = await navigator.serviceWorker.getRegistrations();
+            for (const registration of registrations) {
+              await registration.unregister();
+              console.log('Unregistered service worker:', registration.scope);
+            }
+            // Clear all caches as well
+            if ('caches' in window) {
+              const cacheNames = await caches.keys();
+              await Promise.all(cacheNames.map(name => caches.delete(name)));
+              console.log('Cleared all caches');
+            }
+          } else {
+            // Only register service worker in production
+            navigator.serviceWorker.register('/sw.js')
+              .then((registration) => {
+                console.log('SW registered: ', registration);
+                
+                // Listen for updates
+                registration.addEventListener('updatefound', () => {
+                  const newWorker = registration.installing;
+                  newWorker.addEventListener('statechange', () => {
+                    if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                      // New version available
+                      console.log('New version available');
+                      if (confirm('A new version is available. Reload to update?')) {
+                        window.location.reload();
+                      }
                     }
-                  }
+                  });
                 });
+              })
+              .catch((registrationError) => {
+                console.log('SW registration failed: ', registrationError);
               });
-            })
-            .catch((registrationError) => {
-              console.log('SW registration failed: ', registrationError);
+            
+            // Listen for messages from service worker
+            navigator.serviceWorker.addEventListener('message', (event) => {
+              console.log('Message from SW:', event.data);
+              
+              if (event.data.type === 'SYNC_TIMELINE_DATA') {
+                // Trigger sync of pending timeline updates
+                window.dispatchEvent(new CustomEvent('timeline-sync-requested'));
+              } else if (event.data.type === 'REFRESH_TIMELINE_DATA') {
+                // Refresh timeline data
+                window.dispatchEvent(new CustomEvent('timeline-refresh-requested'));
+              }
             });
-        });
-        
-        // Listen for messages from service worker
-        navigator.serviceWorker.addEventListener('message', (event) => {
-          console.log('Message from SW:', event.data);
-          
-          if (event.data.type === 'SYNC_TIMELINE_DATA') {
-            // Trigger sync of pending timeline updates
-            window.dispatchEvent(new CustomEvent('timeline-sync-requested'));
-          } else if (event.data.type === 'REFRESH_TIMELINE_DATA') {
-            // Refresh timeline data
-            window.dispatchEvent(new CustomEvent('timeline-refresh-requested'));
           }
         });
       }

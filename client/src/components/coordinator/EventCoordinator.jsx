@@ -18,14 +18,20 @@ import {
 import { useEventStore } from '../../stores/eventStore';
 import { useAuthStore } from '../../stores/authStore';
 import { eventContextService } from '../../services/eventContext';
+import { useEventTemplateStore } from '../../stores/eventTemplateStore';
 import PreparationTimeline from './PreparationTimeline';
 import PostEventTimeline from './PostEventTimeline';
 
 const EventCoordinator = ({ className = '' }) => {
   const { events } = useEventStore();
   const { user } = useAuthStore();
+  const templateStore = useEventTemplateStore();
   const [currentTime, setCurrentTime] = useState(new Date());
   const [expandedEvent, setExpandedEvent] = useState(null);
+  const [templateInfo, setTemplateInfo] = useState(null);
+
+  // Get the next event that needs coordination
+  const coordinatorEvent = eventContextService.getNextEventNeedingCoordination(events);
 
   // Update time every minute
   useEffect(() => {
@@ -36,8 +42,33 @@ const EventCoordinator = ({ className = '' }) => {
     return () => clearInterval(timer);
   }, []);
 
-  // Get the next event that needs coordination
-  const coordinatorEvent = eventContextService.getNextEventNeedingCoordination(events);
+  // Check for template information
+  useEffect(() => {
+    const checkTemplateInfo = async () => {
+      if (!coordinatorEvent || !user) return;
+
+      try {
+        const analysis = eventContextService.analyzeEventPattern(coordinatorEvent);
+        if (!analysis) return;
+
+        const suggestion = await templateStore.suggestTemplate(coordinatorEvent);
+        
+        if (suggestion) {
+          setTemplateInfo({
+            hasTemplate: true,
+            confidence: suggestion.confidence,
+            usageCount: suggestion.template.usage_count,
+            eventPattern: suggestion.template.event_pattern,
+            reason: suggestion.reason
+          });
+        }
+      } catch (error) {
+        console.warn('Error checking template info:', error);
+      }
+    };
+
+    checkTemplateInfo();
+  }, [coordinatorEvent, user, templateStore]);
   
   if (!coordinatorEvent) return null;
 
@@ -115,6 +146,27 @@ const EventCoordinator = ({ className = '' }) => {
   };
 
   const styles = getUrgencyStyles();
+
+  // Clear/reset templates for this event
+  const resetTemplate = async () => {
+    if (!coordinatorEvent) return;
+    
+    try {
+      const analysis = eventContextService.analyzeEventPattern(coordinatorEvent);
+      if (analysis) {
+        const eventType = coordinatorEvent.title?.toLowerCase() || 'generic';
+        await templateStore.clearTemplate(eventType, analysis.patternName);
+        setTemplateInfo(null);
+        
+        // Clear localStorage data for this event
+        localStorage.removeItem(`event-timeline-${coordinatorEvent.id}`);
+        localStorage.removeItem(`task-actions-${coordinatorEvent.id}`);
+        localStorage.removeItem(`post-event-${coordinatorEvent.id}`);
+      }
+    } catch (error) {
+      console.error('Error resetting template:', error);
+    }
+  };
 
   return (
     <div className={`${className}`}>
@@ -222,19 +274,35 @@ const EventCoordinator = ({ className = '' }) => {
                 </div>
               </div>
 
-              {/* Pattern Recognition */}
+              {/* Pattern Recognition & Template Info */}
               {eventSuggestions.pattern && (
                 <div className="bg-white/80 rounded-lg p-4 border border-gray-200">
-                  <div className="flex items-center space-x-3">
-                    <Calendar className="h-5 w-5 text-purple-600" />
-                    <div>
-                      <div className="font-semibold text-gray-900 capitalize">
-                        {eventSuggestions.pattern.patternName} Event
-                      </div>
-                      <div className="text-sm text-gray-600">
-                        {eventSuggestions.pattern.confidence}% confidence match
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-3">
+                      <Calendar className="h-5 w-5 text-purple-600" />
+                      <div>
+                        <div className="font-semibold text-gray-900 capitalize">
+                          {eventSuggestions.pattern.patternName} Event
+                        </div>
+                        <div className="text-sm text-gray-600">
+                          {eventSuggestions.pattern.confidence}% confidence match
+                        </div>
+                        {templateInfo && templateInfo.hasTemplate && (
+                          <div className="text-xs text-green-600 font-medium mt-1">
+                            Smart template available ({templateInfo.usageCount} uses)
+                          </div>
+                        )}
                       </div>
                     </div>
+                    {templateInfo && templateInfo.hasTemplate && (
+                      <button
+                        onClick={resetTemplate}
+                        className="text-xs text-gray-500 hover:text-red-600 px-2 py-1 border border-gray-300 rounded hover:border-red-300 transition-colors"
+                        title="Reset template for this event type"
+                      >
+                        Reset Template
+                      </button>
+                    )}
                   </div>
                 </div>
               )}

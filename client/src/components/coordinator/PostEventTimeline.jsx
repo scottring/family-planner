@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { 
   CheckCircle2, 
   Clock, 
@@ -11,11 +11,24 @@ import {
   DollarSign,
   UserCheck,
   MessageSquare,
-  Archive
+  Archive,
+  Star,
+  CheckCircle,
+  Circle
 } from 'lucide-react';
+import { useEventTemplateStore } from '../../stores/eventTemplateStore';
+import { useAuthStore } from '../../stores/authStore';
+import { eventContextService } from '../../services/eventContext';
 
 const PostEventTimeline = ({ event, className = '', socket }) => {
-  const [isCollapsed, setIsCollapsed] = useState(true); // Start collapsed by default
+  const { user } = useAuthStore();
+  const templateStore = useEventTemplateStore();
+  
+  const [isCollapsed, setIsCollapsed] = useState(true);
+  const [completedTasks, setCompletedTasks] = useState(new Set());
+  const [templateSuggestion, setTemplateSuggestion] = useState(null);
+  const [usingTemplate, setUsingTemplate] = useState(false);
+  const [customTasks, setCustomTasks] = useState([]);
   
   if (!event) return null;
 
@@ -162,7 +175,125 @@ const PostEventTimeline = ({ event, className = '', socket }) => {
     return tasks.sort((a, b) => a.time - b.time);
   };
 
-  const tasks = generatePostEventTasks();
+  // Check for post-event template on mount
+  useEffect(() => {
+    const checkForPostEventTemplate = async () => {
+      if (!event || !user) return;
+
+      try {
+        const analysis = eventContextService.analyzeEventPattern(event);
+        if (!analysis) return;
+
+        const eventType = event.title?.toLowerCase() || 'generic';
+        
+        // Try to get existing post-event template
+        const template = await templateStore.getTemplateByType(
+          eventType,
+          analysis.patternName,
+          70
+        );
+
+        if (template && template.post_event_timeline) {
+          const postEventTasks = Array.isArray(template.post_event_timeline)
+            ? template.post_event_timeline
+            : JSON.parse(template.post_event_timeline || '[]');
+
+          if (postEventTasks.length > 0) {
+            setTemplateSuggestion({
+              template,
+              confidence: template.confidence,
+              usageCount: template.usage_count,
+              reason: `Found post-event template from ${template.usage_count} previous ${analysis.patternName} event${template.usage_count > 1 ? 's' : ''}`
+            });
+
+            // Auto-apply if high confidence
+            if (template.confidence >= 85) {
+              setCustomTasks(postEventTasks);
+              setUsingTemplate(true);
+            }
+          }
+        }
+      } catch (error) {
+        console.warn('Error checking for post-event template:', error);
+      }
+    };
+
+    checkForPostEventTemplate();
+  }, [event, user, templateStore]);
+
+  // Save post-event timeline as template
+  const saveAsPostEventTemplate = async (tasks) => {
+    if (!event || !user || !tasks.length) return;
+
+    try {
+      const analysis = eventContextService.analyzeEventPattern(event);
+      const eventType = event.title?.toLowerCase() || 'generic';
+      const eventPattern = analysis?.patternName || 'custom';
+
+      // Convert tasks to template format
+      const templateTasks = tasks.map(task => ({
+        id: task.id,
+        title: task.title,
+        description: task.description,
+        icon: task.icon.name,
+        color: task.color,
+        hoursAfter: Math.round((new Date(task.time) - new Date(event.end_time || event.start_time)) / (60 * 60 * 1000))
+      }));
+
+      // Get existing template and update just the post-event timeline
+      const existingTemplate = await templateStore.getTemplateByType(eventType, eventPattern, 0);
+      
+      const preparationTimeline = existingTemplate 
+        ? (Array.isArray(existingTemplate.preparation_timeline) 
+           ? existingTemplate.preparation_timeline 
+           : JSON.parse(existingTemplate.preparation_timeline || '[]'))
+        : [];
+
+      await templateStore.saveTemplate(
+        eventType,
+        eventPattern,
+        preparationTimeline,
+        templateTasks,
+        {
+          confidence: 85,
+          completionRate: completedTasks.size / Math.max(tasks.length, 1)
+        }
+      );
+
+      return true;
+    } catch (error) {
+      console.error('Error saving post-event template:', error);
+      return false;
+    }
+  };
+
+  const toggleTaskComplete = (taskId) => {
+    const newCompleted = new Set(completedTasks);
+    if (newCompleted.has(taskId)) {
+      newCompleted.delete(taskId);
+    } else {
+      newCompleted.add(taskId);
+    }
+    setCompletedTasks(newCompleted);
+
+    // Save completion state to localStorage
+    localStorage.setItem(`post-event-${event.id}`, JSON.stringify(Array.from(newCompleted)));
+  };
+
+  // Load completion state from localStorage
+  useEffect(() => {
+    const savedCompleted = localStorage.getItem(`post-event-${event.id}`);
+    if (savedCompleted) {
+      try {
+        setCompletedTasks(new Set(JSON.parse(savedCompleted)));
+      } catch (error) {
+        console.warn('Failed to load saved completion state:', error);
+      }
+    }
+  }, [event.id]);
+
+  const generatedTasks = generatePostEventTasks();
+  const tasks = customTasks.length > 0 ? customTasks : generatedTasks;
 
   const formatTime = (date) => {
     const now = new Date();
@@ -213,9 +344,16 @@ const PostEventTimeline = ({ event, className = '', socket }) => {
             </div>
             <div className="text-left">
               <h3 className="text-lg font-bold text-gray-900">Post-Event Follow-up</h3>
-              <p className="text-sm text-gray-600">
-                {tasks.length} follow-up task{tasks.length !== 1 ? 's' : ''} after event
-              </p>
+              <div className="flex flex-col space-y-1">
+                <p className="text-sm text-gray-600">
+                  {tasks.length} follow-up task{tasks.length !== 1 ? 's' : ''} after event
+                </p>
+                {usingTemplate && (
+                  <p className="text-xs text-green-600 font-medium">
+                    Using saved post-event template
+                  </p>
+                )}
+              </div>
             </div>
           </div>
           <div className="flex items-center space-x-2">
@@ -230,6 +368,46 @@ const PostEventTimeline = ({ event, className = '', socket }) => {
           </div>
         </div>
       </button>
+
+      {/* Template Suggestion Banner */}
+      {templateSuggestion && !usingTemplate && !isCollapsed && (
+        <div className="px-6 py-3 bg-gradient-to-r from-purple-50 to-pink-50 border-b border-purple-200">
+          <div className="flex items-center justify-between">
+            <div className="flex items-start space-x-3">
+              <div className="p-1 bg-purple-100 rounded">
+                <Star className="h-4 w-4 text-purple-600" />
+              </div>
+              <div>
+                <h4 className="text-sm font-semibold text-purple-900">Smart Post-Event Template Available</h4>
+                <p className="text-xs text-purple-700 mt-1">
+                  {templateSuggestion.reason} • {templateSuggestion.confidence}% confidence
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center space-x-2">
+              <button
+                onClick={() => setTemplateSuggestion(null)}
+                className="text-xs text-purple-600 hover:text-purple-800 px-2 py-1"
+              >
+                Dismiss
+              </button>
+              <button
+                onClick={() => {
+                  const postEventTasks = Array.isArray(templateSuggestion.template.post_event_timeline)
+                    ? templateSuggestion.template.post_event_timeline
+                    : JSON.parse(templateSuggestion.template.post_event_timeline || '[]');
+                  setCustomTasks(postEventTasks);
+                  setUsingTemplate(true);
+                  setTemplateSuggestion(null);
+                }}
+                className="text-xs bg-purple-600 text-white px-3 py-1 rounded-md hover:bg-purple-700 transition-colors"
+              >
+                Use Template
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {!isCollapsed && (
         <div className="p-6">
@@ -246,26 +424,81 @@ const PostEventTimeline = ({ event, className = '', socket }) => {
                   )}
                   
                   <div className="flex items-start space-x-4">
+                    {/* Completion Checkbox */}
+                    <button
+                      onClick={() => toggleTaskComplete(task.id)}
+                      className="mt-1 transition-colors duration-200"
+                    >
+                      {completedTasks.has(task.id) ? (
+                        <CheckCircle className="h-5 w-5 text-green-600" />
+                      ) : (
+                        <Circle className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+                      )}
+                    </button>
+
                     {/* Icon */}
-                    <div className={`p-2 rounded-lg border ${colorClasses} relative z-10`}>
+                    <div className={`p-2 rounded-lg border ${colorClasses} relative z-10 ${
+                      completedTasks.has(task.id) ? 'opacity-60' : ''
+                    }`}>
                       <Icon className="h-4 w-4" />
                     </div>
                     
                     {/* Content */}
                     <div className="flex-1">
                       <div className="flex items-center justify-between">
-                        <h4 className="font-semibold text-gray-900">{task.title}</h4>
+                        <h4 className={`font-semibold ${
+                          completedTasks.has(task.id) 
+                            ? 'line-through text-gray-500' 
+                            : 'text-gray-900'
+                        }`}>{task.title}</h4>
                         <span className="text-sm text-gray-500 flex items-center space-x-1">
                           <Clock className="h-3 w-3" />
                           <span>{formatTime(task.time)}</span>
                         </span>
                       </div>
-                      <p className="text-sm text-gray-600 mt-1">{task.description}</p>
+                      <p className={`text-sm mt-1 ${
+                        completedTasks.has(task.id) ? 'text-gray-400' : 'text-gray-600'
+                      }`}>{task.description}</p>
                     </div>
                   </div>
                 </div>
               );
             })}
+          </div>
+          
+          {/* Completion Summary and Save Template Button */}
+          <div className="mt-6 p-4 bg-gray-50 rounded-xl">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center space-x-2">
+                <CheckCircle2 className="h-5 w-5 text-green-600" />
+                <span className="font-medium text-gray-900">
+                  Progress: {completedTasks.size}/{tasks.length} tasks completed
+                </span>
+              </div>
+              {!usingTemplate && completedTasks.size > 0 && (
+                <button
+                  onClick={async () => {
+                    const success = await saveAsPostEventTemplate(tasks);
+                    if (success) {
+                      setUsingTemplate(true);
+                    }
+                  }}
+                  className="text-xs bg-purple-600 text-white px-3 py-1 rounded-md hover:bg-purple-700 transition-colors"
+                >
+                  Save as Template
+                </button>
+              )}
+            </div>
+            
+            {/* Progress Bar */}
+            <div className="w-full bg-gray-200 rounded-full h-2">
+              <div
+                className="bg-gradient-to-r from-purple-400 to-pink-500 h-2 rounded-full transition-all duration-300"
+                style={{
+                  width: `${(completedTasks.size / Math.max(tasks.length, 1)) * 100}%`
+                }}
+              />
+            </div>
           </div>
         </div>
       )}

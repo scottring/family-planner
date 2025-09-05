@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import PreparationTimeline from '../coordinator/PreparationTimeline';
+import PostEventTimeline from '../coordinator/PostEventTimeline';
 
 const eventTypeColors = {
   school: 'border-l-blue-500 bg-white',
@@ -52,6 +53,8 @@ const EventCard = ({
   const [isExpanded, setIsExpanded] = useState(autoExpanded);
   const [showMoreActions, setShowMoreActions] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
+  const [showPrep, setShowPrep] = useState(false);
+  const [showFollowUp, setShowFollowUp] = useState(false);
 
   const formatTime = (timeStr) => {
     if (!timeStr) return '';
@@ -210,10 +213,38 @@ const EventCard = ({
   // Large/Expanded view
   return (
     <div 
-      className={`border-l-4 ${eventTypeColors[event.category || event.type || 'personal']} border border-gray-200 rounded-lg bg-white hover:shadow-lg transition-all duration-200 group ${className}`}
+      className={`border-l-4 ${eventTypeColors[event.category || event.type || 'personal']} border border-gray-200 rounded-lg bg-white hover:shadow-lg transition-all duration-200 group overflow-hidden ${className}`}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
+      {/* Preparation Bar - At the very top edge */}
+      <button
+        onClick={() => setShowPrep(!showPrep)}
+        className={`w-full flex items-center justify-between px-4 py-2 text-xs font-medium transition-all duration-200 border-b border-gray-200 ${
+          showPrep 
+            ? 'bg-blue-100 text-blue-800' 
+            : 'bg-blue-50 hover:bg-blue-100 text-blue-700'
+        }`}
+      >
+        <span>➕ Add preparation</span>
+        <span className="text-xs opacity-75">{showPrep ? 'hide' : 'show'}</span>
+      </button>
+      
+      {showPrep && (
+        <div className="bg-blue-50 border-b border-blue-200 p-4 animate-in slide-in-from-top-2 duration-200">
+          {event.ai_enriched ? (
+            <PreparationTimeline event={event} className="text-sm" />
+          ) : (
+            <div className="text-sm text-blue-700">
+              <p>Add preparation tasks for this event</p>
+              <button className="mt-2 text-xs bg-blue-600 text-white px-3 py-1 rounded-md hover:bg-blue-700 transition-colors">
+                Add Task
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Header */}
       <div className="p-6 pb-4">
         <div className="flex items-center justify-between mb-4">
@@ -375,15 +406,16 @@ const EventCard = ({
         )}
       </div>
 
-      {/* Preparation Timeline */}
-      {isExpanded && event.ai_enriched && (
+      {/* Preparation Timeline (for expanded view) */}
+      {isExpanded && event.ai_enriched && variant !== 'small' && (
         <div className="px-6 pb-6">
           <PreparationTimeline event={event} className="mb-4" />
         </div>
       )}
 
-      {/* Footer with actions */}
-      <div className="px-6 py-4 border-t border-gray-100 bg-gray-50 rounded-b-lg">
+      {/* Footer with actions (only for large variant) */}
+      {variant !== 'small' && (
+        <div className="px-6 py-4 border-t border-gray-100 bg-gray-50 rounded-b-lg">
         <div className="flex items-center justify-between">
           <button
             onClick={handleCardClick}
@@ -401,7 +433,27 @@ const EventCard = ({
             )}
           </div>
         </div>
-      </div>
+        </div>
+      )}
+
+      {/* Follow-up Bar - At the very bottom edge */}
+      {showFollowUp && (
+        <div className="bg-purple-50 border-t border-purple-200 p-4 animate-in slide-in-from-bottom-2 duration-200">
+          <PostEventTimeline event={event} className="text-sm" />
+        </div>
+      )}
+      
+      <button
+        onClick={() => setShowFollowUp(!showFollowUp)}
+        className={`w-full flex items-center justify-between px-4 py-2 text-xs font-medium transition-all duration-200 border-t border-gray-200 ${
+          showFollowUp 
+            ? 'bg-purple-100 text-purple-800' 
+            : 'bg-purple-50 hover:bg-purple-100 text-purple-700'
+        }`}
+      >
+        <span>➕ Add follow-up</span>
+        <span className="text-xs opacity-75">{showFollowUp ? 'hide' : 'show'}</span>
+      </button>
     </div>
   );
 };

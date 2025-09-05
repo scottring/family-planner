@@ -50,6 +50,7 @@ const checklistTemplateRoutes = require('./routes/checklist-templates');
 const timelineTemplateRoutes = require('./routes/timeline-templates');
 const timelineSuggestionsRoutes = require('./routes/timeline-suggestions');
 const voiceTimelineRoutes = require('./routes/voice-timeline');
+const eventTemplateRoutes = require('./routes/event-templates');
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {
@@ -84,6 +85,7 @@ app.use('/api', checklistTemplateRoutes);
 app.use(timelineTemplateRoutes);
 app.use(timelineSuggestionsRoutes);
 app.use('/api/voice-timeline', voiceTimelineRoutes);
+app.use('/api/event-templates', eventTemplateRoutes);
 
 // WebSocket connection
 io.on('connection', (socket) => {

@@ -771,6 +771,39 @@ function initializeDatabase() {
 
   console.log('Added meal learning tables: meal_history, meal_feedback, family_meal_preferences, meal_patterns');
 
+  // Add event templates table for smart template system
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS event_templates (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      event_type TEXT NOT NULL,
+      event_pattern TEXT NOT NULL,
+      preparation_timeline TEXT DEFAULT '[]',
+      post_event_timeline TEXT DEFAULT '[]',
+      usage_count INTEGER DEFAULT 1,
+      confidence INTEGER DEFAULT 100 CHECK(confidence >= 0 AND confidence <= 100),
+      last_used_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      created_by INTEGER REFERENCES users(id),
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      version INTEGER DEFAULT 1,
+      contextual_variations TEXT DEFAULT '{}',
+      completion_rate REAL DEFAULT 0.0 CHECK(completion_rate >= 0.0 AND completion_rate <= 1.0),
+      UNIQUE(event_type, event_pattern, created_by)
+    )
+  `);
+
+  // Create indexes for event templates
+  db.exec(`
+    CREATE INDEX IF NOT EXISTS idx_event_templates_event_type ON event_templates(event_type);
+    CREATE INDEX IF NOT EXISTS idx_event_templates_event_pattern ON event_templates(event_pattern);
+    CREATE INDEX IF NOT EXISTS idx_event_templates_created_by ON event_templates(created_by);
+    CREATE INDEX IF NOT EXISTS idx_event_templates_confidence ON event_templates(confidence);
+    CREATE INDEX IF NOT EXISTS idx_event_templates_usage_count ON event_templates(usage_count);
+    CREATE INDEX IF NOT EXISTS idx_event_templates_last_used_at ON event_templates(last_used_at);
+  `);
+
+  console.log('Added event_templates table for smart template system');
+
   // Add calendar account management tables
   db.exec(`
     CREATE TABLE IF NOT EXISTS calendar_accounts (

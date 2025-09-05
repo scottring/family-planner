@@ -87,24 +87,22 @@ const AddItemPlaceholder = ({
       <div className={`group ${className}`}>
         <button
           onClick={() => setIsExpanded(true)}
-          className="w-full flex items-center justify-center space-x-3 p-6 border-2 border-dashed border-gray-300 rounded-lg hover:border-blue-400 hover:bg-blue-50 transition-all duration-200 text-gray-500 hover:text-blue-600"
+          className="w-full flex items-center space-x-3 px-4 py-3 h-12 border-2 border-dashed border-gray-300 rounded-lg hover:border-blue-400 hover:bg-blue-50 transition-all duration-200 text-gray-500 hover:text-blue-600"
           aria-label="Add event or task"
         >
-          <div className="flex items-center justify-center w-10 h-10 rounded-full border-2 border-current">
-            <Plus className="w-5 h-5" />
+          <div className="flex items-center justify-center w-6 h-6 rounded-full border-2 border-current flex-shrink-0">
+            <Plus className="w-3 h-3" />
           </div>
-          <div className="text-left">
-            <p className="font-medium">Add something here</p>
-            {suggestedTime && (
-              <p className="text-sm opacity-75">
-                Perfect time slot at {new Date(suggestedTime).toLocaleTimeString([], {
-                  hour: '2-digit',
-                  minute: '2-digit',
-                  hour12: true
-                })}
-              </p>
-            )}
-          </div>
+          <span className="font-medium text-sm">Add something here</span>
+          {suggestedTime && (
+            <span className="text-xs opacity-75 ml-auto">
+              at {new Date(suggestedTime).toLocaleTimeString([], {
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: true
+              })}
+            </span>
+          )}
         </button>
 
         {/* Quick suggestions when hovering */}
