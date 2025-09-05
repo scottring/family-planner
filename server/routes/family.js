@@ -6,7 +6,8 @@ const auth = require('../middleware/auth');
 // Get family members
 router.get('/members', auth, (req, res) => {
   try {
-    const members = db.prepare('SELECT * FROM family_members ORDER BY name').all();
+    const query = 'SELECT * FROM family_members ORDER BY name';
+    const members = db.all ? db.all(query) : db.prepare(query).all();
     
     members.forEach(member => {
       member.dietary_preferences = db.parseJSON(member.dietary_preferences) || {};
@@ -129,7 +130,8 @@ router.delete('/members/:id', auth, (req, res) => {
 // Get activity templates
 router.get('/activities', auth, (req, res) => {
   try {
-    const activities = db.prepare('SELECT * FROM activity_templates ORDER BY name').all();
+    const query = 'SELECT * FROM activity_templates ORDER BY name';
+    const activities = db.all ? db.all(query) : db.prepare(query).all();
     
     activities.forEach(activity => {
       activity.preparation_items = db.parseJSON(activity.preparation_items) || [];

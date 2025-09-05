@@ -80,7 +80,7 @@ app.use('/api/capture', captureRoutes);
 app.use('/api/family-notes', familyNotesRoutes);
 app.use('/api/handoffs', handoffsRoutes);
 app.use('/api/calendar-accounts', calendarAccountsRoutes);
-app.use(checklistTemplateRoutes);
+app.use('/api', checklistTemplateRoutes);
 app.use(timelineTemplateRoutes);
 app.use(timelineSuggestionsRoutes);
 app.use('/api/voice-timeline', voiceTimelineRoutes);

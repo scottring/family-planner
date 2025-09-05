@@ -17,7 +17,9 @@ import {
   Edit3,
   Settings,
   Wifi,
-  WifiOff
+  WifiOff,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react';
 import { eventContextService } from '../../services/eventContext';
 import PreparationCustomizer from './PreparationCustomizer';
@@ -32,6 +34,7 @@ const PreparationTimeline = ({ event, className = '', socket }) => {
   const [error, setError] = useState(null);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [pendingUpdates, setPendingUpdates] = useState([]);
+  const [isCollapsed, setIsCollapsed] = useState(true); // Start collapsed by default
 
   // Database integration functions
   const fetchTimelineFromDatabase = async () => {
@@ -404,11 +407,14 @@ const PreparationTimeline = ({ event, className = '', socket }) => {
         {/* Header */}
         <div className="px-6 py-4 border-b border-gray-100 bg-gradient-to-r from-indigo-50 to-white rounded-t-2xl">
           <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
+            <button
+              onClick={() => setIsCollapsed(!isCollapsed)}
+              className="flex items-center space-x-3 hover:opacity-80 transition-opacity"
+            >
               <div className="p-2 bg-indigo-100 rounded-lg">
                 <Timer className="h-5 w-5 text-indigo-600" />
               </div>
-              <div>
+              <div className="text-left">
                 <h3 className="text-lg font-bold text-gray-900">Preparation Timeline</h3>
                 <p className="text-sm text-indigo-600">
                   {eventPattern === 'custom' ? 'Customized timeline' :
@@ -419,7 +425,14 @@ const PreparationTimeline = ({ event, className = '', socket }) => {
                   ) : 'General event preparation'}
                 </p>
               </div>
-            </div>
+              <div className="p-1">
+                {isCollapsed ? (
+                  <ChevronDown className="h-5 w-5 text-gray-400" />
+                ) : (
+                  <ChevronUp className="h-5 w-5 text-gray-400" />
+                )}
+              </div>
+            </button>
             <div className="flex items-center space-x-2">
               {/* Connection Status Indicator */}
               <div className="flex items-center space-x-1">
@@ -461,9 +474,10 @@ const PreparationTimeline = ({ event, className = '', socket }) => {
           </div>
         </div>
 
-      {/* Timeline */}
-      <div className="p-6">
-        <div className="space-y-4">
+      {/* Timeline - Collapsible */}
+      {!isCollapsed && (
+        <div className="p-6">
+          <div className="space-y-4">
           {timeline.map((task, index) => {
             const isCompleted = completedTasks.has(index);
             const isCurrent = isTaskCurrent(task.time, task.duration);
@@ -581,8 +595,9 @@ const PreparationTimeline = ({ event, className = '', socket }) => {
               />
             </div>
           </div>
+          </div>
         </div>
-      </div>
+      )}
     </div>
 
     {/* Customizer Modal */}

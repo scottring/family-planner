@@ -385,7 +385,10 @@ const MealPlanner = () => {
             >
               ✕
             </button>
-            <MealPlannerChat onMealPlanUpdate={handleChatMealPlanUpdate} />
+            <MealPlannerChat 
+              onMealPlanUpdate={handleChatMealPlanUpdate} 
+              onClose={() => setShowChat(false)} 
+            />
           </div>
         </div>
       )}

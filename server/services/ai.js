@@ -649,7 +649,7 @@ Provide a JSON response with:
         messages: [
           {
             role: 'system',
-            content: `You are a professional family meal planning assistant. Create practical, family-friendly meal plans that consider dietary patterns, individual preferences, schedules, and available ingredients. Always respond with valid JSON.`
+            content: `You are a professional family meal planning assistant. Create practical, family-friendly meal plans that consider dietary patterns, individual preferences, schedules, and available ingredients. You must respond with valid JSON only - no markdown, no code blocks, just pure JSON.`
           },
           {
             role: 'user',
@@ -657,10 +657,24 @@ Provide a JSON response with:
           }
         ],
         temperature: 0.7,
-        max_tokens: 2000
+        max_tokens: 2000,
+        response_format: { type: "json_object" }
       });
 
-      const result = JSON.parse(response.choices[0].message.content);
+      let result;
+      try {
+        // Try to parse the response
+        const content = response.choices[0].message.content;
+        // Remove any markdown code blocks if present
+        const cleanContent = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+        result = JSON.parse(cleanContent);
+      } catch (parseError) {
+        console.error('Failed to parse AI response:', parseError);
+        console.error('Raw response:', response.choices[0].message.content);
+        // Fallback to mock data if parsing fails
+        return this.getMockWeeklyMealPlan(startDate);
+      }
+      
       return this.formatMealPlanResult(result);
     } catch (error) {
       console.error('AI meal plan generation error:', error);

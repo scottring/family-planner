@@ -3,7 +3,7 @@ const router = express.Router();
 const db = require('../config/database');
 
 // Get all checklist templates
-router.get('/api/checklist-templates', async (req, res) => {
+router.get('/checklist-templates', async (req, res) => {
   try {
     const templates = await db.all(`
       SELECT * FROM checklist_templates 
@@ -22,7 +22,7 @@ router.get('/api/checklist-templates', async (req, res) => {
 });
 
 // Create a new checklist template
-router.post('/api/checklist-templates', async (req, res) => {
+router.post('/checklist-templates', async (req, res) => {
   try {
     const { name, category, description, items, tags } = req.body;
     
@@ -49,7 +49,7 @@ router.post('/api/checklist-templates', async (req, res) => {
 });
 
 // Update template usage count
-router.post('/api/checklist-templates/:id/use', async (req, res) => {
+router.post('/checklist-templates/:id/use', async (req, res) => {
   try {
     await db.run(`
       UPDATE checklist_templates 

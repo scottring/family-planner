@@ -25,7 +25,6 @@ const EventCoordinator = ({ className = '' }) => {
   const { user } = useAuthStore();
   const [currentTime, setCurrentTime] = useState(new Date());
   const [expandedEvent, setExpandedEvent] = useState(null);
-  const [showTimeline, setShowTimeline] = useState(false);
 
   // Update time every minute
   useEffect(() => {
@@ -118,6 +117,9 @@ const EventCoordinator = ({ className = '' }) => {
 
   return (
     <div className={`${className}`}>
+      {/* Preparation Timeline - Show First */}
+      <PreparationTimeline event={coordinatorEvent} className="mb-4" />
+      
       {/* Main Coordinator Card */}
       <div className={`rounded-2xl shadow-xl border-2 ${styles.border} ${styles.bg} overflow-hidden ${styles.pulse}`}>
         {/* Header - Mobile Optimized */}
@@ -253,14 +255,6 @@ const EventCoordinator = ({ className = '' }) => {
               </a>
             )}
 
-            {/* Timeline Toggle */}
-            <button
-              onClick={() => setShowTimeline(!showTimeline)}
-              className="flex items-center justify-center space-x-1 sm:space-x-2 p-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 active:bg-indigo-800 transition-colors shadow-sm touch-target-lg no-select mobile-scale"
-            >
-              <Clock className="h-4 w-4 sm:h-5 sm:w-5" />
-              <span className="text-xs sm:text-sm font-medium">Timeline</span>
-            </button>
 
             {/* Packing List */}
             {eventSuggestions.packingList && eventSuggestions.packingList.length > 0 && (
@@ -343,12 +337,6 @@ const EventCoordinator = ({ className = '' }) => {
         </div>
       </div>
 
-      {/* Preparation Timeline (when expanded) */}
-      {showTimeline && (
-        <div className="mt-6">
-          <PreparationTimeline event={coordinatorEvent} />
-        </div>
-      )}
     </div>
   );
 };

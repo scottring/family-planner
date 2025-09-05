@@ -1,5 +1,6 @@
 const db = require('../config/database');
 const MealLearningService = require('./mealLearningService');
+const aiService = require('./ai');
 
 /**
  * Meal Conversation AI Service
@@ -9,6 +10,7 @@ const MealLearningService = require('./mealLearningService');
 
 class MealConversationAI {
   constructor() {
+    this.aiService = aiService;
     this.familyMembers = [
       { id: 1, name: 'Parent 1', role: 'parent' },
       { id: 2, name: 'Parent 2', role: 'parent' },
@@ -317,14 +319,24 @@ class MealConversationAI {
    * Handle general conversation
    */
   async handleGeneralConversation(message, context, familyContext) {
-    const responses = [
-      "I'm here to help with meal planning! What would you like to work on today?",
-      "Let's plan some great meals for your family. What are you thinking about?",
-      "I can help you plan meals based on what your family likes. What's on your mind?",
-      "Ready to make meal planning easier? Tell me what you need help with."
-    ];
-    
-    return responses[Math.floor(Math.random() * responses.length)];
+    try {
+      const response = await this.generateAIResponse({
+        userMessage: message,
+        conversationHistory: context.conversationHistory || [],
+        familyContext,
+        intent: 'general',
+        systemPrompt: `You are an AI meal planning assistant helping a family with two parents and 7-year-old twins named Kaleb and Ella. 
+        Be conversational, friendly, and helpful. Focus on meal planning and food-related topics.
+        Keep responses concise and actionable. If the user's message isn't about meal planning, 
+        gently guide them back to how you can help with meals.`
+      });
+      
+      return response;
+    } catch (error) {
+      console.error('Error in general conversation:', error);
+      // Fallback response if AI fails
+      return "I'm here to help with meal planning! What would you like to work on today?";
+    }
   }
 
   /**
@@ -787,6 +799,62 @@ class MealConversationAI {
     const avgPrepTime = recentHistory.reduce((sum, meal) => sum + (meal.prep_time || 30), 0) / recentHistory.length || 30;
     
     return `Your recent meals average about ${Math.round(avgPrepTime)} minutes of prep time. For busy weeknights, I can suggest 15-20 minute meals that your family will still love. Would you like some quick meal ideas?`;
+  }
+
+  /**
+   * Generate AI-powered response using OpenAI
+   */
+  async generateAIResponse({ userMessage, conversationHistory = [], familyContext, intent, systemPrompt }) {
+    try {
+      // Build conversation messages for OpenAI
+      const messages = [
+        {
+          role: 'system',
+          content: systemPrompt || `You are a helpful meal planning assistant for a family with parents and 7-year-old twins (Kaleb and Ella).
+          You know the family's meal preferences and history. Be conversational and helpful.
+          Focus on practical meal suggestions that work for families with young children.`
+        }
+      ];
+
+      // Add conversation history (limit to last 5 exchanges to save tokens)
+      const recentHistory = conversationHistory.slice(-10);
+      recentHistory.forEach(msg => {
+        messages.push({
+          role: msg.type === 'user' ? 'user' : 'assistant',
+          content: msg.content
+        });
+      });
+
+      // Add current message
+      messages.push({
+        role: 'user',
+        content: userMessage
+      });
+
+      // Add context about family preferences if available
+      if (familyContext && familyContext.preferences) {
+        messages.push({
+          role: 'system',
+          content: `Family context: ${JSON.stringify({
+            recentMeals: familyContext.recentHistory?.slice(0, 5).map(m => m.title),
+            preferences: familyContext.preferences
+          })}`
+        });
+      }
+
+      // Call OpenAI
+      const completion = await this.aiService.openai.chat.completions.create({
+        model: 'gpt-3.5-turbo',
+        messages,
+        temperature: 0.7,
+        max_tokens: 500
+      });
+
+      return completion.choices[0].message.content;
+    } catch (error) {
+      console.error('Error generating AI response:', error);
+      throw error;
+    }
   }
 }
 

@@ -77,12 +77,18 @@ const AiPlanGenerator = ({ startDate, onClose, onPlanGenerated }) => {
         scheduleInfo: formData.scheduleInfo,
         availableIngredients: formData.availableIngredients,
         nutritionGoals: formData.nutritionGoals
+      }, {
+        timeout: 60000 // 60 second timeout for AI requests
       });
 
       onPlanGenerated(response.data);
     } catch (error) {
       console.error('Failed to generate meal plan:', error);
-      alert('Failed to generate meal plan. Please try again.');
+      if (error.code === 'ECONNABORTED') {
+        alert('Request timed out. AI meal generation can take up to a minute. Please try again.');
+      } else {
+        alert('Failed to generate meal plan. Please try again.');
+      }
     } finally {
       setLoading(false);
     }
