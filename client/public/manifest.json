@@ -1,7 +1,7 @@
 {
-  "name": "Family Planner - Preparation Timeline",
-  "short_name": "Prep Timeline",
-  "description": "Multi-modal preparation timeline manager for busy families",
+  "name": "Itineraries - Preparation Timeline",
+  "short_name": "Itineraries",
+  "description": "Multi-modal preparation timeline manager for busy families and itineraries",
   "start_url": "/",
   "display": "standalone",
   "theme_color": "#4f46e5",

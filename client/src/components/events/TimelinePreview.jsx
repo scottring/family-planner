@@ -508,15 +508,28 @@ const TimelinePreview = ({
                       <button
                         onClick={() => startEditing(item)}
                         className="p-1 text-gray-400 hover:text-gray-600"
+                        title={`Edit ${item.text || 'item'} (ID: ${item.id})`}
                       >
                         <Edit3 className="h-3 w-3" />
                       </button>
                       <button
                         onClick={() => deleteItem(item.id)}
                         className="p-1 text-red-400 hover:text-red-600"
+                        title={`Delete ${item.text || 'item'} (ID: ${item.id})`}
                       >
                         <Trash2 className="h-3 w-3" />
                       </button>
+                    </div>
+                  )}
+                  {/* Debug info for troubleshooting */}
+                  {!canEdit && (
+                    <div className="text-xs text-red-500" title="Edit disabled">
+                      🔒 Edit disabled (canEdit: {canEdit.toString()})
+                    </div>
+                  )}
+                  {canEdit && editingItem === item.id && (
+                    <div className="text-xs text-blue-500" title="Currently editing">
+                      ✏️ Editing...
                     </div>
                   )}
                 </div>

@@ -10,7 +10,7 @@ if (!fs.existsSync(dbDir)) {
 
 const dbPath = process.env.DATABASE_PATH 
   ? path.resolve(__dirname, '../', process.env.DATABASE_PATH)
-  : path.join(dbDir, 'family.db');
+  : path.join(dbDir, 'itineraries.db');
 
 console.log('Database path:', dbPath);
 

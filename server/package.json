@@ -1,11 +1,14 @@
 {
-  "name": "server",
+  "name": "itineraries-server",
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
     "dev": "nodemon index.js",
     "seed": "node scripts/seed.js",
+    "migrate": "node ../scripts/migrate-db.js",
+    "build": "cd ../client && npm run build",
+    "deploy": "npm run migrate && npm start",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],

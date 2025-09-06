@@ -231,72 +231,135 @@ export const mapService = {
     }
     
     // Try to use Google Places API if available
-    if (window.google && window.google.maps && window.google.maps.places) {
-      return new Promise((resolve, reject) => {
-        const service = new window.google.maps.places.PlacesService(
-          document.createElement('div')
-        );
-        
-        const request = {
-          query: query,
-          fields: ['name', 'formatted_address', 'rating', 'geometry', 'place_id', 'types']
-        };
-        
-        // Add location bias if provided
-        if (nearLocation) {
-          // Try to geocode the location first
-          const geocoder = new window.google.maps.Geocoder();
-          geocoder.geocode({ address: nearLocation }, (results, status) => {
-            if (status === 'OK' && results[0]) {
-              request.location = results[0].geometry.location;
-              request.radius = 50000; // 50km radius
-            }
-            
-            // Perform the search
-            service.textSearch(request, (results, status) => {
-              if (status === window.google.maps.places.PlacesServiceStatus.OK) {
-                const places = results.slice(0, 8).map(place => ({
-                  id: place.place_id,
-                  name: place.name,
-                  address: place.formatted_address,
-                  rating: place.rating || 0,
-                  distance: null, // Would need to calculate separately
-                  type: place.types ? place.types[0] : 'place',
-                  geometry: {
-                    lat: place.geometry.location.lat(),
-                    lng: place.geometry.location.lng()
+    if (window.google?.maps?.places) {
+      try {
+        // Check for new API first
+        if (window.google.maps.places.SearchNearbyRankPreference) {
+          // Use new Places API (v3)
+          const { Place } = window.google.maps.places;
+          
+          // Create location bias if provided
+          let locationBias = null;
+          if (nearLocation) {
+            try {
+              const geocoder = new window.google.maps.Geocoder();
+              const geocodeResult = await new Promise((resolve) => {
+                geocoder.geocode({ address: nearLocation }, (results, status) => {
+                  if (status === 'OK' && results[0]) {
+                    resolve(results[0].geometry.location);
+                  } else {
+                    resolve(null);
                   }
-                }));
-                resolve(places);
-              } else {
-                // Fall back to mock data
-                resolve(mapService.searchPlacesMock(query));
+                });
+              });
+              
+              if (geocodeResult) {
+                locationBias = {
+                  center: { lat: geocodeResult.lat(), lng: geocodeResult.lng() },
+                  radius: 50000 // 50km radius
+                };
               }
-            });
-          });
+            } catch (error) {
+              console.error('Geocoding error:', error);
+            }
+          }
+          
+          // Perform text search using new API
+          const request = {
+            textQuery: query,
+            fields: ['id', 'displayName', 'formattedAddress', 'rating', 'location', 'primaryType'],
+            maxResultCount: 8,
+            ...(locationBias && { locationBias })
+          };
+          
+          const { places } = await Place.searchByText(request);
+          
+          return places.map(place => ({
+            id: place.id,
+            name: place.displayName?.text || place.displayName || 'Unknown',
+            address: place.formattedAddress || '',
+            rating: place.rating || 0,
+            distance: null,
+            type: place.primaryType || 'place',
+            types: place.types || [place.primaryType || 'place'], // Include full types array
+            geometry: place.location ? {
+              lat: place.location.lat(),
+              lng: place.location.lng()
+            } : null
+          }));
         } else {
-          // Search without location bias
-          service.textSearch(request, (results, status) => {
-            if (status === window.google.maps.places.PlacesServiceStatus.OK) {
-              const places = results.slice(0, 8).map(place => ({
-                id: place.place_id,
-                name: place.name,
-                address: place.formatted_address,
-                rating: place.rating || 0,
-                distance: null,
-                type: place.types ? place.types[0] : 'place',
-                geometry: {
-                  lat: place.geometry.location.lat(),
-                  lng: place.geometry.location.lng()
+          // Fall back to old API
+          return new Promise((resolve) => {
+            const service = new window.google.maps.places.PlacesService(
+              document.createElement('div')
+            );
+            
+            const request = {
+              query: query,
+              fields: ['name', 'formatted_address', 'rating', 'geometry', 'place_id', 'types']
+            };
+            
+            // Add location bias if provided
+            if (nearLocation) {
+              const geocoder = new window.google.maps.Geocoder();
+              geocoder.geocode({ address: nearLocation }, (results, status) => {
+                if (status === 'OK' && results[0]) {
+                  request.location = results[0].geometry.location;
+                  request.radius = 50000;
                 }
-              }));
-              resolve(places);
+                
+                // Perform the search
+                service.textSearch(request, (results, status) => {
+                  if (status === window.google.maps.places.PlacesServiceStatus.OK && results) {
+                    const places = results.slice(0, 8).map(place => ({
+                      id: place.place_id,
+                      name: place.name,
+                      address: place.formatted_address,
+                      rating: place.rating || 0,
+                      distance: null,
+                      type: place.types ? place.types[0] : 'place',
+                      types: place.types || [], // Include full types array
+                      geometry: {
+                        lat: place.geometry.location.lat(),
+                        lng: place.geometry.location.lng()
+                      }
+                    }));
+                    resolve(places);
+                  } else {
+                    resolve(mapService.searchPlacesMock(query));
+                  }
+                });
+              });
             } else {
-              resolve(mapService.searchPlacesMock(query));
+              // Search without location bias
+              service.textSearch(request, (results, status) => {
+                if (status === window.google.maps.places.PlacesServiceStatus.OK && results) {
+                  const places = results.slice(0, 8).map(place => ({
+                    id: place.place_id,
+                    name: place.name,
+                    address: place.formatted_address,
+                    rating: place.rating || 0,
+                    distance: null,
+                    type: place.types ? place.types[0] : 'place',
+                    types: place.types || [], // Include full types array
+                    geometry: {
+                      lat: place.geometry.location.lat(),
+                      lng: place.geometry.location.lng()
+                    }
+                  }));
+                  resolve(places);
+                } else {
+                  resolve(mapService.searchPlacesMock(query));
+                }
+              });
             }
           });
         }
-      });
+      } catch (error) {
+        console.error('Places search error:', error);
+        // Fall back to mock data on any error
+        return mapService.searchPlacesMock(query);
+      }
     }
     
     // Fall back to mock implementation
@@ -605,6 +668,7 @@ export const mapService = {
               address: place.formatted_address,
               rating: place.rating || 0,
               type: place.types ? place.types[0] : 'place',
+              types: place.types || [], // Include full types array
               geometry: {
                 lat: place.geometry.location.lat(),
                 lng: place.geometry.location.lng()

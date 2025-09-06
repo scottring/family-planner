@@ -19,38 +19,60 @@ const AddressAutocomplete = ({
   const [isLoading, setIsLoading] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(-1);
+  const [apiError, setApiError] = useState(false);
   const inputRef = useRef(null);
   const suggestionsRef = useRef(null);
   const autocompleteService = useRef(null);
-  const placesService = useRef(null);
+  const sessionToken = useRef(null);
+  const apiLoadAttempted = useRef(false);
 
   // Initialize Google Places Autocomplete Service
   useEffect(() => {
-    if (window.google && window.google.maps && window.google.maps.places) {
-      autocompleteService.current = new window.google.maps.places.AutocompleteService();
-      placesService.current = new window.google.maps.places.PlacesService(
-        document.createElement('div')
-      );
-    } else if (googleApiKey) {
-      // Load Google Maps API if not already loaded
-      loadGoogleMapsAPI();
-    }
+    const initializeGoogleMaps = async () => {
+      if (window.google?.maps?.places) {
+        try {
+          // Try to use the new API first
+          if (window.google.maps.places.AutocompleteSuggestion) {
+            // New API available - create session token
+            sessionToken.current = new window.google.maps.places.AutocompleteSessionToken();
+            autocompleteService.current = { useNewAPI: true };
+            setApiError(false);
+          } else {
+            // Fallback to old API
+            autocompleteService.current = new window.google.maps.places.AutocompleteService();
+            setApiError(false);
+          }
+        } catch (error) {
+          console.error('Error initializing Google Maps services:', error);
+          setApiError(true);
+        }
+      } else if (googleApiKey && !apiLoadAttempted.current) {
+        apiLoadAttempted.current = true;
+        loadGoogleMapsAPI();
+      }
+    };
+
+    // Try to initialize immediately
+    initializeGoogleMaps();
+
+    // Also set up a listener for when the API loads
+    window.initializeGoogleMapsAutocomplete = initializeGoogleMaps;
   }, [googleApiKey]);
 
   const loadGoogleMapsAPI = () => {
-    if (window.google && window.google.maps) return;
+    // Check if already loading or loaded
+    if (window.google?.maps || document.querySelector('script[src*="maps.googleapis.com"]')) {
+      return;
+    }
     
     const script = document.createElement('script');
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${googleApiKey}&libraries=places`;
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${googleApiKey}&libraries=places&callback=initializeGoogleMapsAutocomplete`;
     script.async = true;
     script.defer = true;
-    script.onload = () => {
-      if (window.google && window.google.maps && window.google.maps.places) {
-        autocompleteService.current = new window.google.maps.places.AutocompleteService();
-        placesService.current = new window.google.maps.places.PlacesService(
-          document.createElement('div')
-        );
-      }
+    script.onerror = () => {
+      console.error('Failed to load Google Maps API');
+      setApiError(true);
+      apiLoadAttempted.current = false;
     };
     document.head.appendChild(script);
   };
@@ -63,20 +85,39 @@ const AddressAutocomplete = ({
         return;
       }
 
-      if (!autocompleteService.current) {
-        // Fallback to showing quick addresses if Google Maps isn't available
+      if (!autocompleteService.current || apiError) {
+        // Fallback to showing quick addresses and basic text matching
         const filtered = quickAddresses.filter(addr => 
-          addr.address.toLowerCase().includes(query.toLowerCase()) ||
-          addr.label.toLowerCase().includes(query.toLowerCase())
+          addr.address?.toLowerCase().includes(query.toLowerCase()) ||
+          addr.label?.toLowerCase().includes(query.toLowerCase())
         );
-        setSuggestions(filtered.map(addr => ({
+        
+        // Add a fallback option for manual entry
+        const fallbackSuggestions = filtered.map(addr => ({
           description: addr.address,
           place_id: `saved_${addr.id}`,
           structured_formatting: {
             main_text: addr.label,
             secondary_text: addr.address
-          }
-        })));
+          },
+          isSaved: true
+        }));
+        
+        // Add the current query as an option
+        if (query.length > 5) {
+          fallbackSuggestions.push({
+            description: query,
+            place_id: `manual_${Date.now()}`,
+            structured_formatting: {
+              main_text: query,
+              secondary_text: 'Enter manually'
+            },
+            isManual: true
+          });
+        }
+        
+        setSuggestions(fallbackSuggestions);
+        setIsLoading(false);
         return;
       }
 
@@ -88,31 +129,101 @@ const AddressAutocomplete = ({
         types: ['address'] // Focus on addresses
       };
 
-      autocompleteService.current.getPlacePredictions(request, (predictions, status) => {
-        setIsLoading(false);
-        
-        if (status === window.google.maps.places.PlacesServiceStatus.OK && predictions) {
-          // Combine with quick addresses
-          const quickSuggestions = quickAddresses
-            .filter(addr => 
-              addr.address.toLowerCase().includes(query.toLowerCase()) ||
-              addr.label.toLowerCase().includes(query.toLowerCase())
-            )
-            .map(addr => ({
-              description: addr.address,
-              place_id: `saved_${addr.id}`,
-              structured_formatting: {
-                main_text: addr.label,
-                secondary_text: addr.address
-              },
-              isSaved: true
-            }));
+      try {
+        if (autocompleteService.current?.useNewAPI) {
+          // Use new Places API
+          const { AutocompleteSuggestion } = window.google.maps.places;
           
-          setSuggestions([...quickSuggestions, ...predictions]);
+          AutocompleteSuggestion.fetchAutocompleteSuggestions({
+            input: query,
+            sessionToken: sessionToken.current,
+            includedRegionCodes: ['us'],
+            includedPrimaryTypes: ['street_address', 'route', 'locality']
+          }).then((response) => {
+            setIsLoading(false);
+            
+            const predictions = response.suggestions.map(suggestion => ({
+              description: suggestion.placePrediction.text.text,
+              place_id: suggestion.placePrediction.placeId,
+              structured_formatting: {
+                main_text: suggestion.placePrediction.structuredFormat?.mainText?.text || suggestion.placePrediction.text.text,
+                secondary_text: suggestion.placePrediction.structuredFormat?.secondaryText?.text || ''
+              }
+            }));
+            
+            // Combine with quick addresses
+            const quickSuggestions = quickAddresses
+              .filter(addr => 
+                addr.address?.toLowerCase().includes(query.toLowerCase()) ||
+                addr.label?.toLowerCase().includes(query.toLowerCase())
+              )
+              .map(addr => ({
+                description: addr.address,
+                place_id: `saved_${addr.id}`,
+                structured_formatting: {
+                  main_text: addr.label,
+                  secondary_text: addr.address
+                },
+                isSaved: true
+              }));
+            
+            setSuggestions([...quickSuggestions, ...predictions]);
+          }).catch(error => {
+            console.error('Error with new Places API:', error);
+            setIsLoading(false);
+            // Fallback to manual entry
+            setSuggestions([{
+              description: query,
+              place_id: `manual_${Date.now()}`,
+              structured_formatting: {
+                main_text: query,
+                secondary_text: 'Enter manually'
+              },
+              isManual: true
+            }]);
+          });
         } else {
-          setSuggestions([]);
+          // Use old API
+          autocompleteService.current.getPlacePredictions(request, (predictions, status) => {
+            setIsLoading(false);
+            
+            if (status === window.google.maps.places.PlacesServiceStatus.OK && predictions) {
+              // Combine with quick addresses
+              const quickSuggestions = quickAddresses
+                .filter(addr => 
+                  addr.address?.toLowerCase().includes(query.toLowerCase()) ||
+                  addr.label?.toLowerCase().includes(query.toLowerCase())
+                )
+                .map(addr => ({
+                  description: addr.address,
+                  place_id: `saved_${addr.id}`,
+                  structured_formatting: {
+                    main_text: addr.label,
+                    secondary_text: addr.address
+                  },
+                  isSaved: true
+                }));
+              
+              setSuggestions([...quickSuggestions, ...predictions]);
+            } else {
+              // On API error, show manual entry option
+              setSuggestions([{
+                description: query,
+                place_id: `manual_${Date.now()}`,
+                structured_formatting: {
+                  main_text: query,
+                  secondary_text: 'Enter manually'
+                },
+                isManual: true
+              }]);
+            }
+          });
         }
-      });
+      } catch (error) {
+        console.error('Error calling Google Places API:', error);
+        setIsLoading(false);
+        setApiError(true);
+      }
     }, 300),
     [quickAddresses]
   );
@@ -127,7 +238,7 @@ const AddressAutocomplete = ({
   };
 
   // Handle suggestion selection
-  const handleSelectSuggestion = (suggestion) => {
+  const handleSelectSuggestion = async (suggestion) => {
     const address = suggestion.description;
     setInputValue(address);
     setSuggestions([]);
@@ -135,22 +246,49 @@ const AddressAutocomplete = ({
     onChange(address);
     
     // Get detailed place information if it's a Google suggestion
-    if (placesService.current && !suggestion.place_id.startsWith('saved_')) {
-      placesService.current.getDetails(
-        { placeId: suggestion.place_id },
-        (place, status) => {
-          if (status === window.google.maps.places.PlacesServiceStatus.OK && place) {
-            // Pass additional place data if needed
-            if (onChange) {
-              onChange(place.formatted_address || address, {
-                lat: place.geometry.location.lat(),
-                lng: place.geometry.location.lng(),
-                placeId: place.place_id
-              });
-            }
+    if (!suggestion.place_id.startsWith('saved_') && !suggestion.place_id.startsWith('manual_')) {
+      try {
+        if (autocompleteService.current?.useNewAPI && window.google.maps.places.Place) {
+          // Use new Place API
+          const { Place } = window.google.maps.places;
+          const place = new Place({ id: suggestion.place_id });
+          await place.fetchFields({
+            fields: ['formattedAddress', 'location', 'id']
+          });
+          
+          if (onChange && place.formattedAddress) {
+            onChange(place.formattedAddress, {
+              lat: place.location?.lat(),
+              lng: place.location?.lng(),
+              placeId: place.id
+            });
           }
+        } else if (window.google?.maps?.places?.PlacesService) {
+          // Fallback to old API
+          const service = new window.google.maps.places.PlacesService(document.createElement('div'));
+          service.getDetails(
+            { placeId: suggestion.place_id },
+            (place, status) => {
+              if (status === window.google.maps.places.PlacesServiceStatus.OK && place) {
+                if (onChange) {
+                  onChange(place.formatted_address || address, {
+                    lat: place.geometry?.location?.lat(),
+                    lng: place.geometry?.location?.lng(),
+                    placeId: place.place_id
+                  });
+                }
+              }
+            }
+          );
         }
-      );
+        
+        // Generate new session token for next search
+        if (sessionToken.current) {
+          sessionToken.current = new window.google.maps.places.AutocompleteSessionToken();
+        }
+      } catch (error) {
+        console.error('Error getting place details:', error);
+      }
     }
   };
 
@@ -276,6 +414,8 @@ const AddressAutocomplete = ({
               <div className="flex-shrink-0 mt-1">
                 {suggestion.isSaved ? (
                   <Star className="h-4 w-4 text-yellow-500" />
+                ) : suggestion.isManual ? (
+                  <Search className="h-4 w-4 text-blue-500" />
                 ) : (
                   <MapPin className="h-4 w-4 text-gray-400" />
                 )}
@@ -292,6 +432,13 @@ const AddressAutocomplete = ({
               </div>
             </button>
           ))}
+        </div>
+      )}
+      
+      {/* Show API error message */}
+      {apiError && (
+        <div className="mt-1 text-xs text-amber-600">
+          Location search unavailable - enter address manually
         </div>
       )}
     </div>

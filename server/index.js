@@ -8,20 +8,35 @@ const path = require('path');
 
 const app = express();
 const server = http.createServer(app);
+
+// Production-ready CORS configuration
+const isDevelopment = process.env.NODE_ENV === 'development';
+const allowedOrigins = isDevelopment 
+  ? ['http://localhost:5173', 'http://localhost:5174', 'http://localhost:3000']
+  : process.env.CLIENT_URL 
+    ? [process.env.CLIENT_URL] 
+    : ['https://your-production-domain.com']; // Replace with your actual domain
+
 const io = new Server(server, {
   cors: {
-    origin: ['http://localhost:5173', 'http://localhost:5174', 'http://localhost:3000'],
+    origin: allowedOrigins,
     credentials: true
   }
 });
 
 // Middleware
 app.use(cors({
-  origin: ['http://localhost:5173', 'http://localhost:5174', 'http://localhost:3000'],
+  origin: allowedOrigins,
   credentials: true
 }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Serve static files in production
+if (process.env.NODE_ENV === 'production') {
+  // Serve static files from the React app build directory
+  app.use(express.static(path.join(__dirname, '../client/dist')));
+}
 
 // Database initialization
 const db = require('./config/database');
@@ -59,7 +74,7 @@ app.get('/api/health', (req, res) => {
   res.json({ 
     status: 'ok', 
     timestamp: new Date().toISOString(),
-    service: 'Family Symphony API'
+    service: 'Itineraries API'
   });
 });
 
@@ -462,9 +477,21 @@ cron.schedule('*/30 * * * *', async () => {
   }
 });
 
+// Serve React app in production
+if (process.env.NODE_ENV === 'production') {
+  // Handle React routing, return all requests to React app
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, '../client/dist/index.html'));
+  });
+}
+
 const PORT = process.env.PORT || 11001;
 
 server.listen(PORT, () => {
-  console.log(`Family Symphony server running on port ${PORT}`);
+  console.log(`Itineraries server running on port ${PORT}`);
+  console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`Health check: http://localhost:${PORT}/api/health`);
+  if (process.env.NODE_ENV === 'production') {
+    console.log('Serving static files from client/dist');
+  }
 });

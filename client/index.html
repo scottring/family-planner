@@ -11,15 +11,15 @@
     <meta name="background-color" content="#ffffff" />
     
     <!-- App Information -->
-    <title>Family Planner - Preparation Timeline</title>
-    <meta name="description" content="Multi-modal preparation timeline manager for busy families" />
-    <meta name="keywords" content="family planner, timeline, preparation, mobile, tablet, voice" />
+    <title>Itineraries - Preparation Timeline</title>
+    <meta name="description" content="Multi-modal preparation timeline manager for busy families and itineraries" />
+    <meta name="keywords" content="itineraries, timeline, preparation, mobile, tablet, voice, planning" />
     
     <!-- Mobile App Configuration -->
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-    <meta name="apple-mobile-web-app-title" content="Prep Timeline" />
+    <meta name="apple-mobile-web-app-title" content="Itineraries" />
     
     <!-- Touch Icons for iOS -->
     <link rel="apple-touch-icon" href="/icon-152x152.png" />
@@ -91,6 +91,19 @@
         100% { transform: rotate(360deg); }
       }
     </style>
+    
+    <!-- Load Google Maps API -->
+    <script>
+      // Initialize callback for Google Maps
+      window.initializeGoogleMapsAutocomplete = function() {
+        console.log('Google Maps API loaded successfully');
+        // Dispatch event to notify components that API is ready
+        window.dispatchEvent(new Event('google-maps-loaded'));
+      };
+    </script>
+    <script async defer 
+      src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCXb3lqFhP_F9By3kx0EnNw5QY25shekvM&libraries=places&v=weekly&callback=initializeGoogleMapsAutocomplete">
+    </script>
   </head>
   <body>
     <div id="root">
@@ -98,7 +111,7 @@
       <div class="app-loading">
         <div class="loading-content">
           <div class="loading-spinner"></div>
-          <h2>Family Planner</h2>
+          <h2>Itineraries</h2>
           <p>Loading your timeline...</p>
         </div>
       </div>

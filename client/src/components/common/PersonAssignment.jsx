@@ -230,16 +230,15 @@ const PersonAssignment = ({
             
             <div className="flex items-center space-x-1">
               {allowClear && assignees.length > 0 && (
-                <button
-                  type="button"
+                <div
                   onClick={(e) => {
                     e.stopPropagation();
                     handleClear();
                   }}
-                  className="p-1 hover:bg-gray-100 rounded"
+                  className="p-1 hover:bg-gray-100 rounded cursor-pointer"
                 >
                   <X className="h-3 w-3 text-gray-400" />
-                </button>
+                </div>
               )}
               <ChevronDown className="h-4 w-4 text-gray-400" />
             </div>
