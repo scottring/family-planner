@@ -258,7 +258,11 @@ export const usePlanningStore = create(
           socket.disconnect();
         }
         
-        socket = io(process.env.REACT_APP_SERVER_URL || 'http://localhost:11001', {
+        // Use the base URL from the API configuration
+        const baseURL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:11001/api';
+        const serverURL = baseURL.replace('/api', ''); // Remove /api suffix for socket connection
+        
+        socket = io(serverURL, {
           withCredentials: true,
           transports: ['websocket', 'polling']
         });
