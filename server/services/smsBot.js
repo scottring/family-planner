@@ -727,7 +727,7 @@ Reply "list" to see details.`;
       const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
       
       await this.twilioClient.messages.create({
-        body: `Your Family Planner verification code is: ${verificationCode}`,
+        body: `Your Itineraries verification code is: ${verificationCode}`,
         from: process.env.TWILIO_PHONE_NUMBER,
         to: phoneNumber
       });
