@@ -53,26 +53,34 @@ const TemplateSelector = ({
   useEffect(() => {
     const loadTemplates = async () => {
       try {
-        await fetchTemplates();
+        // Try to fetch user templates, but don't fail if none exist
+        try {
+          await fetchTemplates();
+        } catch (err) {
+          console.log('No user templates found, using prebuilt only');
+        }
+        
+        // Get prebuilt templates first
+        const prebuilt = getPrebuiltTemplates().filter(t => 
+          t.phase === effectivePhase || t.phase === 'all'
+        );
+        
+        // Get phase-specific templates from store
+        const phaseTemplates = getTemplatesByPhase(effectivePhase);
         
         // Get suggested templates based on event type and phase
-        const suggested = await getSuggestedTemplates(eventType, effectivePhase);
+        const suggested = [...prebuilt].filter(t => 
+          t.event_types?.includes(eventType) || t.tags?.includes(eventType)
+        );
         setSuggestedTemplates(suggested);
-
-        // Get phase-specific templates
-        const phaseTemplates = getTemplatesByPhase(effectivePhase);
         
         // Get recent templates for this phase
         const recent = getRecentlyUsedTemplates(5).filter(t => 
           t.phase === effectivePhase || t.phase === 'all'
         );
         setRecentTemplates(recent);
-
-        // Combine user templates with prebuilt templates
-        const prebuilt = getPrebuiltTemplates().filter(t => 
-          t.phase === effectivePhase || t.phase === 'all'
-        );
         
+        // Combine all templates - prebuilt and any user templates
         const combined = [...phaseTemplates, ...prebuilt];
         setAllTemplates(combined);
         setTemplates(combined);

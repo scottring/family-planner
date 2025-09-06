@@ -408,6 +408,45 @@ const useTemplateStore = create(
           ],
           event_types: ['vacation', 'travel'],
           tags: ['vacation', 'travel', 'follow-up']
+        },
+        {
+          id: 'soccer-game-day',
+          name: 'Soccer Game Day',
+          category: 'preparation',
+          phase: 'pre',
+          icon: '⚽',
+          estimated_time: 45,
+          items: [
+            { text: 'Check uniform is clean and ready', timeEstimate: 5, priority: 'high', notes: 'Include shin guards and socks' },
+            { text: 'Prepare game bag with extra clothes', timeEstimate: 5, priority: 'high' },
+            { text: 'Pack snacks and water bottles', timeEstimate: 5, priority: 'high', notes: 'Extra water for hot days' },
+            { text: 'Apply sunscreen', timeEstimate: 3, priority: 'medium' },
+            { text: 'Check game location and arrival time', timeEstimate: 2, priority: 'high' },
+            { text: 'Bring camping chairs for spectators', timeEstimate: 3, priority: 'low' },
+            { text: 'Cash for snack bar', timeEstimate: 2, priority: 'low' },
+            { text: 'Leave 20 minutes early for warmup', timeEstimate: 5, priority: 'high' }
+          ],
+          event_types: ['sports', 'soccer', 'game'],
+          tags: ['sports', 'soccer', 'competition', 'kids']
+        },
+        {
+          id: 'morning-school-routine',
+          name: 'School Morning Routine',
+          category: 'preparation',
+          phase: 'pre',
+          icon: '🎒',
+          estimated_time: 40,
+          items: [
+            { text: 'Wake up kids', timeEstimate: 5, priority: 'high' },
+            { text: 'Prepare and eat breakfast', timeEstimate: 15, priority: 'high' },
+            { text: 'Get dressed in school clothes', timeEstimate: 5, priority: 'high' },
+            { text: 'Brush teeth and hair', timeEstimate: 5, priority: 'high' },
+            { text: 'Pack backpack with homework', timeEstimate: 3, priority: 'high' },
+            { text: 'Pack lunch and snacks', timeEstimate: 5, priority: 'high' },
+            { text: 'Check weather and grab jacket if needed', timeEstimate: 2, priority: 'medium' }
+          ],
+          event_types: ['school', 'routine', 'morning'],
+          tags: ['school', 'daily', 'kids', 'routine']
         }
       ];
     },
