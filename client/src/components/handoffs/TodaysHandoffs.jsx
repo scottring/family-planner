@@ -1,20 +1,25 @@
 import React, { useState, useEffect } from 'react';
-import { Clock, User, ArrowRightLeft, AlertCircle, CheckCircle2, Zap } from 'lucide-react';
+import { Clock, User, ArrowRightLeft, AlertCircle, CheckCircle2, Zap, Users } from 'lucide-react';
 import api from '../../services/api';
 import { useAuthStore } from '../../stores/authStore';
 import { useNotificationStore } from '../../stores/notificationStore';
+import { useFamilyStore } from '../../stores/familyStore';
+import PersonAssignment from '../common/PersonAssignment';
 
 const TodaysHandoffs = ({ className = "" }) => {
   const [handoffs, setHandoffs] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [availableUsers, setAvailableUsers] = useState([]);
+  const [eventAttendees, setEventAttendees] = useState({});
   const { user } = useAuthStore();
   const { sendHandoffNotification } = useNotificationStore();
+  const { familyMembers, users, fetchFamilyMembers } = useFamilyStore();
 
   useEffect(() => {
     fetchTodaysHandoffs();
     fetchAvailableUsers();
+    fetchFamilyMembers();
   }, []);
 
   const fetchTodaysHandoffs = async () => {
@@ -22,6 +27,28 @@ const TodaysHandoffs = ({ className = "" }) => {
       setLoading(true);
       const response = await api.get('/handoffs/today');
       setHandoffs(response.data);
+      
+      // Fetch attendees for each event
+      const attendeeData = {};
+      const allEvents = [
+        ...(response.data.my_responsibilities?.events || []),
+        ...(response.data.partner_responsibilities?.events || []),
+        ...(response.data.unassigned?.events || []),
+        ...(response.data.backup_responsibilities?.events || [])
+      ];
+      
+      for (const event of allEvents) {
+        // Try to get attendees from localStorage (matching EventCoordinator pattern)
+        const storedAttendees = localStorage.getItem(`event-${event.id}-attendees`);
+        if (storedAttendees) {
+          attendeeData[event.id] = JSON.parse(storedAttendees);
+        } else {
+          // Could fetch from API if available
+          attendeeData[event.id] = [];
+        }
+      }
+      
+      setEventAttendees(attendeeData);
     } catch (err) {
       setError('Failed to load today\'s handoffs');
       console.error('Error fetching handoffs:', err);
@@ -39,8 +66,22 @@ const TodaysHandoffs = ({ className = "" }) => {
     }
   };
 
-  const reassignEvent = async (eventId, toUserId, reason = 'Manual reassignment') => {
+  const reassignEvent = async (eventId, assigneeId, reason = 'Manual reassignment') => {
     try {
+      // Convert family member IDs to user IDs if needed
+      let toUserId = assigneeId;
+      if (typeof assigneeId === 'string' && assigneeId.startsWith('fm_')) {
+        // For family members, we may need to create a user or handle differently
+        // For now, we'll store the assignment locally
+        const currentAssignments = JSON.parse(localStorage.getItem('handoff-assignments') || '{}');
+        currentAssignments[`event-${eventId}`] = assigneeId;
+        localStorage.setItem('handoff-assignments', JSON.stringify(currentAssignments));
+        
+        // Refresh the UI
+        await fetchTodaysHandoffs();
+        return;
+      }
+      
       await api.post(`/handoffs/reassign/event/${eventId}`, {
         to_user_id: toUserId,
         reason: reason
@@ -57,8 +98,22 @@ const TodaysHandoffs = ({ className = "" }) => {
     }
   };
 
-  const reassignTask = async (taskId, toUserId, reason = 'Manual reassignment') => {
+  const reassignTask = async (taskId, assigneeId, reason = 'Manual reassignment') => {
     try {
+      // Convert family member IDs to user IDs if needed
+      let toUserId = assigneeId;
+      if (typeof assigneeId === 'string' && assigneeId.startsWith('fm_')) {
+        // For family members, we may need to create a user or handle differently
+        // For now, we'll store the assignment locally
+        const currentAssignments = JSON.parse(localStorage.getItem('handoff-assignments') || '{}');
+        currentAssignments[`task-${taskId}`] = assigneeId;
+        localStorage.setItem('handoff-assignments', JSON.stringify(currentAssignments));
+        
+        // Refresh the UI
+        await fetchTodaysHandoffs();
+        return;
+      }
+      
       await api.post(`/handoffs/reassign/task/${taskId}`, {
         to_user_id: toUserId,
         reason: reason
@@ -97,25 +152,53 @@ const TodaysHandoffs = ({ className = "" }) => {
 
   const ResponsibilityItem = ({ item, type, onReassign }) => {
     const [showReassign, setShowReassign] = useState(false);
-    const [selectedUser, setSelectedUser] = useState('');
+    const [selectedAssignee, setSelectedAssignee] = useState(null);
+    
+    // Get current assignee
+    const getCurrentAssignee = () => {
+      // Check local storage for assignments
+      const assignments = JSON.parse(localStorage.getItem('handoff-assignments') || '{}');
+      const key = `${type}-${item.id}`;
+      if (assignments[key]) {
+        return assignments[key];
+      }
+      
+      // Otherwise use the assigned user from the item
+      if (item.assigned_user_id) {
+        return item.assigned_user_id;
+      }
+      
+      return null;
+    };
+    
+    // Get available assignees based on type and attendees
+    const getAvailableAssignees = () => {
+      if (type === 'event' && eventAttendees[item.id]?.length > 0) {
+        // For events with attendees, only show those attendees
+        return eventAttendees[item.id];
+      }
+      
+      // For tasks or events without attendees, show all family members and users
+      const allAssignees = [];
+      
+      // Add family members
+      familyMembers.forEach(member => {
+        allAssignees.push(`fm_${member.id}`);
+      });
+      
+      // Add users
+      users.forEach(user => {
+        allAssignees.push(user.id);
+      });
+      
+      return allAssignees;
+    };
 
     const handleReassign = () => {
-      if (selectedUser) {
-        // Extract the actual user ID from the composite ID
-        // For users: "user_123" -> 123
-        // For family members: We'll need to handle this differently since they can't be assigned tasks/events yet
-        let actualUserId;
-        if (selectedUser.startsWith('user_')) {
-          actualUserId = parseInt(selectedUser.replace('user_', ''));
-        } else {
-          // For now, family members can't be assigned events/tasks in the current system
-          alert('Family member assignment is not yet supported for events/tasks. Please select a user.');
-          return;
-        }
-        
-        onReassign(item.id, actualUserId);
+      if (selectedAssignee) {
+        onReassign(item.id, selectedAssignee);
         setShowReassign(false);
-        setSelectedUser('');
+        setSelectedAssignee(null);
       }
     };
 
@@ -173,32 +256,40 @@ const TodaysHandoffs = ({ className = "" }) => {
         </div>
 
         {showReassign && (
-          <div className="mt-3 flex items-center space-x-2 pt-2 border-t">
-            <select
-              value={selectedUser}
-              onChange={(e) => setSelectedUser(e.target.value)}
-              className="flex-1 px-3 py-1 border rounded text-sm"
-            >
-              <option value="">Select person...</option>
-              {availableUsers.map(person => (
-                <option key={person.id} value={person.id}>
-                  {person.name} {person.type !== 'user' && `(${person.type})`}
-                </option>
-              ))}
-            </select>
-            <button
-              onClick={handleReassign}
-              disabled={!selectedUser}
-              className="px-3 py-1 bg-blue-600 text-white text-sm rounded disabled:opacity-50 hover:bg-blue-700"
-            >
-              Reassign
-            </button>
-            <button
-              onClick={() => setShowReassign(false)}
-              className="px-3 py-1 text-gray-600 text-sm rounded hover:bg-gray-200"
-            >
-              Cancel
-            </button>
+          <div className="mt-3 pt-2 border-t">
+            <div className="mb-2">
+              {type === 'event' && eventAttendees[item.id]?.length > 0 && (
+                <div className="flex items-center space-x-1 text-xs text-blue-600 mb-2">
+                  <Users className="h-3 w-3" />
+                  <span>Only attendees can be assigned to this event</span>
+                </div>
+              )}
+              <PersonAssignment
+                value={selectedAssignee || getCurrentAssignee()}
+                onChange={setSelectedAssignee}
+                allowMultiple={false}
+                limitToIds={getAvailableAssignees()}
+                placeholder="Select person to reassign to..."
+              />
+            </div>
+            <div className="flex items-center space-x-2">
+              <button
+                onClick={handleReassign}
+                disabled={!selectedAssignee}
+                className="px-3 py-1 bg-blue-600 text-white text-sm rounded disabled:opacity-50 hover:bg-blue-700"
+              >
+                Reassign
+              </button>
+              <button
+                onClick={() => {
+                  setShowReassign(false);
+                  setSelectedAssignee(null);
+                }}
+                className="px-3 py-1 text-gray-600 text-sm rounded hover:bg-gray-200"
+              >
+                Cancel
+              </button>
+            </div>
           </div>
         )}
       </div>

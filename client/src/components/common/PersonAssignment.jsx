@@ -20,6 +20,7 @@ const PersonAssignment = ({
   compact = false,
   allowClear = true,
   allowMultiple = false,
+  limitToIds = null, // Array of IDs to limit selection to
   className = ""
 }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -60,8 +61,21 @@ const PersonAssignment = ({
 
   const assignees = getAssignees();
 
-  // Filter members based on search
+  // Filter members based on search and limitToIds
   const filteredMembers = familyMembers.filter(member => {
+    // First check if we're limiting to specific IDs
+    if (limitToIds && limitToIds.length > 0) {
+      // Convert member ID to match the format used in limitToIds
+      const memberId = `fm_${member.id}`;
+      const userIdFormat = member.id;
+      
+      // Check if this member is in the allowed list (either as fm_ or plain ID)
+      if (!limitToIds.includes(memberId) && !limitToIds.includes(userIdFormat) && !limitToIds.includes(member.id.toString())) {
+        return false;
+      }
+    }
+    
+    // Then apply search filter
     if (!searchTerm) return true;
     return member.name.toLowerCase().includes(searchTerm.toLowerCase());
   });
@@ -151,6 +165,11 @@ const PersonAssignment = ({
             ref={dropdownRef}
             className="absolute z-50 mt-1 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1"
           >
+            {limitToIds && limitToIds.length > 0 && (
+              <div className="px-3 py-1 text-xs text-blue-600 bg-blue-50 border-b border-blue-100">
+                Limited to attendees only
+              </div>
+            )}
             {filteredMembers.map(member => (
               <button
                 key={member.id}
@@ -259,14 +278,14 @@ const PersonAssignment = ({
               {allowMultiple && (
                 <button
                   onClick={() => {
-                    const allIds = familyMembers.map(m => m.id);
+                    const allIds = filteredMembers.map(m => m.id);
                     onChange(allIds);
                     setIsOpen(false);
                   }}
                   className="w-full px-3 py-2 text-left hover:bg-blue-50 flex items-center space-x-2 text-sm"
                 >
                   <Users className="h-4 w-4 text-blue-600" />
-                  <span>Assign to everyone</span>
+                  <span>Assign to everyone{limitToIds ? ' available' : ''}</span>
                 </button>
               )}
               

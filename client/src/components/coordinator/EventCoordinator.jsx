@@ -13,14 +13,17 @@ import {
   Backpack,
   Car,
   Utensils,
-  Dog
+  Dog,
+  UserPlus
 } from 'lucide-react';
 import { useEventStore } from '../../stores/eventStore';
 import { useAuthStore } from '../../stores/authStore';
 import { eventContextService } from '../../services/eventContext';
 import { useEventTemplateStore } from '../../stores/eventTemplateStore';
+import { useFamilyStore } from '../../stores/familyStore';
 import PreparationTimeline from './PreparationTimeline';
 import PostEventTimeline from './PostEventTimeline';
+import PersonAssignment from '../common/PersonAssignment';
 
 const EventCoordinator = ({ className = '' }) => {
   const { events } = useEventStore();
@@ -31,7 +34,13 @@ const EventCoordinator = ({ className = '' }) => {
   const [templateInfo, setTemplateInfo] = useState(null);
 
   // Get the next event that needs coordination
-  const coordinatorEvent = eventContextService.getNextEventNeedingCoordination(events);
+  const baseEvent = eventContextService.getNextEventNeedingCoordination(events);
+  
+  // Enhance with stored attendees if available
+  const coordinatorEvent = baseEvent ? {
+    ...baseEvent,
+    attendees: JSON.parse(localStorage.getItem(`event-${baseEvent.id}-attendees`) || '[]') || baseEvent.attendees || []
+  } : null;
 
   // Update time every minute
   useEffect(() => {
@@ -257,20 +266,29 @@ const EventCoordinator = ({ className = '' }) => {
 
               {/* Attendees/Responsibility */}
               <div className="bg-white/80 rounded-lg p-4 border border-gray-200">
-                <div className="flex items-center space-x-3">
-                  <Users className="h-5 w-5 text-green-600" />
-                  <div>
-                    <div className="font-semibold text-gray-900">
-                      {coordinatorEvent.assignedTo ? 
-                        `Assigned to: ${coordinatorEvent.assignedTo}` :
-                        'Family Event'}
-                    </div>
-                    <div className="text-sm text-gray-600">
-                      {coordinatorEvent.attendees ? 
-                        `Attending: ${Array.isArray(coordinatorEvent.attendees) ? coordinatorEvent.attendees.join(', ') : coordinatorEvent.attendees}` :
-                        'All family members'}
-                    </div>
+                <div className="space-y-3">
+                  <div className="flex items-center space-x-2">
+                    <Users className="h-5 w-5 text-green-600" />
+                    <span className="font-semibold text-gray-900">Attendees</span>
                   </div>
+                  <PersonAssignment
+                    value={coordinatorEvent.attendees || []}
+                    onChange={(newAttendees) => {
+                      // Update the event with new attendees
+                      const { updateEvent } = useEventStore.getState();
+                      updateEvent(coordinatorEvent.id, {
+                        ...coordinatorEvent,
+                        attendees: newAttendees
+                      });
+                      
+                      // Save to localStorage as well
+                      const storageKey = `event-${coordinatorEvent.id}-attendees`;
+                      localStorage.setItem(storageKey, JSON.stringify(newAttendees));
+                    }}
+                    allowMultiple={true}
+                    placeholder="Select who's attending..."
+                    compact={false}
+                  />
                 </div>
               </div>
 

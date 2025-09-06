@@ -9,18 +9,20 @@ export const useFamilyStore = create((set, get) => ({
 
   // Mock data for development - in production this would fetch from API
   initializeMockData: () => {
+    // TODO: Replace these with your actual family members' names
     const mockFamilyMembers = [
-      { id: 1, name: 'Sarah', type: 'parent', avatar: 'S', color: 'bg-blue-500' },
-      { id: 2, name: 'Michael', type: 'parent', avatar: 'M', color: 'bg-green-500' },
-      { id: 3, name: 'Emma', type: 'child', avatar: 'E', color: 'bg-purple-500' },
-      { id: 4, name: 'Jack', type: 'child', avatar: 'J', color: 'bg-orange-500' },
+      { id: 1, name: 'Dad', type: 'parent', avatar: 'D', color: 'bg-blue-500' },
+      { id: 2, name: 'Mom', type: 'parent', avatar: 'M', color: 'bg-pink-500' },
+      { id: 3, name: 'Child 1', type: 'child', avatar: 'C', color: 'bg-green-500' },
+      { id: 4, name: 'Child 2', type: 'child', avatar: 'C', color: 'bg-purple-500' },
+      // Add more family members as needed
     ];
 
     const mockUsers = [
-      { id: 1, username: 'sarah', full_name: 'Sarah Johnson', email: 'sarah@example.com' },
-      { id: 2, username: 'michael', full_name: 'Michael Johnson', email: 'michael@example.com' },
-      { id: 3, username: 'emma', full_name: 'Emma Johnson', email: 'emma@example.com' },
-      { id: 4, username: 'jack', full_name: 'Jack Johnson', email: 'jack@example.com' },
+      { id: 1, username: 'dad', full_name: 'Dad', email: 'dad@family.com' },
+      { id: 2, username: 'mom', full_name: 'Mom', email: 'mom@family.com' },
+      { id: 3, username: 'child1', full_name: 'Child 1', email: 'child1@family.com' },
+      { id: 4, username: 'child2', full_name: 'Child 2', email: 'child2@family.com' },
     ];
 
     set({ 
@@ -36,12 +38,9 @@ export const useFamilyStore = create((set, get) => ({
       const response = await api.get('/family/members');
       set({ familyMembers: response.data, loading: false });
     } catch (error) {
-      set({ error: error.message, loading: false });
-      console.error('Error fetching family members:', error);
-      // If no family members exist, show empty list instead of mock data
-      if (error.response?.status === 404 || error.response?.status === 500) {
-        set({ familyMembers: [] });
-      }
+      console.error('Error fetching family members, using mock data:', error);
+      // Use mock data as fallback when API is not available
+      get().initializeMockData();
     }
   },
 
