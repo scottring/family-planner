@@ -295,6 +295,12 @@ const TemplateEditor = ({ template, onClose }) => {
                     errors.name ? 'border-red-300' : 'border-gray-300'
                   }`}
                   placeholder="e.g., Soccer Practice Preparation"
+                  autoFocus
+                  onKeyDown={(e) => {
+                    if (e.key === ' ') {
+                      e.stopPropagation();
+                    }
+                  }}
                 />
                 {errors.name && (
                   <p className="text-red-600 text-sm mt-1">{errors.name}</p>
@@ -362,6 +368,11 @@ const TemplateEditor = ({ template, onClose }) => {
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 rows="2"
                 placeholder="Brief description of this template..."
+                onKeyDown={(e) => {
+                  if (e.key === ' ') {
+                    e.stopPropagation();
+                  }
+                }}
               />
             </div>
 
@@ -392,7 +403,11 @@ const TemplateEditor = ({ template, onClose }) => {
                       onChange={(e) => setNewItem(prev => ({ ...prev, text: e.target.value }))}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                       placeholder="Item description..."
-                      onKeyPress={(e) => {
+                      onKeyDown={(e) => {
+                        if (e.key === ' ') {
+                          e.stopPropagation();
+                          return;
+                        }
                         if (e.key === 'Enter') {
                           e.preventDefault();
                           addItem();
@@ -534,6 +549,11 @@ const TemplateEditor = ({ template, onClose }) => {
                                 className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
                                 rows="2"
                                 placeholder="Additional notes..."
+                                onKeyDown={(e) => {
+                                  if (e.key === ' ') {
+                                    e.stopPropagation();
+                                  }
+                                }}
                               />
                             </div>
                           )}
@@ -574,7 +594,11 @@ const TemplateEditor = ({ template, onClose }) => {
                   onChange={(e) => setNewTag(e.target.value)}
                   className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                   placeholder="Add tag..."
-                  onKeyPress={(e) => {
+                  onKeyDown={(e) => {
+                    if (e.key === ' ') {
+                      e.stopPropagation();
+                      return;
+                    }
                     if (e.key === 'Enter') {
                       e.preventDefault();
                       addTag();
@@ -620,7 +644,11 @@ const TemplateEditor = ({ template, onClose }) => {
                   onChange={(e) => setNewEventType(e.target.value)}
                   className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                   placeholder="e.g., sports, medical, school..."
-                  onKeyPress={(e) => {
+                  onKeyDown={(e) => {
+                    if (e.key === ' ') {
+                      e.stopPropagation();
+                      return;
+                    }
                     if (e.key === 'Enter') {
                       e.preventDefault();
                       addEventType();

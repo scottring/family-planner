@@ -18,6 +18,8 @@ import EventCard from '../components/today/EventCard';
 import TimeGapSeparator from '../components/today/TimeGapSeparator';
 import AddItemPlaceholder from '../components/today/AddItemPlaceholder';
 import DraggableTimeline from '../components/today/DraggableTimeline';
+import PreparationTimeline from '../components/coordinator/PreparationTimeline';
+import PostEventTimeline from '../components/coordinator/PostEventTimeline';
 import { formatTime, getWeatherSuggestions } from '../utils/todayHelpers';
 
 const DailyPage = () => {

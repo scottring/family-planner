@@ -9,7 +9,8 @@ import {
   Save,
   AlertTriangle,
   Timer,
-  Plus
+  Plus,
+  Trash2
 } from 'lucide-react';
 
 const DuringEventChecklist = ({ 
@@ -18,6 +19,7 @@ const DuringEventChecklist = ({
   onTaskToggle,
   onAddNote,
   onComplete,
+  onDeleteTask,
   className = ''
 }) => {
   const [completedTasks, setCompletedTasks] = useState(new Set());
@@ -296,6 +298,15 @@ const DuringEventChecklist = ({
                     }`}>
                       {task.text || task.activity}
                     </h4>
+                    {onDeleteTask && (
+                      <button
+                        onClick={() => onDeleteTask(index)}
+                        className="p-1 text-gray-400 hover:text-red-600 rounded transition-colors"
+                        title="Delete task"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    )}
                     
                     {task.timeEstimate && (
                       <span className="text-xs text-gray-500 flex items-center">

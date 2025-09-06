@@ -268,7 +268,18 @@ export const generatePreparationTimeline = (event, pattern = null) => {
       time: departureTime,
       activity: `Leave for ${event.title}`,
       type: 'departure',
-      duration: 0
+      duration: 0,
+      templateType: 'driving',
+      templateData: {
+        destination: event.location || event.title,
+        estimatedTravelTime: FAMILY_CONFIG.commuteBudget,
+        departureTime: departureTime,
+        // Default driving template data structure
+        routePreference: 'fastest',
+        trafficAlerts: true,
+        alternateRoutes: false,
+        notes: ''
+      }
     });
   }
   

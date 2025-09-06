@@ -28,14 +28,9 @@ const CalendarView = () => {
   const [view, setView] = useState('month');
   const [showNewEventModal, setShowNewEventModal] = useState(false);
   const [calendarAccounts, setCalendarAccounts] = useState([]);
-  const [contexts, setContexts] = useState({});
-  const [activeContext, setActiveContext] = useState('personal');
-  const [showContextDropdown, setShowContextDropdown] = useState(false);
   const [showCalendarSelector, setShowCalendarSelector] = useState(false);
   const [googleCalendars, setGoogleCalendars] = useState([]);
-  const [selectedCalendars, setSelectedCalendars] = useState({});
   const [isLoadingCalendars, setIsLoadingCalendars] = useState(false);
-  const [viewContext, setViewContext] = useState('all'); // 'all', 'work', 'personal', 'family' - start with 'all' to show all events
   const [newEvent, setNewEvent] = useState({
     title: '',
     start_time: '',
@@ -52,25 +47,17 @@ const CalendarView = () => {
   useEffect(() => {
     fetchEvents();
     loadCalendarAccounts();
-    // Load selected calendars and fetch their events
-    const stored = localStorage.getItem('selectedCalendars');
-    if (stored) {
-      const selections = JSON.parse(stored);
-      console.log('Loaded calendar selections:', selections);
-      setSelectedCalendars(selections);
-      fetchGoogleCalendarEvents(selections);
-    }
   }, [fetchEvents]);
 
   const loadCalendarAccounts = async () => {
     try {
-      const [accountsData, contextsData] = await Promise.all([
-        calendarSyncService.getCalendarAccounts(),
-        calendarSyncService.getContextAssignments()
-      ]);
-      
+      const accountsData = await calendarSyncService.getCalendarAccounts();
       setCalendarAccounts(accountsData);
-      setContexts(contextsData.contexts);
+      
+      // If a Google account is connected, automatically sync the family calendar
+      if (accountsData.length > 0 && accountsData.some(acc => acc.provider === 'google' && acc.is_connected)) {
+        await fetchGoogleCalendarEvents();
+      }
     } catch (error) {
       console.error('Error loading calendar accounts:', error);
     }
@@ -82,12 +69,6 @@ const CalendarView = () => {
       // Use the regular getCalendars method since we're using the Google OAuth directly
       const calendars = await calendarSyncService.getCalendars();
       setGoogleCalendars(calendars);
-      
-      // Initialize selected calendars based on stored preferences
-      const stored = localStorage.getItem('selectedCalendars');
-      if (stored) {
-        setSelectedCalendars(JSON.parse(stored));
-      }
     } catch (error) {
       console.error('Error fetching Google calendars:', error);
       // Show a helpful message if calendar API is not enabled
@@ -99,55 +80,34 @@ const CalendarView = () => {
     }
   };
 
-  const fetchGoogleCalendarEvents = async (selections) => {
+  const fetchGoogleCalendarEvents = async () => {
     try {
-      // Get all unique calendar IDs from selections
-      const allCalendarIds = new Set();
-      Object.values(selections).forEach(ids => {
-        ids.forEach(id => allCalendarIds.add(id));
+      // Automatically sync the family calendar
+      const familyCalendarId = 'scottandirisk@gmail.com';
+      console.log('Syncing family calendar:', familyCalendarId);
+      
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:11001/api'}/google/import`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('auth-token')}`
+        },
+        body: JSON.stringify({
+          calendarId: familyCalendarId,
+          timeMin: new Date().toISOString(),
+          timeMax: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString() // 90 days
+        })
       });
 
-      if (allCalendarIds.size === 0) {
-        console.log('No calendars selected to sync');
-        return;
-      }
-
-      console.log('Syncing calendars:', Array.from(allCalendarIds));
-
-      // Fetch events from each selected calendar
-      for (const calendarId of allCalendarIds) {
-        try {
-          console.log(`Importing events from calendar: ${calendarId}`);
-          
-          // The Google Calendar API expects the actual calendar ID
-          // "primary" is a special case for the user's main calendar
-          // Other calendars should use their actual IDs (often email addresses)
-          const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:11001/api'}/google/import`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${localStorage.getItem('auth-token')}`
-            },
-            body: JSON.stringify({
-              calendarId: calendarId, // Use the actual calendar ID (could be "primary" or an email)
-              timeMin: new Date().toISOString(),
-              timeMax: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString() // 90 days
-            })
-          });
-
-          if (response.ok) {
-            const data = await response.json();
-            console.log(`Successfully imported from ${calendarId}:`, data);
-          } else {
-            const error = await response.text();
-            console.error(`Failed to import from ${calendarId}:`, error);
-          }
-        } catch (error) {
-          console.error(`Error fetching events from calendar ${calendarId}:`, error);
-        }
+      if (response.ok) {
+        const data = await response.json();
+        console.log(`Successfully imported family calendar events:`, data);
+      } else {
+        const error = await response.text();
+        console.error(`Failed to import family calendar:`, error);
       }
       
-      // Refresh local events after all imports
+      // Refresh local events after import
       console.log('Refreshing events display...');
       await fetchEvents();
     } catch (error) {
@@ -155,22 +115,6 @@ const CalendarView = () => {
     }
   };
 
-  const handleCalendarSelection = (calendarId, context) => {
-    const updated = { ...selectedCalendars };
-    if (!updated[context]) {
-      updated[context] = [];
-    }
-    
-    const index = updated[context].indexOf(calendarId);
-    if (index === -1) {
-      updated[context].push(calendarId);
-    } else {
-      updated[context].splice(index, 1);
-    }
-    
-    setSelectedCalendars(updated);
-    localStorage.setItem('selectedCalendars', JSON.stringify(updated));
-  };
 
   // Auto-suggest context based on calendar name
   const getAutoSuggestedContext = (calendar) => {
@@ -203,97 +147,10 @@ const CalendarView = () => {
     return 'personal';
   };
 
-  // Filter events based on selected view context
+  // Simply return all events - no filtering needed for family calendar
   const getFilteredEvents = () => {
-    console.log('Filtering events for context:', viewContext);
-    console.log('Selected calendars:', selectedCalendars);
     console.log('Total events:', events.length);
-    
-    if (viewContext === 'all') {
-      console.log('Showing all events (no filtering)');
-      return events;
-    }
-    
-    // Filter events based on their category or calendar_id
-    const filtered = events.filter(event => {
-      // Debug log for first few events to understand structure
-      if (filtered.length < 3) {
-        console.log(`Checking event "${event.title}":`, {
-          calendar_id: event.calendar_id,
-          category: event.category,
-          type: event.type,
-          viewContext: viewContext,
-        });
-      }
-      
-      // Primary matching: check if event category matches the view context
-      if (event.category === viewContext) {
-        return true;
-      }
-      
-      // Legacy support: check if event type matches the view context
-      if (event.type === viewContext) {
-        return true;
-      }
-      
-      // For locally created events without specific categories, be more lenient
-      // If event has no category/type/calendar_id, show it in personal context
-      if (!event.calendar_id && !event.category && !event.type) {
-        if (viewContext === 'personal') {
-          return true;
-        }
-      }
-      
-      // Only do complex calendar_id matching if we have selected calendars for this context
-      if (event.calendar_id && selectedCalendars[viewContext] && selectedCalendars[viewContext].length > 0) {
-        // The calendar_id in events might be an email address or calendar ID
-        const matches = selectedCalendars[viewContext].some(calId => {
-          // Direct match
-          if (calId === event.calendar_id) return true;
-          
-          // If selected calendar is "primary", it should match the user's main email
-          if (calId === 'primary' && (
-            event.calendar_id === 'smkaufman@gmail.com' || 
-            event.calendar_id === 'primary'
-          )) {
-            return true;
-          }
-          
-          // Match work calendar: G Suite - scott.kaufman@stacksdata.com
-          if (viewContext === 'work' && 
-              (calId === 'scott.kaufman@stacksdata.com' || calId.includes('stacksdata')) &&
-              (event.calendar_id === 'scott.kaufman@stacksdata.com' || event.calendar_id?.includes('stacksdata'))) {
-            return true;
-          }
-          
-          // Match family calendar: shared family calendar
-          if (viewContext === 'family' && 
-              (calId.toLowerCase().includes('family') || calId.toLowerCase().includes('shared')) &&
-              (event.calendar_id?.toLowerCase().includes('family') || event.calendar_id?.toLowerCase().includes('shared'))) {
-            return true;
-          }
-          
-          return false;
-        });
-        
-        if (matches) {
-          return true;
-        }
-      }
-      
-      return false;
-    });
-    
-    console.log(`Filtered to ${filtered.length} events for context ${viewContext}`);
-    if (filtered.length > 0) {
-      console.log('First few filtered events:', filtered.slice(0, 3).map(e => ({
-        title: e.title,
-        category: e.category,
-        type: e.type,
-        calendar_id: e.calendar_id
-      })));
-    }
-    return filtered;
+    return events;
   };
 
   // Transform events for calendar display
@@ -438,13 +295,42 @@ const CalendarView = () => {
   // Use the actual events - no sample data
   const displayEvents = calendarEvents;
   
+  // TEST: Add a hardcoded event to see if calendar renders anything
+  const testEvents = [
+    {
+      id: 'test-1',
+      title: 'TEST EVENT - Can you see this?',
+      start: new Date(2025, 8, 5, 10, 0), // September 5, 2025, 10:00 AM
+      end: new Date(2025, 8, 5, 11, 0),   // September 5, 2025, 11:00 AM
+      category: 'test'
+    },
+    {
+      id: 'test-2',
+      title: 'TEST EVENT 2',
+      start: new Date(2025, 8, 6, 14, 0), // September 6, 2025, 2:00 PM
+      end: new Date(2025, 8, 6, 15, 0),   // September 6, 2025, 3:00 PM
+      category: 'test'
+    }
+  ];
+  
+  // Debug: Check if dates are actually Date objects
+  if (displayEvents.length > 0) {
+    console.log('First event date types:', {
+      start: displayEvents[0].start,
+      startType: typeof displayEvents[0].start,
+      startIsDate: displayEvents[0].start instanceof Date,
+      end: displayEvents[0].end,
+      endType: typeof displayEvents[0].end,
+      endIsDate: displayEvents[0].end instanceof Date
+    });
+  }
+  
   // Final debug log
   console.log('Calendar display summary:', {
     totalEventsFromAPI: events.length,
     filteredEvents: filteredEvents.length,
     transformedCalendarEvents: calendarEvents.length,
     finalDisplayEvents: displayEvents.length,
-    viewContext: viewContext,
     selectedDate: selectedDate?.toISOString()
   });
 
@@ -557,85 +443,24 @@ const CalendarView = () => {
     <div className="h-full">
       <div className="mb-6">
         <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-4">
-            <h1 className="text-3xl font-bold text-gray-900">Family Calendar</h1>
-            
-            {/* View Context Filter */}
-            <div className="flex items-center bg-gray-100 rounded-lg p-1">
-              <button
-                onClick={() => setViewContext('all')}
-                className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                  viewContext === 'all' 
-                    ? 'bg-white text-gray-900 shadow-sm' 
-                    : 'text-gray-600 hover:text-gray-900'
-                }`}
-              >
-                All
-              </button>
-              <button
-                onClick={() => setViewContext('work')}
-                className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                  viewContext === 'work' 
-                    ? 'bg-white text-gray-900 shadow-sm' 
-                    : 'text-gray-600 hover:text-gray-900'
-                }`}
-              >
-                Work
-              </button>
-              <button
-                onClick={() => setViewContext('personal')}
-                className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                  viewContext === 'personal' 
-                    ? 'bg-white text-gray-900 shadow-sm' 
-                    : 'text-gray-600 hover:text-gray-900'
-                }`}
-              >
-                Personal
-              </button>
-              <button
-                onClick={() => setViewContext('family')}
-                className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                  viewContext === 'family' 
-                    ? 'bg-white text-gray-900 shadow-sm' 
-                    : 'text-gray-600 hover:text-gray-900'
-                }`}
-              >
-                Family
-              </button>
-            </div>
+          <div className="flex items-center">
+            <h1 className="text-3xl font-bold text-gray-900">Scott & Iris Family Calendar</h1>
           </div>
           
           <div className="flex items-center space-x-3">
             {/* Sync Now Button */}
             <button
               onClick={async () => {
-                const stored = localStorage.getItem('selectedCalendars');
-                if (stored) {
-                  const selections = JSON.parse(stored);
-                  await fetchGoogleCalendarEvents(selections);
-                } else {
-                  alert('Please select calendars first using "Manage Calendars"');
-                }
+                // Sync the family calendar
+                await fetchGoogleCalendarEvents();
               }}
               className="flex items-center space-x-2 px-3 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
-              title="Sync Events from Google Calendar"
+              title="Sync Family Calendar"
             >
               <RefreshCw className="w-4 h-4" />
-              <span>Sync Now</span>
+              <span>Sync Family Calendar</span>
             </button>
             
-            {/* Manage Calendars Button - Always show it */}
-            <button
-              onClick={() => {
-                setShowCalendarSelector(true);
-                fetchGoogleCalendars();
-              }}
-              className="flex items-center space-x-2 px-3 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
-              title="Manage Calendars"
-            >
-              <List className="w-4 h-4" />
-              <span>Manage Calendars</span>
-            </button>
             
             {/* Today Button */}
             <button
@@ -669,60 +494,33 @@ const CalendarView = () => {
           </div>
         </div>
         
-        {/* Context Calendar Status */}
+        {/* Event Count Status */}
         <div className="mt-3 text-sm text-gray-600">
-          {viewContext === 'all' ? (
-            <span>Showing events from all contexts</span>
-          ) : (
-            <>
-              <span>Viewing <strong className="capitalize">{viewContext}</strong> context</span>
-              {selectedCalendars[viewContext] && selectedCalendars[viewContext].length > 0 ? (
-                <span className="text-green-600">
-                  {' • '}{selectedCalendars[viewContext].length} calendar{selectedCalendars[viewContext].length !== 1 ? 's' : ''} selected
-                </span>
-              ) : (
-                <span className="text-amber-600">
-                  {' • '}No calendars selected for this context
-                </span>
-              )}
-            </>
-          )}
-          <span className="ml-3 text-gray-500">
-            ({filteredEvents.length} event{filteredEvents.length !== 1 ? 's' : ''})
-          </span>
+          <span>Showing {filteredEvents.length} family event{filteredEvents.length !== 1 ? 's' : ''}</span>
         </div>
       </div>
 
       <div className="bg-white rounded-lg shadow-lg p-6">
         <div className="h-[700px]">
+          
           <Calendar
             localizer={localizer}
             events={displayEvents}
             startAccessor="start"
             endAccessor="end"
-            onSelectSlot={handleSelectSlot}
-            onSelectEvent={handleSelectEvent}
-            selectable
+            style={{ height: 600 }}
             views={['month', 'week', 'day', 'agenda']}
-            view={view}
-            onView={setView}
-            date={selectedDate}
-            onNavigate={setSelectedDate}
-            eventPropGetter={eventStyleGetter}
-            components={{
-              event: CustomEvent,
-            }}
+            defaultView='month'
+            onSelectEvent={handleSelectEvent}
+            onSelectSlot={handleSelectSlot}
+            selectable
             popup
-            popupOffset={{ x: 30, y: 20 }}
-            className="family-calendar"
-            step={15}
-            timeslots={4}
           />
         </div>
       </div>
 
-      {/* Calendar Selector Modal */}
-      {showCalendarSelector && (
+      {/* Calendar Selector Modal - Removed since we're focusing on family calendar only */}
+      {false && showCalendarSelector && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-2xl shadow-xl p-8 max-w-2xl w-full mx-4 max-h-[80vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-6">
@@ -823,8 +621,8 @@ const CalendarView = () => {
                         localStorage.setItem('selectedCalendars', JSON.stringify(selectedCalendars));
                         console.log('Calendar selections saved successfully');
                         
-                        // Fetch events from selected calendars
-                        await fetchGoogleCalendarEvents(selectedCalendars);
+                        // Fetch events from family calendar
+                        await fetchGoogleCalendarEvents();
                         
                         setShowCalendarSelector(false);
                       } catch (error) {
@@ -892,12 +690,12 @@ const CalendarView = () => {
                   throw new Error('End time must be after start time');
                 }
                 
-                // Use the current view context when creating events
+                // Default all new events to family category
                 const eventWithContext = {
                   ...newEvent,
                   title: newEvent.title.trim(),
-                  category: viewContext !== 'all' ? viewContext : 'personal',
-                  type: viewContext !== 'all' ? viewContext : 'personal'
+                  category: 'family',
+                  type: 'family'
                 };
                 
                 console.log('Creating event:', eventWithContext);
@@ -966,21 +764,6 @@ const CalendarView = () => {
                 />
               </div>
               
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
-                <select
-                  value={newEvent.category}
-                  onChange={(e) => setNewEvent({ ...newEvent, category: e.target.value, type: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="personal">Personal</option>
-                  <option value="work">Work</option>
-                  <option value="family">Family</option>
-                  <option value="health">Health</option>
-                  <option value="school">School</option>
-                  <option value="sports">Sports</option>
-                </select>
-              </div>
               
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>

@@ -22,6 +22,8 @@ import { addMinutes, differenceInMinutes, parseISO, format } from 'date-fns';
 import EventCard from './EventCard';
 import TimeGapSeparator from './TimeGapSeparator';
 import AddItemPlaceholder from './AddItemPlaceholder';
+import PreparationTimeline from '../coordinator/PreparationTimeline';
+import PostEventTimeline from '../coordinator/PostEventTimeline';
 
 // Draggable Event Card Component
 const DraggableEventCard = ({ 
@@ -94,7 +96,7 @@ const DropZone = ({ isOver, onDrop, suggestedTime, onAddEvent, onAddTask }) => {
       {isOver ? (
         <div className="text-center py-6">
           <div className="text-blue-600 font-medium">Drop event here</div>
-          {suggestedTime && (
+          {suggestedTime && typeof suggestedTime === 'string' && (
             <div className="text-sm text-blue-500 mt-1">
               New time: {format(parseISO(suggestedTime), 'h:mm a')}
             </div>
@@ -121,7 +123,8 @@ const DraggableTimeline = ({
   onAddTask,
   onEditEvent,
   onDeleteEvent,
-  selectedDate
+  selectedDate,
+  includeTimelines = true
 }) => {
   const [activeId, setActiveId] = useState(null);
   const [draggedEvent, setDraggedEvent] = useState(null);
@@ -137,7 +140,7 @@ const DraggableTimeline = ({
     })
   );
 
-  // Create timeline items with events and gaps
+  // Create timeline items with events, gaps, and preparation/post timelines
   const timelineItems = [];
   const sortedEvents = [...events].sort((a, b) => 
     parseISO(a.start_time) - parseISO(b.start_time)
@@ -157,6 +160,15 @@ const DraggableTimeline = ({
           suggestedTime: morningTime.toISOString()
         });
       }
+    }
+
+    // Add preparation timeline for this event if enabled and event has prep items
+    if (includeTimelines && event.ai_enriched) {
+      timelineItems.push({
+        type: 'preparation',
+        data: event,
+        id: `prep-${event.id}`
+      });
     }
 
     // Add time gap before this event if it exists
@@ -184,6 +196,15 @@ const DraggableTimeline = ({
       data: event,
       id: event.id
     });
+
+    // Add post-event timeline for this event if enabled and event has post items
+    if (includeTimelines && event.ai_enriched) {
+      timelineItems.push({
+        type: 'post-event',
+        data: event,
+        id: `post-${event.id}`
+      });
+    }
 
     // Add drop zone after event
     const nextEvent = sortedEvents[index + 1];
@@ -267,7 +288,7 @@ const DraggableTimeline = ({
     }
     
     // Handle dropping on drop zone (time change)
-    if (over.id.startsWith('dropzone-')) {
+    if (typeof over.id === 'string' && over.id.startsWith('dropzone-')) {
       const dropZone = timelineItems.find(item => item.id === over.id);
       if (dropZone && dropZone.suggestedTime && draggedEvent) {
         const duration = differenceInMinutes(
@@ -317,6 +338,16 @@ const DraggableTimeline = ({
               );
             }
 
+            if (item.type === 'preparation') {
+              return (
+                <PreparationTimeline
+                  key={item.id}
+                  event={item.data}
+                  className="mb-4"
+                />
+              );
+            }
+
             if (item.type === 'event') {
               return (
                 <DraggableEventCard
@@ -326,6 +357,16 @@ const DraggableTimeline = ({
                   onDelete={onDeleteEvent}
                   expandedEvents={expandedEvents}
                   toggleEventExpansion={toggleEventExpansion}
+                />
+              );
+            }
+
+            if (item.type === 'post-event') {
+              return (
+                <PostEventTimeline
+                  key={item.id}
+                  event={item.data}
+                  className="mt-4"
                 />
               );
             }

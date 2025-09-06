@@ -8,11 +8,11 @@ const RecurringEventService = require('../services/recurringEventService');
 router.get('/events', auth, (req, res) => {
   try {
     const { start, end } = req.query;
-    let query = 'SELECT * FROM events';
-    const params = [];
+    let query = 'SELECT * FROM events WHERE created_by = ?';
+    const params = [req.user.id];
     
     if (start && end) {
-      query += ' WHERE start_time >= ? AND end_time <= ?';
+      query += ' AND start_time >= ? AND end_time <= ?';
       params.push(start, end);
     }
     

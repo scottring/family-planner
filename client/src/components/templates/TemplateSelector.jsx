@@ -15,12 +15,17 @@ import { useTemplateStore } from '../../stores/templateStore';
 import TemplateCard from './TemplateCard';
 
 const TemplateSelector = ({ 
-  phase = 'pre', 
+  phase = 'pre',
+  mode, // 'preparation' or 'post-event' - alternative to phase
   event, 
-  onSelect, 
+  onSelect,
+  onSelectTemplate, // Alternative to onSelect for compatibility
   onClose,
   onCreateNew 
 }) => {
+  // Convert mode to phase if mode is provided
+  const effectivePhase = mode ? (mode === 'preparation' ? 'pre' : 'post') : phase;
+  const handleSelect = onSelectTemplate || onSelect;
   const { 
     fetchTemplates, 
     getSuggestedTemplates, 
@@ -41,7 +46,7 @@ const TemplateSelector = ({
 
   // Get event type for suggestions
   const eventType = event?.category || event?.type || 
-                   event?.title?.toLowerCase().split(' ')[0] || 
+                   (typeof event?.title === 'string' ? event.title.toLowerCase().split(' ')[0] : null) || 
                    'general';
 
   // Load templates on mount
@@ -51,21 +56,21 @@ const TemplateSelector = ({
         await fetchTemplates();
         
         // Get suggested templates based on event type and phase
-        const suggested = await getSuggestedTemplates(eventType, phase);
+        const suggested = await getSuggestedTemplates(eventType, effectivePhase);
         setSuggestedTemplates(suggested);
 
         // Get phase-specific templates
-        const phaseTemplates = getTemplatesByPhase(phase);
+        const phaseTemplates = getTemplatesByPhase(effectivePhase);
         
         // Get recent templates for this phase
         const recent = getRecentlyUsedTemplates(5).filter(t => 
-          t.phase === phase || t.phase === 'all'
+          t.phase === effectivePhase || t.phase === 'all'
         );
         setRecentTemplates(recent);
 
         // Combine user templates with prebuilt templates
         const prebuilt = getPrebuiltTemplates().filter(t => 
-          t.phase === phase || t.phase === 'all'
+          t.phase === effectivePhase || t.phase === 'all'
         );
         
         const combined = [...phaseTemplates, ...prebuilt];
@@ -86,7 +91,7 @@ const TemplateSelector = ({
     };
 
     loadTemplates();
-  }, [eventType, phase]);
+  }, [eventType, effectivePhase]);
 
   // Filter templates based on search
   useEffect(() => {
@@ -113,9 +118,9 @@ const TemplateSelector = ({
   }, [searchTerm, activeTab, suggestedTemplates, recentTemplates, allTemplates]);
 
   const handleTemplateSelect = async (template) => {
-    if (onSelect) {
+    if (handleSelect) {
       try {
-        await onSelect(template);
+        await handleSelect(template);
         onClose();
       } catch (error) {
         console.error('Error applying template:', error);
@@ -181,8 +186,8 @@ const TemplateSelector = ({
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
           <div>
             <h2 className="text-xl font-semibold text-gray-900 flex items-center">
-              <span className="text-2xl mr-3">{getPhaseIcon(phase)}</span>
-              Select {getPhaseLabel(phase)} Template
+              <span className="text-2xl mr-3">{getPhaseIcon(effectivePhase)}</span>
+              Select {getPhaseLabel(effectivePhase)} Template
             </h2>
             <p className="text-sm text-gray-600 mt-1">
               {event ? `For: ${event.title}` : `Choose a template to get started`}

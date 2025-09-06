@@ -1,14 +1,14 @@
 import React, { useState } from 'react';
-import { Settings as SettingsIcon, User, Bell, Shield, Calendar, MessageCircle } from 'lucide-react';
-import CalendarSync from '../components/settings/CalendarSync';
+import { Settings as SettingsIcon, User, Bell, Shield, MessageCircle, MapPin } from 'lucide-react';
 import TelegramSetup from '../components/settings/TelegramSetup';
+import AddressManager from '../components/settings/AddressManager';
 
 const Settings = () => {
-  const [activeTab, setActiveTab] = useState('calendar');
+  const [activeTab, setActiveTab] = useState('profile');
 
   const tabs = [
     { id: 'profile', label: 'Profile', icon: User },
-    { id: 'calendar', label: 'Calendar Sync', icon: Calendar },
+    { id: 'addresses', label: 'Addresses', icon: MapPin },
     { id: 'telegram', label: 'Telegram Bot', icon: MessageCircle },
     { id: 'notifications', label: 'Notifications', icon: Bell },
     { id: 'privacy', label: 'Privacy & Security', icon: Shield }
@@ -16,8 +16,8 @@ const Settings = () => {
 
   const renderTabContent = () => {
     switch (activeTab) {
-      case 'calendar':
-        return <CalendarSync />;
+      case 'addresses':
+        return <AddressManager />;
       case 'telegram':
         return <TelegramSetup />;
       case 'profile':

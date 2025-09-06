@@ -19,10 +19,21 @@ import {
   Wifi,
   WifiOff,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  Trash2,
+  Star,
+  X,
+  RefreshCw,
+  Edit2,
+  LayoutTemplate
 } from 'lucide-react';
 import { eventContextService } from '../../services/eventContext';
+import api from '../../services/api';
 import PreparationCustomizer from './PreparationCustomizer';
+import TemplateSelector from '../templates/TemplateSelector';
+import LineItemTemplateSelector from '../templates/LineItemTemplateSelector';
+import SmartTaskItem from '../timeline/SmartTaskItem';
+import PersonAssignment from '../common/PersonAssignment';
 import { useEventTemplateStore } from '../../stores/eventTemplateStore';
 import { useAuthStore } from '../../stores/authStore';
 
@@ -43,6 +54,10 @@ const PreparationTimeline = ({ event, className = '', socket }) => {
   const [templateSuggestion, setTemplateSuggestion] = useState(null);
   const [usingTemplate, setUsingTemplate] = useState(false);
   const [templateApplied, setTemplateApplied] = useState(false);
+  const [showReplaceOptions, setShowReplaceOptions] = useState(false);
+  const [editingTaskIndex, setEditingTaskIndex] = useState(null);
+  const [editingTaskData, setEditingTaskData] = useState(null);
+  const [showTemplateSelectorForTask, setShowTemplateSelectorForTask] = useState(null);
 
   // Database integration functions
   const fetchTimelineFromDatabase = async () => {
@@ -50,12 +65,10 @@ const PreparationTimeline = ({ event, className = '', socket }) => {
     
     try {
       setLoading(true);
-      const response = await fetch(`/api/calendar/events/${event.id}/timeline`, {
-        credentials: 'include'
-      });
+      const response = await api.get(`/calendar/events/${event.id}/timeline`);
       
-      if (response.ok) {
-        const data = await response.json();
+      if (response.status === 200) {
+        const data = response.data;
         setTimelineData(data);
         setCompletedTasks(new Set(data.completedTasks || []));
         setError(null);
@@ -94,17 +107,10 @@ const PreparationTimeline = ({ event, className = '', socket }) => {
     
     if (isOnline) {
       try {
-        const response = await fetch(`/api/calendar/events/${event.id}/timeline`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          credentials: 'include',
-          body: JSON.stringify(updateData)
-        });
+        const response = await api.put(`/calendar/events/${event.id}/timeline`, updateData);
         
-        if (response.ok) {
-          const data = await response.json();
+        if (response.status === 200) {
+          const data = response.data;
           setTimelineData(data);
           setError(null);
           
@@ -145,17 +151,10 @@ const PreparationTimeline = ({ event, className = '', socket }) => {
     
     for (const update of pendingUpdates) {
       try {
-        const response = await fetch(`/api/calendar/events/${event.id}/timeline`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          credentials: 'include',
-          body: JSON.stringify(update)
-        });
+        const response = await api.put(`/calendar/events/${event.id}/timeline`, update);
         
-        if (response.ok) {
-          const data = await response.json();
+        if (response.status === 200) {
+          const data = response.data;
           setTimelineData(data);
           setPendingUpdates(prev => prev.filter(u => u !== update));
         }
@@ -530,6 +529,33 @@ const PreparationTimeline = ({ event, className = '', socket }) => {
     return 'border-gray-200 bg-white';
   };
 
+  const handleSmartTaskUpdate = async (updatedTask) => {
+    // Handle updates from SmartTaskItem components
+    // Find the task in the timeline and update it
+    const taskIndex = timeline.findIndex(task => 
+      task.id === updatedTask.id || `task-${timeline.indexOf(task)}` === updatedTask.id
+    );
+    
+    if (taskIndex !== -1) {
+      const updatedTimeline = [...timeline];
+      updatedTimeline[taskIndex] = {
+        ...updatedTimeline[taskIndex],
+        templateData: updatedTask.templateData,
+        // Update other fields as needed
+      };
+      
+      // Save to database
+      await saveTimelineToDatabase(updatedTimeline, Array.from(completedTasks), currentTimelineData?.isCustom || false);
+      
+      // Update local state if needed
+      setCustomTimeline(updatedTimeline);
+      setTimelineData(prev => ({
+        ...prev,
+        timeline: updatedTimeline
+      }));
+    }
+  };
+
   const toggleTaskComplete = async (index) => {
     const wasCompleted = completedTasks.has(index);
     const newCompleted = new Set(completedTasks);
@@ -580,6 +606,91 @@ const PreparationTimeline = ({ event, className = '', socket }) => {
 
   const status = getTimelineStatus();
 
+  const handleDeleteTask = (taskIndex) => {
+    const newTimeline = timeline.filter((_, index) => index !== taskIndex);
+    
+    // Update completed tasks indices
+    const newCompleted = new Set();
+    completedTasks.forEach(idx => {
+      if (idx < taskIndex) {
+        newCompleted.add(idx);
+      } else if (idx > taskIndex) {
+        newCompleted.add(idx - 1);
+      }
+    });
+    setCompletedTasks(newCompleted);
+    
+    // Update timeline
+    setCustomTimeline(newTimeline);
+    setTimelineData(prev => ({
+      ...prev,
+      timeline: newTimeline,
+      isCustom: true
+    }));
+    
+    // Save to database
+    saveTimelineToDatabase(newTimeline, Array.from(newCompleted), true);
+    
+    // Emit WebSocket event for real-time sync
+    if (socket) {
+      socket.emit('timeline-customized', {
+        eventId: event.id,
+        customTimeline: newTimeline,
+        isCustom: true
+      });
+    }
+  };
+
+  const handleEditTask = (index) => {
+    const task = timeline[index];
+    setEditingTaskIndex(index);
+    setEditingTaskData({
+      activity: task.activity,
+      note: task.note || '',
+      time: task.time,
+      duration: task.duration || 0,
+      type: task.type
+    });
+  };
+
+  const handleSaveEditTask = async () => {
+    if (editingTaskIndex === null || !editingTaskData) return;
+    
+    const updatedTimeline = [...timeline];
+    updatedTimeline[editingTaskIndex] = {
+      ...updatedTimeline[editingTaskIndex],
+      ...editingTaskData
+    };
+    
+    setCustomTimeline(updatedTimeline);
+    setEditingTaskIndex(null);
+    setEditingTaskData(null);
+    
+    // Save to database
+    await saveTimelineToDatabase(updatedTimeline, Array.from(completedTasks), true);
+  };
+
+  const handleAddTemplateToTask = async (index, template) => {
+    // Prevent duplicate additions
+    if (timeline[index].templateType) {
+      console.warn('Task already has a template');
+      return;
+    }
+    
+    const updatedTimeline = [...timeline];
+    updatedTimeline[index] = {
+      ...updatedTimeline[index],
+      templateType: template.type || 'driving',
+      templateData: template.templateData || {}
+    };
+    
+    setCustomTimeline(updatedTimeline);
+    setShowTemplateSelectorForTask(null);
+    
+    // Save to database
+    await saveTimelineToDatabase(updatedTimeline, Array.from(completedTasks), true);
+  };
+
   const handleSaveCustomTimeline = async (newTimeline) => {
     setCustomTimeline(newTimeline);
     setShowCustomizer(false);
@@ -617,6 +728,46 @@ const PreparationTimeline = ({ event, className = '', socket }) => {
         isCustom: true
       });
     }
+  };
+
+  const handleRemoveTimeline = () => {
+    if (window.confirm('Are you sure you want to remove this preparation timeline?')) {
+      // Clear timeline data from localStorage
+      localStorage.removeItem(`event-timeline-${event.id}`);
+      localStorage.removeItem(`event-${event.id}-preparation`);
+      localStorage.removeItem(`task-actions-${event.id}`);
+      
+      // Clear state
+      setCustomTimeline(null);
+      setTimelineData(null);
+      setCompletedTasks(new Set());
+      setUsingTemplate(false);
+      setTemplateApplied(false);
+      
+      // Mark event as not AI enriched if removing both timelines
+      const postEventData = localStorage.getItem(`event-${event.id}-postEvent`);
+      if (!postEventData) {
+        event.ai_enriched = false;
+      }
+      
+      // Trigger parent re-render if update function provided
+      if (event.onUpdate) {
+        event.onUpdate({ ...event, ai_enriched: false });
+      }
+    }
+  };
+
+  const handleReplaceTimeline = () => {
+    setShowReplaceOptions(true);
+  };
+
+  const handleTemplateSelect = async (template) => {
+    if (template) {
+      await applyTemplate(template);
+      setUsingTemplate(true);
+      setTemplateApplied(true);
+    }
+    setShowReplaceOptions(false);
   };
 
   return (
@@ -659,6 +810,22 @@ const PreparationTimeline = ({ event, className = '', socket }) => {
               </div>
             </button>
             <div className="flex items-center space-x-2">
+              {/* Remove/Replace Buttons */}
+              <button
+                onClick={handleReplaceTimeline}
+                className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                title="Replace with Different Template"
+              >
+                <RefreshCw className="h-4 w-4" />
+              </button>
+              <button
+                onClick={handleRemoveTimeline}
+                className="p-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                title="Remove Entire Timeline"
+              >
+                <X className="h-4 w-4" />
+              </button>
+              
               {/* Connection Status Indicator */}
               <div className="flex items-center space-x-1">
                 {isOnline ? (
@@ -748,6 +915,34 @@ const PreparationTimeline = ({ event, className = '', socket }) => {
             const isOverdue = isTaskOverdue(task.time);
             const timeUntil = formatTimeUntil(task.time);
             
+            // Check if this task has a templateType and should use SmartTaskItem
+            if (task.templateType) {
+              // Convert task to SmartTaskItem format
+              const smartTask = {
+                id: task.id || `task-${index}`,
+                title: task.activity,
+                description: task.note || '',
+                dueDate: task.time,
+                completed: isCompleted,
+                templateType: task.templateType,
+                templateData: task.templateData || {},
+                priority: task.priority || 'medium',
+                type: task.type,
+                assignedTo: task.assignedTo || null
+              };
+              
+              return (
+                <div key={index} className="relative">
+                  <SmartTaskItem 
+                    task={smartTask}
+                    onEdit={handleSmartTaskUpdate}
+                    event={event}
+                  />
+                </div>
+              );
+            }
+            
+            // Regular task rendering for tasks without templateType
             return (
               <div
                 key={index}
@@ -796,6 +991,40 @@ const PreparationTimeline = ({ event, className = '', socket }) => {
                         }`}>
                           {formatTime(new Date(task.time))}
                         </span>
+                        <PersonAssignment
+                          value={task.assignedTo}
+                          onChange={(assigneeId) => {
+                            const updatedTimeline = [...timeline];
+                            updatedTimeline[index] = {
+                              ...updatedTimeline[index],
+                              assignedTo: assigneeId
+                            };
+                            setCustomTimeline(updatedTimeline);
+                            saveTimelineToDatabase(updatedTimeline, Array.from(completedTasks), true);
+                          }}
+                          compact={true}
+                        />
+                        <button
+                          onClick={() => setShowTemplateSelectorForTask(index)}
+                          className="p-1 text-gray-400 hover:text-blue-600 rounded transition-colors"
+                          title="Add template"
+                        >
+                          <LayoutTemplate className="h-4 w-4" />
+                        </button>
+                        <button
+                          onClick={() => handleEditTask(index)}
+                          className="p-1 text-gray-400 hover:text-blue-600 rounded transition-colors"
+                          title="Edit task"
+                        >
+                          <Edit2 className="h-4 w-4" />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteTask(index)}
+                          className="p-1 text-gray-400 hover:text-red-600 rounded transition-colors"
+                          title="Delete task"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
                       </div>
                     </div>
                     
@@ -871,6 +1100,92 @@ const PreparationTimeline = ({ event, className = '', socket }) => {
         timeline={timeline}
         onSave={handleSaveCustomTimeline}
         onClose={() => setShowCustomizer(false)}
+      />
+    )}
+    
+    {/* Edit Task Modal */}
+    {editingTaskIndex !== null && editingTaskData && (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+          <h3 className="text-lg font-semibold mb-4">Edit Task</h3>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Task</label>
+              <input
+                type="text"
+                value={editingTaskData.activity}
+                onChange={(e) => setEditingTaskData({...editingTaskData, activity: e.target.value})}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Note</label>
+              <textarea
+                value={editingTaskData.note}
+                onChange={(e) => setEditingTaskData({...editingTaskData, note: e.target.value})}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                rows="3"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Duration (minutes)</label>
+              <input
+                type="number"
+                value={editingTaskData.duration}
+                onChange={(e) => setEditingTaskData({...editingTaskData, duration: parseInt(e.target.value) || 0})}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <div>
+              <PersonAssignment
+                value={editingTaskData.assignedTo}
+                onChange={(assigneeId) => setEditingTaskData({...editingTaskData, assignedTo: assigneeId})}
+                showLabel={true}
+                label="Assigned to"
+                placeholder="Select person..."
+              />
+            </div>
+          </div>
+          <div className="flex justify-end space-x-3 mt-6">
+            <button
+              onClick={() => {setEditingTaskIndex(null); setEditingTaskData(null);}}
+              className="px-4 py-2 text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleSaveEditTask}
+              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+            >
+              Save
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+    
+    {/* Line Item Template Selector Modal for Task */}
+    {showTemplateSelectorForTask !== null && (
+      <LineItemTemplateSelector
+        onSelect={(template) => {
+          // Using onSelect to add line item template
+          const taskIndex = showTemplateSelectorForTask;
+          setShowTemplateSelectorForTask(null); // Clear immediately
+          if (template) {
+            handleAddTemplateToTask(taskIndex, template);
+          }
+        }}
+        onClose={() => setShowTemplateSelectorForTask(null)}
+      />
+    )}
+    
+    {/* Template Selector Modal */}
+    {showReplaceOptions && (
+      <TemplateSelector
+        event={event}
+        onSelectTemplate={handleTemplateSelect}
+        onClose={() => setShowReplaceOptions(false)}
+        mode="preparation"
       />
     )}
     </>

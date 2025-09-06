@@ -14,11 +14,16 @@ import {
   Archive,
   Star,
   CheckCircle,
-  Circle
+  Circle,
+  Trash2,
+  X,
+  RefreshCw
 } from 'lucide-react';
 import { useEventTemplateStore } from '../../stores/eventTemplateStore';
 import { useAuthStore } from '../../stores/authStore';
 import { eventContextService } from '../../services/eventContext';
+import TemplateSelector from '../templates/TemplateSelector';
+import SmartTaskItem from '../timeline/SmartTaskItem';
 
 const PostEventTimeline = ({ event, className = '', socket }) => {
   const { user } = useAuthStore();
@@ -29,6 +34,7 @@ const PostEventTimeline = ({ event, className = '', socket }) => {
   const [templateSuggestion, setTemplateSuggestion] = useState(null);
   const [usingTemplate, setUsingTemplate] = useState(false);
   const [customTasks, setCustomTasks] = useState([]);
+  const [showReplaceOptions, setShowReplaceOptions] = useState(false);
   
   if (!event) return null;
 
@@ -267,6 +273,43 @@ const PostEventTimeline = ({ event, className = '', socket }) => {
     }
   };
 
+  const handleDeleteTask = (taskId) => {
+    // Remove task from the list
+    const newTasks = tasks.filter(task => task.id !== taskId);
+    
+    // Remove from completed tasks if it was completed
+    const newCompleted = new Set(completedTasks);
+    newCompleted.delete(taskId);
+    setCompletedTasks(newCompleted);
+    
+    // Update custom tasks or generated tasks
+    if (customTasks.length > 0) {
+      setCustomTasks(newTasks);
+    } else {
+      // For generated tasks, we need to save the removal
+      localStorage.setItem(`post-event-removed-${event.id}`, JSON.stringify(
+        [...(JSON.parse(localStorage.getItem(`post-event-removed-${event.id}`) || '[]')), taskId]
+      ));
+    }
+    
+    // Save updated completion state
+    localStorage.setItem(`post-event-${event.id}`, JSON.stringify(Array.from(newCompleted)));
+  };
+
+  const handleSmartTaskUpdate = (updatedTask) => {
+    // Handle updates from SmartTaskItem components
+    // Update the task in the customTasks array if it exists
+    if (customTasks.length > 0) {
+      const updatedCustomTasks = customTasks.map(task =>
+        task.id === updatedTask.id
+          ? { ...task, templateData: updatedTask.templateData }
+          : task
+      );
+      setCustomTasks(updatedCustomTasks);
+    }
+    // For generated tasks, we would need to handle differently if needed
+  };
+
   const toggleTaskComplete = (taskId) => {
     const newCompleted = new Set(completedTasks);
     if (newCompleted.has(taskId)) {
@@ -292,8 +335,70 @@ const PostEventTimeline = ({ event, className = '', socket }) => {
     }
   }, [event.id]);
 
-  const generatedTasks = generatePostEventTasks();
+  // Filter out removed tasks
+  const removedTaskIds = JSON.parse(localStorage.getItem(`post-event-removed-${event.id}`) || '[]');
+  const generatedTasks = generatePostEventTasks().filter(task => !removedTaskIds.includes(task.id));
   const tasks = customTasks.length > 0 ? customTasks : generatedTasks;
+
+  const handleRemoveTimeline = () => {
+    if (window.confirm('Are you sure you want to remove this post-event follow-up timeline?')) {
+      // Clear timeline data from localStorage
+      localStorage.removeItem(`post-event-${event.id}`);
+      localStorage.removeItem(`post-event-removed-${event.id}`);
+      localStorage.removeItem(`event-${event.id}-postEvent`);
+      
+      // Clear state
+      setCustomTasks([]);
+      setCompletedTasks(new Set());
+      setUsingTemplate(false);
+      
+      // Mark event as not AI enriched if removing both timelines
+      const preparationData = localStorage.getItem(`event-${event.id}-preparation`);
+      if (!preparationData) {
+        event.ai_enriched = false;
+      }
+      
+      // Trigger parent re-render if update function provided
+      if (event.onUpdate) {
+        event.onUpdate({ ...event, ai_enriched: false });
+      }
+    }
+  };
+
+  const handleReplaceTimeline = () => {
+    setShowReplaceOptions(true);
+  };
+
+  const handleTemplateSelect = async (template) => {
+    if (template && template.post_event_timeline) {
+      const postEventTasks = Array.isArray(template.post_event_timeline)
+        ? template.post_event_timeline
+        : JSON.parse(template.post_event_timeline || '[]');
+      
+      // Convert template tasks to actual tasks with proper timing
+      const eventEndTime = new Date(event.end_time || event.start_time);
+      const convertedTasks = postEventTasks.map(task => ({
+        ...task,
+        time: new Date(eventEndTime.getTime() + (task.hoursAfter || 1) * 60 * 60 * 1000),
+        icon: getIconFromName(task.icon || 'FileText')
+      }));
+      
+      setCustomTasks(convertedTasks);
+      setUsingTemplate(true);
+      
+      // Clear any removed tasks since we're using a new template
+      localStorage.removeItem(`post-event-removed-${event.id}`);
+    }
+    setShowReplaceOptions(false);
+  };
+
+  const getIconFromName = (iconName) => {
+    const icons = {
+      FileText, Calendar, Heart, Camera, DollarSign,
+      UserCheck, MessageSquare, Archive, Star, CheckCircle2
+    };
+    return icons[iconName] || FileText;
+  };
 
   const formatTime = (date) => {
     const now = new Date();
@@ -357,6 +462,24 @@ const PostEventTimeline = ({ event, className = '', socket }) => {
             </div>
           </div>
           <div className="flex items-center space-x-2">
+            {!isCollapsed && (
+              <>
+                <button
+                  onClick={handleReplaceTimeline}
+                  className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                  title="Replace with Different Template"
+                >
+                  <RefreshCw className="h-4 w-4" />
+                </button>
+                <button
+                  onClick={handleRemoveTimeline}
+                  className="p-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                  title="Remove Entire Timeline"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </>
+            )}
             <span className="text-sm font-medium text-gray-500">
               {isCollapsed ? 'Show' : 'Hide'} timeline
             </span>
@@ -416,6 +539,36 @@ const PostEventTimeline = ({ event, className = '', socket }) => {
               const Icon = task.icon;
               const colorClasses = getColorClasses(task.color);
               
+              // Check if this task has a templateType and should use SmartTaskItem
+              if (task.templateType) {
+                // Convert task to SmartTaskItem format
+                const smartTask = {
+                  id: task.id,
+                  title: task.title,
+                  description: task.description,
+                  dueDate: task.time,
+                  completed: completedTasks.has(task.id),
+                  templateType: task.templateType,
+                  templateData: task.templateData || {},
+                  priority: task.priority || 'medium',
+                  type: task.type || 'follow-up'
+                };
+                
+                return (
+                  <div key={task.id} className="relative">
+                    {/* Connection line */}
+                    {index < tasks.length - 1 && (
+                      <div className="absolute left-5 top-10 w-0.5 h-full bg-gray-200" />
+                    )}
+                    <SmartTaskItem 
+                      task={smartTask}
+                      onEdit={handleSmartTaskUpdate}
+                    />
+                  </div>
+                );
+              }
+              
+              // Regular task rendering for tasks without templateType
               return (
                 <div key={task.id} className="relative">
                   {/* Connection line */}
@@ -451,10 +604,19 @@ const PostEventTimeline = ({ event, className = '', socket }) => {
                             ? 'line-through text-gray-500' 
                             : 'text-gray-900'
                         }`}>{task.title}</h4>
-                        <span className="text-sm text-gray-500 flex items-center space-x-1">
-                          <Clock className="h-3 w-3" />
-                          <span>{formatTime(task.time)}</span>
-                        </span>
+                        <div className="flex items-center space-x-2">
+                          <span className="text-sm text-gray-500 flex items-center space-x-1">
+                            <Clock className="h-3 w-3" />
+                            <span>{formatTime(task.time)}</span>
+                          </span>
+                          <button
+                            onClick={() => handleDeleteTask(task.id)}
+                            className="p-1 text-gray-400 hover:text-red-600 rounded transition-colors"
+                            title="Delete task"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
                       </div>
                       <p className={`text-sm mt-1 ${
                         completedTasks.has(task.id) ? 'text-gray-400' : 'text-gray-600'
@@ -501,6 +663,16 @@ const PostEventTimeline = ({ event, className = '', socket }) => {
             </div>
           </div>
         </div>
+      )}
+      
+      {/* Template Selector Modal */}
+      {showReplaceOptions && (
+        <TemplateSelector
+          event={event}
+          onSelectTemplate={handleTemplateSelect}
+          onClose={() => setShowReplaceOptions(false)}
+          mode="post-event"
+        />
       )}
     </div>
   );

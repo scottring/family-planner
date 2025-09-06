@@ -871,6 +871,31 @@ function initializeDatabase() {
 
   console.log('Added calendar_selections table for storing specific Google calendar IDs and context mappings');
 
+  // Add family addresses table for storing common locations
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS family_addresses (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+      label TEXT NOT NULL,
+      address TEXT NOT NULL,
+      type TEXT CHECK(type IN ('home', 'work', 'school', 'other')) DEFAULT 'other',
+      is_primary BOOLEAN DEFAULT FALSE,
+      notes TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(user_id, label)
+    )
+  `);
+
+  // Create indexes for family addresses
+  db.exec(`
+    CREATE INDEX IF NOT EXISTS idx_family_addresses_user_id ON family_addresses(user_id);
+    CREATE INDEX IF NOT EXISTS idx_family_addresses_type ON family_addresses(type);
+    CREATE INDEX IF NOT EXISTS idx_family_addresses_is_primary ON family_addresses(is_primary);
+  `);
+
+  console.log('Added family_addresses table for storing common locations');
+
   // Add user templates table for comprehensive Templates & Checklists system
   db.exec(`
     CREATE TABLE IF NOT EXISTS user_templates (

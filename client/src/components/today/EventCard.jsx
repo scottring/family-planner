@@ -22,6 +22,7 @@ import TemplateSelector from '../templates/TemplateSelector';
 import TemplateEditor from '../templates/TemplateEditor';
 import DuringEventChecklist from '../templates/DuringEventChecklist';
 import { useTemplateStore } from '../../stores/templateStore';
+import { useEventStore } from '../../stores/eventStore';
 
 const eventTypeColors = {
   school: 'border-l-blue-500 bg-white',
@@ -67,6 +68,7 @@ const EventCard = ({
   
   // Template store
   const { applyTemplateToEvent } = useTemplateStore();
+  const { updateEvent } = useEventStore();
 
   const formatTime = (timeStr) => {
     if (!timeStr) return '';
@@ -158,12 +160,65 @@ const EventCard = ({
 
   const handleTemplateSelect = async (template) => {
     try {
-      await applyTemplateToEvent(template.id, event.id, templatePhase);
+      const result = await applyTemplateToEvent(template.id, event.id, templatePhase);
       
-      // If it's a during-event template, set the tasks for the checklist
-      if (templatePhase === 'during' && template.items) {
-        setDuringEventTasks(template.items);
-        setShowDuringTasks(true);
+      // Update the event to mark it as enriched and refresh
+      if (result && result.success) {
+        // Mark event as AI enriched so timelines show
+        event.ai_enriched = true;
+        
+        // Update event in store to trigger re-render of timelines
+        await updateEvent(event.id, { ai_enriched: true });
+        
+        // Convert template items to timeline format for PreparationTimeline
+        if (templatePhase === 'pre' && result.template && result.template.items) {
+          const eventTime = new Date(event.start_time);
+          const timeline = result.template.items.map((item, index) => ({
+            id: item.id || `task-${index}`,
+            activity: item.text,
+            time: new Date(eventTime.getTime() - (60 - index * 10) * 60 * 1000), // Space tasks before event
+            type: item.category || 'preparation',
+            priority: item.priority || 'medium',
+            note: item.notes || '',
+            duration: item.timeEstimate || 5
+          }));
+          
+          // Store timeline in localStorage for PreparationTimeline to pick up
+          localStorage.setItem(`event-timeline-${event.id}`, JSON.stringify(timeline));
+          setShowPreparation(true);
+        }
+        
+        // Convert template items for post-event timeline
+        if (templatePhase === 'post' && result.template && result.template.items) {
+          const eventEndTime = new Date(event.end_time || event.start_time);
+          const timeline = result.template.items.map((item, index) => ({
+            id: item.id || `task-${index}`,
+            activity: item.text,
+            time: new Date(eventEndTime.getTime() + (index * 15) * 60 * 1000), // Space tasks after event
+            type: item.category || 'follow-up',
+            priority: item.priority || 'medium',
+            note: item.notes || '',
+            duration: item.timeEstimate || 5
+          }));
+          
+          // Store timeline for PostEventTimeline
+          localStorage.setItem(`event-post-timeline-${event.id}`, JSON.stringify(timeline));
+          setShowFollowUp(true);
+        }
+        
+        // If it's a during-event template, set the tasks for the checklist
+        if (templatePhase === 'during' && template.items) {
+          setDuringEventTasks(template.items);
+          setShowDuringTasks(true);
+        }
+        
+        // Force a re-render by toggling expanded state
+        if (isExpanded) {
+          setIsExpanded(false);
+          setTimeout(() => setIsExpanded(true), 10);
+        } else {
+          setIsExpanded(true);
+        }
       }
       
       setShowTemplateSelector(false);
@@ -255,11 +310,12 @@ const EventCard = ({
 
   // Large/Expanded view
   return (
-    <div 
-      className={`border-l-4 ${eventTypeColors[event.category || event.type || 'personal']} border border-gray-200 rounded-lg bg-white hover:shadow-lg transition-all duration-200 group overflow-hidden ${className}`}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
-    >
+    <>
+      <div 
+        className={`border-l-4 ${eventTypeColors[event.category || event.type || 'personal']} border border-gray-200 rounded-lg bg-white hover:shadow-lg transition-all duration-200 group overflow-hidden ${className}`}
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
+      >
       {/* Preparation Bar - At the very top edge */}
       <div className={`w-full flex items-center justify-between border-b border-gray-200 ${
         showPrep 
@@ -289,7 +345,9 @@ const EventCard = ({
           ) : (
             <div className="text-sm text-blue-700">
               <p>Add preparation tasks for this event</p>
-              <button className="mt-2 text-xs bg-blue-600 text-white px-3 py-1 rounded-md hover:bg-blue-700 transition-colors">
+              <button 
+                onClick={() => openTemplateSelector('pre')}
+                className="mt-2 text-xs bg-blue-600 text-white px-3 py-1 rounded-md hover:bg-blue-700 transition-colors">
                 Add Task
               </button>
             </div>
@@ -492,6 +550,11 @@ const EventCard = ({
                     // Handle note addition
                     console.log('Note added:', taskIndex, note);
                   }}
+                  onDeleteTask={(taskIndex) => {
+                    // Remove task from duringEventTasks
+                    const newTasks = duringEventTasks.filter((_, idx) => idx !== taskIndex);
+                    setDuringEventTasks(newTasks);
+                  }}
                   onComplete={(completionData) => {
                     // Handle checklist completion
                     console.log('Checklist completed:', completionData);
@@ -571,8 +634,9 @@ const EventCard = ({
           ➕ Template
         </button>
       </div>
+    </div>
 
-      {/* Template Selector Modal */}
+    {/* Template Selector Modal */}
       {showTemplateSelector && (
         <TemplateSelector
           phase={templatePhase}
@@ -590,7 +654,7 @@ const EventCard = ({
           onClose={handleCloseTemplateEditor}
         />
       )}
-    </div>
+    </>
   );
 };
 

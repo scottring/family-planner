@@ -68,6 +68,19 @@ class GoogleCalendarService {
     try {
       const { tokens } = await this.oauth2Client.getToken(code);
       
+      console.log('🔑 OAuth tokens received:', {
+        hasAccessToken: !!tokens.access_token,
+        hasRefreshToken: !!tokens.refresh_token,
+        tokenType: tokens.token_type,
+        scope: tokens.scope,
+        expiryDate: tokens.expiry_date
+      });
+      
+      if (!tokens.refresh_token) {
+        console.warn('⚠️  No refresh token received! User may need to revoke app access and re-authorize.');
+        console.log('📋 To fix: Go to https://myaccount.google.com/permissions, find this app, remove access, then re-authorize.');
+      }
+      
       // Store tokens in database
       const updateUser = db.prepare(`
         UPDATE users 
@@ -77,6 +90,7 @@ class GoogleCalendarService {
       
       updateUser.run(JSON.stringify(tokens), userId);
       
+      console.log('✅ Tokens stored for user ID:', userId);
       return tokens;
     } catch (error) {
       console.error('OAuth callback error:', error);
@@ -84,8 +98,8 @@ class GoogleCalendarService {
     }
   }
 
-  // Set credentials from stored tokens
-  setUserCredentials(userId) {
+  // Create a new OAuth2Client instance for a specific user
+  createUserOAuth2Client(userId) {
     const user = db.prepare('SELECT google_tokens FROM users WHERE id = ?').get(userId);
     
     if (!user || !user.google_tokens) {
@@ -94,32 +108,66 @@ class GoogleCalendarService {
 
     const tokens = JSON.parse(user.google_tokens);
     
-    if (!this.oauth2Client) {
+    console.log('🔍 Creating OAuth2 client for user ID:', userId);
+    console.log('🔑 Stored tokens check:', {
+      hasAccessToken: !!tokens.access_token,
+      hasRefreshToken: !!tokens.refresh_token,
+      tokenType: tokens.token_type,
+      expiryDate: tokens.expiry_date ? new Date(tokens.expiry_date).toISOString() : 'none'
+    });
+    
+    if (!tokens.refresh_token) {
+      throw new Error('No refresh token available. User needs to re-authorize with Google Calendar.');
+    }
+    
+    const credentials = this.getCredentials();
+    if (!credentials.client_id || !credentials.client_secret) {
       throw new Error('Google Calendar not configured');
     }
     
-    this.oauth2Client.setCredentials(tokens);
+    // Create a new OAuth2Client instance for this user
+    const userOAuth2Client = new google.auth.OAuth2(
+      credentials.client_id,
+      credentials.client_secret,
+      credentials.redirect_uri
+    );
     
-    // Set up automatic token refresh
-    this.oauth2Client.on('tokens', (tokens) => {
-      // Update stored tokens
+    userOAuth2Client.setCredentials(tokens);
+    
+    // Set up automatic token refresh for this specific user
+    userOAuth2Client.on('tokens', (newTokens) => {
+      console.log('🔄 Refreshing tokens for user:', userId);
+      // Merge new tokens with existing ones
+      const updatedTokens = { ...tokens, ...newTokens };
       const updateTokens = db.prepare(`
         UPDATE users SET google_tokens = ? WHERE id = ?
       `);
-      updateTokens.run(JSON.stringify(tokens), userId);
+      updateTokens.run(JSON.stringify(updatedTokens), userId);
     });
+    
+    return userOAuth2Client;
+  }
+
+  // Set credentials from stored tokens (legacy method - kept for compatibility)
+  setUserCredentials(userId) {
+    const userClient = this.createUserOAuth2Client(userId);
+    this.oauth2Client.setCredentials(userClient.credentials);
   }
 
   // Get user's calendar list
   async getUserCalendars(userId) {
-    if (!this.calendar) {
+    if (!this.oauth2Client) {
       return this.getMockCalendars();
     }
 
     try {
-      this.setUserCredentials(userId);
+      // Create user-specific OAuth2Client
+      const userOAuth2Client = this.createUserOAuth2Client(userId);
       
-      const response = await this.calendar.calendarList.list();
+      // Create user-specific calendar instance
+      const userCalendar = google.calendar({ version: 'v3', auth: userOAuth2Client });
+      
+      const response = await userCalendar.calendarList.list();
       
       // Log all calendars for debugging
       console.log('Google Calendar API returned calendars:');
@@ -144,12 +192,16 @@ class GoogleCalendarService {
 
   // Fetch events from Google Calendar
   async fetchEvents(userId, calendarId = 'primary', options = {}) {
-    if (!this.calendar) {
+    if (!this.oauth2Client) {
       return this.getMockEvents();
     }
 
     try {
-      this.setUserCredentials(userId);
+      // Create user-specific OAuth2Client
+      const userOAuth2Client = this.createUserOAuth2Client(userId);
+      
+      // Create user-specific calendar instance
+      const userCalendar = google.calendar({ version: 'v3', auth: userOAuth2Client });
       
       const {
         timeMin = new Date().toISOString(),
@@ -157,7 +209,7 @@ class GoogleCalendarService {
         maxResults = 250
       } = options;
 
-      const response = await this.calendar.events.list({
+      const response = await userCalendar.events.list({
         calendarId,
         timeMin,
         timeMax,

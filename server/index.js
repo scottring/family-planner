@@ -52,6 +52,7 @@ const timelineSuggestionsRoutes = require('./routes/timeline-suggestions');
 const voiceTimelineRoutes = require('./routes/voice-timeline');
 const eventTemplateRoutes = require('./routes/event-templates');
 const templatesRoutes = require('./routes/templates');
+const addressRoutes = require('./routes/addresses');
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {
@@ -88,6 +89,7 @@ app.use(timelineSuggestionsRoutes);
 app.use('/api/voice-timeline', voiceTimelineRoutes);
 app.use('/api/event-templates', eventTemplateRoutes);
 app.use('/api/templates', templatesRoutes);
+app.use('/api/addresses', addressRoutes);
 
 // WebSocket connection
 io.on('connection', (socket) => {

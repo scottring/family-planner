@@ -3,11 +3,27 @@ import { devtools } from 'zustand/middleware';
 
 const API_BASE = '/api/templates';
 
+// Helper function to get auth headers
+const getAuthHeaders = () => {
+  const token = localStorage.getItem('auth-token');
+  const headers = {
+    'Content-Type': 'application/json'
+  };
+  
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+  
+  return headers;
+};
+
 const useTemplateStore = create(
   devtools((set, get) => ({
     // State
     templates: [],
-    categories: ['preparation', 'during', 'follow-up', 'routine', 'sop'],
+    lineItemTemplates: [],
+    categories: ['preparation', 'during', 'follow-up', 'routine', 'sop', 'line-item'],
+    templateTypes: ['timeline', 'line-item'],
     phases: ['pre', 'during', 'post', 'all'],
     loading: false,
     error: null,
@@ -27,6 +43,7 @@ const useTemplateStore = create(
         if (filters.order) params.append('order', filters.order);
         
         const response = await fetch(`${API_BASE}?${params}`, {
+          headers: getAuthHeaders(),
           credentials: 'include'
         });
         
@@ -59,9 +76,7 @@ const useTemplateStore = create(
       try {
         const response = await fetch(API_BASE, {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
+          headers: getAuthHeaders(),
           credentials: 'include',
           body: JSON.stringify(templateData)
         });
@@ -95,9 +110,7 @@ const useTemplateStore = create(
       try {
         const response = await fetch(`${API_BASE}/${id}`, {
           method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json'
-          },
+          headers: getAuthHeaders(),
           credentials: 'include',
           body: JSON.stringify(updates)
         });
@@ -133,6 +146,7 @@ const useTemplateStore = create(
       try {
         const response = await fetch(`${API_BASE}/${id}`, {
           method: 'DELETE',
+          headers: getAuthHeaders(),
           credentials: 'include'
         });
         
@@ -164,9 +178,7 @@ const useTemplateStore = create(
       try {
         const response = await fetch(`${API_BASE}/${templateId}/apply`, {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
+          headers: getAuthHeaders(),
           credentials: 'include',
           body: JSON.stringify({ event_id: eventId, phase })
         });
@@ -203,6 +215,7 @@ const useTemplateStore = create(
     getSuggestedTemplates: async (eventType, phase = 'pre') => {
       try {
         const response = await fetch(`${API_BASE}/suggested/${eventType}?phase=${phase}`, {
+          headers: getAuthHeaders(),
           credentials: 'include'
         });
         
@@ -236,6 +249,7 @@ const useTemplateStore = create(
     fetchStatistics: async () => {
       try {
         const response = await fetch(`${API_BASE}/statistics`, {
+          headers: getAuthHeaders(),
           credentials: 'include'
         });
         
@@ -259,9 +273,7 @@ const useTemplateStore = create(
       try {
         const response = await fetch(`${API_BASE}/${templateId}/feedback`, {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
+          headers: getAuthHeaders(),
           credentials: 'include',
           body: JSON.stringify({
             application_id: applicationId,
@@ -441,6 +453,59 @@ const useTemplateStore = create(
         .filter(t => t.last_used)
         .sort((a, b) => new Date(b.last_used) - new Date(a.last_used))
         .slice(0, limit);
+    },
+
+    // Line item template methods
+    fetchLineItemTemplates: async () => {
+      try {
+        // For now, use localStorage for line item templates
+        const stored = localStorage.getItem('line-item-templates');
+        const lineItemTemplates = stored ? JSON.parse(stored) : [];
+        set({ lineItemTemplates });
+        return lineItemTemplates;
+      } catch (error) {
+        console.error('Error fetching line item templates:', error);
+        return [];
+      }
+    },
+
+    saveLineItemTemplate: (template) => {
+      const { lineItemTemplates } = get();
+      const newTemplate = {
+        ...template,
+        id: template.id || `line-item-${Date.now()}`,
+        created_at: new Date().toISOString(),
+        template_type: 'line-item'
+      };
+      
+      const updated = [...lineItemTemplates, newTemplate];
+      set({ lineItemTemplates: updated });
+      
+      // Save to localStorage
+      try {
+        localStorage.setItem('line-item-templates', JSON.stringify(updated));
+      } catch (error) {
+        console.error('Error saving line item template:', error);
+      }
+      
+      return newTemplate;
+    },
+
+    deleteLineItemTemplate: (id) => {
+      const { lineItemTemplates } = get();
+      const updated = lineItemTemplates.filter(t => t.id !== id);
+      set({ lineItemTemplates: updated });
+      
+      try {
+        localStorage.setItem('line-item-templates', JSON.stringify(updated));
+      } catch (error) {
+        console.error('Error deleting line item template:', error);
+      }
+    },
+
+    getLineItemTemplatesByCategory: (category) => {
+      const { lineItemTemplates } = get();
+      return lineItemTemplates.filter(t => t.category === category);
     }
   }), {
     name: 'template-store'
