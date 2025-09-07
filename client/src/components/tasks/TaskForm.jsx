@@ -1,7 +1,7 @@
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { X, Save } from 'lucide-react';
+import { X, Save, Car, ShoppingCart, Users, Video, LayoutTemplate } from 'lucide-react';
 import { useTaskStore } from '../../stores/taskStore';
 
 const taskSchema = z.object({
@@ -10,6 +10,7 @@ const taskSchema = z.object({
   dueDate: z.string().optional(),
   priority: z.enum(['low', 'medium', 'high']).optional(),
   assignedTo: z.string().optional(),
+  templateType: z.enum(['none', 'driving', 'shopping', 'pickup', 'meeting']).optional(),
 });
 
 const TaskForm = ({ task, onClose, onSave }) => {
@@ -28,6 +29,7 @@ const TaskForm = ({ task, onClose, onSave }) => {
       dueDate: task?.dueDate ? new Date(task.dueDate).toISOString().split('T')[0] : '',
       priority: task?.priority || 'medium',
       assignedTo: task?.assignedTo || '',
+      templateType: task?.templateType || 'none',
     }
   });
 

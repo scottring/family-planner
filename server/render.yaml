@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: itineraries-backend
+    env: node
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: DATABASE_PATH
+        value: ./database/family.db
+      - key: JWT_SECRET
+        generateValue: true
+      - key: CLIENT_URL
+        value: https://itineraries-n72s496w8-scottrings-projects.vercel.app

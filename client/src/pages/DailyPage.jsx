@@ -16,10 +16,8 @@ import { useEventStore } from '../stores/eventStore';
 import { useTaskStore } from '../stores/taskStore';
 import EventCard from '../components/today/EventCard';
 import TimeGapSeparator from '../components/today/TimeGapSeparator';
+import ChecklistComponent from '../components/today/ChecklistComponent';
 import AddItemPlaceholder from '../components/today/AddItemPlaceholder';
-import DraggableTimeline from '../components/today/DraggableTimeline';
-import PreparationTimeline from '../components/coordinator/PreparationTimeline';
-import PostEventTimeline from '../components/coordinator/PostEventTimeline';
 import { formatTime, getWeatherSuggestions } from '../utils/todayHelpers';
 
 const DailyPage = () => {
@@ -101,20 +99,6 @@ const DailyPage = () => {
     }
   };
 
-  const handleReorderEvents = async (reorderedEvents) => {
-    try {
-      // Update each event with new times
-      for (const event of reorderedEvents) {
-        await updateEvent(event.id, {
-          start_time: event.start_time,
-          end_time: event.end_time
-        });
-      }
-    } catch (error) {
-      console.error('Error reordering events:', error);
-    }
-  };
-
   // Combine and sort events with time gaps
   const timelineItems = [];
   
@@ -137,61 +121,51 @@ const DailyPage = () => {
     });
   });
 
-  // Create a unified timeline with all events including their status
-  const allEventsWithStatus = [
-    ...categorizedEvents.pastEvents,
-    ...categorizedEvents.currentEvents, 
-    ...categorizedEvents.nextEvents,
-    ...categorizedEvents.futureEvents
-  ].sort((a, b) => a.parsedStartTime - b.parsedStartTime);
+  const priorityEvents = [...categorizedEvents.currentEvents, ...categorizedEvents.nextEvents];
+  const otherEvents = [...categorizedEvents.pastEvents, ...categorizedEvents.futureEvents];
 
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="container mx-auto px-4 py-6 max-w-4xl">
         {/* Header */}
-        <div className="bg-gradient-to-r from-blue-500 to-purple-600 rounded-xl shadow-lg p-6 mb-6 text-white">
-          {/* Page Title */}
-          <div className="text-center mb-4">
-            <h1 className="text-3xl font-bold text-white">Today's Timeline</h1>
-          </div>
-          
+        <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
             {/* Date Navigation */}
             <div className="flex items-center space-x-4">
               <button
                 onClick={() => handleDateChange('prev')}
-                className="p-2 hover:bg-white/20 rounded-lg transition-colors text-white"
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
                 aria-label="Previous day"
               >
-                <ChevronLeft className="h-5 w-5 text-white" />
+                <ChevronLeft className="h-5 w-5 text-gray-600" />
               </button>
               
               <div className="text-center">
-                <h2 className="text-xl font-semibold text-white">
+                <h1 className="text-2xl font-bold text-gray-900">
                   {format(selectedDate, 'EEEE')}
-                </h2>
-                <p className="text-white/90 text-sm -mt-1">
+                </h1>
+                <p className="text-gray-600">
                   {format(selectedDate, 'MMMM d, yyyy')}
                 </p>
               </div>
               
               <button
                 onClick={() => handleDateChange('next')}
-                className="p-2 hover:bg-white/20 rounded-lg transition-colors text-white"
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
                 aria-label="Next day"
               >
-                <ChevronRight className="h-5 w-5 text-white" />
+                <ChevronRight className="h-5 w-5 text-gray-600" />
               </button>
             </div>
 
             {/* Weather & Controls */}
             <div className="flex items-center space-x-4">
               {/* Weather Widget */}
-              <div className="bg-white/20 backdrop-blur-sm rounded-lg p-3 flex items-center space-x-3">
+              <div className="bg-blue-50 rounded-lg p-3 flex items-center space-x-3">
                 <WeatherIcon condition={mockWeather.condition} />
                 <div className="text-sm">
-                  <p className="font-semibold text-white">{mockWeather.temperature}°F</p>
-                  <p className="text-white/80">{mockWeather.condition}</p>
+                  <p className="font-semibold text-gray-900">{mockWeather.temperature}°F</p>
+                  <p className="text-gray-600">{mockWeather.condition}</p>
                 </div>
               </div>
 
@@ -199,14 +173,14 @@ const DailyPage = () => {
               <div className="flex items-center space-x-2">
                 <button
                   onClick={() => setShowFilters(!showFilters)}
-                  className="p-2 text-white/80 hover:text-white hover:bg-white/20 rounded-lg transition-colors"
+                  className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
                   title="Filter events"
                   aria-label="Filter events"
                 >
                   <Filter className="h-5 w-5" />
                 </button>
                 <button
-                  className="p-2 text-white/80 hover:text-white hover:bg-white/20 rounded-lg transition-colors"
+                  className="p-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors"
                   title="Settings"
                   aria-label="Settings"
                 >
@@ -218,13 +192,13 @@ const DailyPage = () => {
 
           {/* Filters */}
           {showFilters && (
-            <div className="mt-4 pt-4 border-t border-white/20">
+            <div className="mt-4 pt-4 border-t border-gray-200">
               <div className="flex items-center space-x-4">
-                <span className="text-sm font-medium text-white">Show:</span>
+                <span className="text-sm font-medium text-gray-700">Show:</span>
                 <select
                   value={eventTypeFilter}
                   onChange={(e) => setEventTypeFilter(e.target.value)}
-                  className="px-3 py-1 border border-white/30 bg-white/10 text-white rounded-lg text-sm focus:ring-2 focus:ring-white/50 focus:border-transparent"
+                  className="px-3 py-1 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
                   <option value="all">All Events</option>
                   <option value="work">Work</option>
@@ -240,10 +214,35 @@ const DailyPage = () => {
           )}
         </div>
 
+        {/* Priority Events - Current/Next (Large Cards) */}
+        {priorityEvents.length > 0 && (
+          <div className="mb-8">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center space-x-2">
+              <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>
+              <span>Happening Now & Next</span>
+            </h2>
+            <div className="space-y-4">
+              {priorityEvents.map((event) => (
+                <EventCard
+                  key={event.id}
+                  event={event}
+                  variant="large"
+                  autoExpanded={expandedEvents.has(event.id)}
+                  onToggleExpand={toggleEventExpansion}
+                  onEdit={handleEditEvent}
+                  onDelete={handleDeleteEvent}
+                  className="shadow-lg border-2 border-blue-200"
+                />
+              ))}
+            </div>
+          </div>
+        )}
 
-        {/* Unified Timeline View */}
+        {/* Timeline View */}
         <div className="mb-8">
-          {allEventsWithStatus.length === 0 ? (
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">Today's Timeline</h2>
+          
+          {todayEvents.length === 0 ? (
             <div className="bg-white rounded-xl border border-gray-200 p-8 text-center">
               <Calendar className="h-12 w-12 text-gray-400 mx-auto mb-4" />
               <h3 className="text-lg font-medium text-gray-900 mb-2">No events scheduled</h3>
@@ -257,21 +256,120 @@ const DailyPage = () => {
               />
             </div>
           ) : (
-            <DraggableTimeline
-              events={allEventsWithStatus}
-              timeGaps={timeGaps}
-              expandedEvents={expandedEvents}
-              toggleEventExpansion={toggleEventExpansion}
-              onReorderEvents={handleReorderEvents}
-              onAddEvent={handleAddEvent}
-              onAddTask={handleAddTask}
-              onEditEvent={handleEditEvent}
-              onDeleteEvent={handleDeleteEvent}
-              selectedDate={selectedDate}
-            />
+            <div className="space-y-4">
+              {/* Add item at the beginning if there's time before first event */}
+              {todayEvents.length > 0 && todayEvents[0].parsedStartTime.getHours() > 8 && (
+                <AddItemPlaceholder
+                  onAddEvent={handleAddEvent}
+                  onAddTask={handleAddTask}
+                  suggestedTime={new Date(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate(), 8, 0).toISOString()}
+                />
+              )}
+              
+              {timelineItems.map((item, index) => {
+                if (item.type === 'gap') {
+                  return (
+                    <div key={item.id}>
+                      <TimeGapSeparator
+                        startTime={item.data.startTime}
+                        endTime={item.data.endTime}
+                      />
+                      {item.data.duration >= 60 && (
+                        <AddItemPlaceholder
+                          onAddEvent={handleAddEvent}
+                          onAddTask={handleAddTask}
+                          suggestedTime={item.data.startTime}
+                          className="my-4"
+                        />
+                      )}
+                    </div>
+                  );
+                }
+
+                if (item.type === 'event') {
+                  const event = item.data;
+                  const isExpanded = expandedEvents.has(event.id);
+                  const isPriority = priorityEvents.some(pe => pe.id === event.id);
+                  
+                  return (
+                    <div key={event.id} className="space-y-4">
+                      <EventCard
+                        event={event}
+                        variant={isPriority ? "large" : "small"}
+                        autoExpanded={isExpanded}
+                        onToggleExpand={toggleEventExpansion}
+                        onEdit={handleEditEvent}
+                        onDelete={handleDeleteEvent}
+                        className={isPriority ? "opacity-75" : ""}
+                      />
+                      
+                      {/* Show checklists for expanded events */}
+                      {isExpanded && (
+                        <div className="ml-4 space-y-3">
+                          <ChecklistComponent
+                            event={event}
+                            type="before"
+                            className="max-w-md"
+                          />
+                          {event.status === 'current' && (
+                            <ChecklistComponent
+                              event={event}
+                              type="during"
+                              className="max-w-md"
+                            />
+                          )}
+                          {event.status === 'past' && (
+                            <ChecklistComponent
+                              event={event}
+                              type="after"
+                              className="max-w-md"
+                            />
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                }
+
+                return null;
+              })}
+
+              {/* Add item at the end */}
+              <AddItemPlaceholder
+                onAddEvent={handleAddEvent}
+                onAddTask={handleAddTask}
+                suggestedTime={todayEvents.length > 0 ? 
+                  new Date(todayEvents[todayEvents.length - 1].parsedEndTime.getTime() + 60000).toISOString() :
+                  new Date(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate(), 18, 0).toISOString()
+                }
+              />
+            </div>
           )}
         </div>
 
+        {/* Other Events - Collapsed by default */}
+        {otherEvents.length > 0 && (
+          <div className="mb-8">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center space-x-2">
+              <Calendar className="h-5 w-5 text-gray-600" />
+              <span>Other Events</span>
+            </h2>
+            <div className="space-y-2">
+              {otherEvents.map((event) => (
+                <EventCard
+                  key={event.id}
+                  event={event}
+                  variant="small"
+                  autoExpanded={expandedEvents.has(event.id)}
+                  onToggleExpand={toggleEventExpansion}
+                  onEdit={handleEditEvent}
+                  onDelete={handleDeleteEvent}
+                  className={event.status === 'past' ? 'opacity-75' : ''}
+                />
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Quick Stats */}
         <div className="bg-white rounded-xl shadow-sm p-6">

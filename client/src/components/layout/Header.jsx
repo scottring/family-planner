@@ -21,7 +21,7 @@ const Header = ({ onToggleSidebar }) => {
               <Menu className="h-6 w-6" />
             </button>
             
-            <h1 className="ml-4 text-xl font-semibold text-gray-800">Family Planner</h1>
+            <h1 className="ml-4 text-xl font-semibold text-gray-800">Itineraries</h1>
           </div>
           
           {user && (

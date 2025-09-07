@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const auth = require('../middleware/auth');
-const db = require('../config/database').getDb();
+const db = require('../config/database');
 
 // Get all addresses for the authenticated user
 router.get('/', auth, (req, res) => {
