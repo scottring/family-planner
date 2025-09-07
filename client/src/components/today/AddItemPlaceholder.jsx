@@ -32,17 +32,39 @@ const AddItemPlaceholder = ({
     if (!formData.title.trim()) return;
 
     if (itemType === 'event') {
+      // Convert datetime-local format to ISO string or use defaults
+      const now = new Date();
+      let startTime, endTime;
+      
+      if (formData.start_time) {
+        startTime = new Date(formData.start_time).toISOString();
+      } else {
+        startTime = now.toISOString();
+      }
+      
+      if (formData.end_time) {
+        endTime = new Date(formData.end_time).toISOString();
+      } else {
+        endTime = new Date(now.getTime() + 60 * 60 * 1000).toISOString(); // 1 hour later
+      }
+      
       onAddEvent && onAddEvent({
         ...formData,
         title: formData.title.trim(),
         description: formData.description.trim(),
-        location: formData.location.trim()
+        location: formData.location.trim(),
+        start_time: startTime,
+        end_time: endTime
       });
     } else {
+      const dueDate = formData.start_time ? 
+        new Date(formData.start_time).toISOString() : 
+        new Date().toISOString();
+        
       onAddTask && onAddTask({
         title: formData.title.trim(),
         description: formData.description.trim(),
-        due_date: formData.start_time,
+        due_date: dueDate,
         priority: 'medium',
         status: 'pending'
       });
@@ -74,6 +96,11 @@ const AddItemPlaceholder = ({
 
   const formatTimeForInput = (timeStr) => {
     if (!timeStr) return '';
+    // If it's already in datetime-local format (YYYY-MM-DDTHH:mm), return as is
+    if (timeStr.match(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/)) {
+      return timeStr;
+    }
+    // Otherwise convert from ISO string to datetime-local format
     try {
       const date = new Date(timeStr);
       return date.toISOString().slice(0, 16); // YYYY-MM-DDTHH:mm format
@@ -214,6 +241,7 @@ const AddItemPlaceholder = ({
                   type="datetime-local"
                   value={formatTimeForInput(formData.start_time)}
                   onChange={(e) => setFormData({ ...formData, start_time: e.target.value })}
+                  step="900"
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
               </div>
@@ -226,6 +254,7 @@ const AddItemPlaceholder = ({
                   type="datetime-local"
                   value={formatTimeForInput(formData.end_time)}
                   onChange={(e) => setFormData({ ...formData, end_time: e.target.value })}
+                  step="900"
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
               </div>
@@ -243,6 +272,7 @@ const AddItemPlaceholder = ({
                 type="datetime-local"
                 value={formatTimeForInput(formData.start_time)}
                 onChange={(e) => setFormData({ ...formData, start_time: e.target.value })}
+                step="900"
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
             </div>

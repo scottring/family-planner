@@ -14,7 +14,7 @@ import CalendarSettingsPage from './pages/CalendarSettingsPage';
 import TasksPage from './pages/TasksPage';
 import FamilyPage from './pages/FamilyPage';
 import Settings from './pages/Settings';
-import MealPlanner from './components/meals/MealPlanner';
+import MealsPage from './pages/MealsPage';
 import EventDetailPage from './pages/EventDetailPage';
 import SmartInbox from './components/inbox/SmartInbox';
 import PlanningSession from './components/planning/PlanningSession';
@@ -60,7 +60,7 @@ function App() {
             <Route path="event/:id" element={<EventDetailPage />} />
             <Route path="tasks" element={<TasksPage />} />
             <Route path="templates" element={<TemplatesPage />} />
-            <Route path="meals" element={<MealPlanner />} />
+            <Route path="meals" element={<MealsPage />} />
             <Route path="planning" element={<PlanningSession />} />
             <Route path="family" element={<FamilyPage />} />
             <Route path="settings" element={<Settings />} />

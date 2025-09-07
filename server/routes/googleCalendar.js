@@ -232,6 +232,76 @@ router.post('/import', authMiddleware, async (req, res) => {
   }
 });
 
+// Export multiple local events to Google Calendar
+router.post('/export-batch', authMiddleware, async (req, res) => {
+  try {
+    const { eventIds, calendarId = 'primary' } = req.body;
+    
+    if (!eventIds || !Array.isArray(eventIds) || eventIds.length === 0) {
+      return res.status(400).json({ error: 'No events provided' });
+    }
+    
+    const results = {
+      success: [],
+      failed: [],
+      skipped: []
+    };
+    
+    for (const eventId of eventIds) {
+      try {
+        // Get local event
+        const event = db.prepare(
+          'SELECT * FROM events WHERE id = ? AND created_by = ?'
+        ).get(eventId, req.user.id);
+        
+        if (!event) {
+          results.failed.push({ eventId, error: 'Event not found' });
+          continue;
+        }
+        
+        if (event.google_event_id) {
+          results.skipped.push({ eventId, reason: 'Already synced' });
+          continue;
+        }
+        
+        // Create in Google Calendar
+        const googleEvent = await googleCalendarService.createEvent(req.user.id, event, calendarId);
+        
+        // Update local event with Google ID
+        db.prepare(`
+          UPDATE events 
+          SET google_event_id = ?, last_synced = CURRENT_TIMESTAMP 
+          WHERE id = ?
+        `).run(googleEvent.google_event_id, eventId);
+        
+        results.success.push({
+          eventId,
+          googleEventId: googleEvent.google_event_id,
+          title: event.title
+        });
+      } catch (error) {
+        results.failed.push({
+          eventId,
+          error: error.message
+        });
+      }
+    }
+    
+    res.json({
+      success: true,
+      results,
+      summary: {
+        total: eventIds.length,
+        exported: results.success.length,
+        skipped: results.skipped.length,
+        failed: results.failed.length
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Export local event to Google Calendar
 router.post('/export/:eventId', authMiddleware, async (req, res) => {
   try {

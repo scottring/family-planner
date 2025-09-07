@@ -282,6 +282,7 @@ const EventFormWithTemplates = ({
             type="datetime-local"
             value={formData.start_time}
             onChange={(e) => handleInputChange('start_time', e.target.value)}
+            step="900"
             className={`w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
               errors.start_time ? 'border-red-300' : 'border-gray-300'
             }`}
@@ -297,6 +298,7 @@ const EventFormWithTemplates = ({
             type="datetime-local"
             value={formData.end_time}
             onChange={(e) => handleInputChange('end_time', e.target.value)}
+            step="900"
             className={`w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
               errors.end_time ? 'border-red-300' : 'border-gray-300'
             }`}

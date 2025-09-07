@@ -214,31 +214,7 @@ const DailyPage = () => {
           )}
         </div>
 
-        {/* Priority Events - Current/Next (Large Cards) */}
-        {priorityEvents.length > 0 && (
-          <div className="mb-8">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center space-x-2">
-              <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>
-              <span>Happening Now & Next</span>
-            </h2>
-            <div className="space-y-4">
-              {priorityEvents.map((event) => (
-                <EventCard
-                  key={event.id}
-                  event={event}
-                  variant="large"
-                  autoExpanded={expandedEvents.has(event.id)}
-                  onToggleExpand={toggleEventExpansion}
-                  onEdit={handleEditEvent}
-                  onDelete={handleDeleteEvent}
-                  className="shadow-lg border-2 border-blue-200"
-                />
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Timeline View */}
+        {/* Unified Timeline View */}
         <div className="mb-8">
           <h2 className="text-lg font-semibold text-gray-900 mb-4">Today's Timeline</h2>
           
@@ -292,42 +268,16 @@ const DailyPage = () => {
                   const isPriority = priorityEvents.some(pe => pe.id === event.id);
                   
                   return (
-                    <div key={event.id} className="space-y-4">
-                      <EventCard
-                        event={event}
-                        variant={isPriority ? "large" : "small"}
-                        autoExpanded={isExpanded}
-                        onToggleExpand={toggleEventExpansion}
-                        onEdit={handleEditEvent}
-                        onDelete={handleDeleteEvent}
-                        className={isPriority ? "opacity-75" : ""}
-                      />
-                      
-                      {/* Show checklists for expanded events */}
-                      {isExpanded && (
-                        <div className="ml-4 space-y-3">
-                          <ChecklistComponent
-                            event={event}
-                            type="before"
-                            className="max-w-md"
-                          />
-                          {event.status === 'current' && (
-                            <ChecklistComponent
-                              event={event}
-                              type="during"
-                              className="max-w-md"
-                            />
-                          )}
-                          {event.status === 'past' && (
-                            <ChecklistComponent
-                              event={event}
-                              type="after"
-                              className="max-w-md"
-                            />
-                          )}
-                        </div>
-                      )}
-                    </div>
+                    <EventCard
+                      key={event.id}
+                      event={event}
+                      variant={isPriority ? "large" : "small"}
+                      autoExpanded={isExpanded}
+                      onToggleExpand={toggleEventExpansion}
+                      onEdit={handleEditEvent}
+                      onDelete={handleDeleteEvent}
+                      className={isPriority ? "shadow-lg border-2 border-blue-200" : ""}
+                    />
                   );
                 }
 
@@ -347,29 +297,6 @@ const DailyPage = () => {
           )}
         </div>
 
-        {/* Other Events - Collapsed by default */}
-        {otherEvents.length > 0 && (
-          <div className="mb-8">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center space-x-2">
-              <Calendar className="h-5 w-5 text-gray-600" />
-              <span>Other Events</span>
-            </h2>
-            <div className="space-y-2">
-              {otherEvents.map((event) => (
-                <EventCard
-                  key={event.id}
-                  event={event}
-                  variant="small"
-                  autoExpanded={expandedEvents.has(event.id)}
-                  onToggleExpand={toggleEventExpansion}
-                  onEdit={handleEditEvent}
-                  onDelete={handleDeleteEvent}
-                  className={event.status === 'past' ? 'opacity-75' : ''}
-                />
-              ))}
-            </div>
-          </div>
-        )}
 
         {/* Quick Stats */}
         <div className="bg-white rounded-xl shadow-sm p-6">

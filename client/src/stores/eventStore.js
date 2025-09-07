@@ -19,10 +19,25 @@ export const useEventStore = create((set, get) => ({
 
   createEvent: async (eventData) => {
     try {
+      console.log('Creating event with data:', eventData);
+      
+      // Check for duplicate event (same title and start time)
+      const existingEvents = get().events;
+      const duplicate = existingEvents.find(event => 
+        event.title === eventData.title && 
+        new Date(event.start_time).toDateString() === new Date(eventData.start_time).toDateString()
+      );
+      
+      if (duplicate) {
+        console.log('Skipping duplicate event:', eventData.title);
+        return duplicate; // Return existing event instead of creating duplicate
+      }
+      
       const response = await api.post('/calendar/events', eventData);
       set(state => ({ events: [...state.events, response.data] }));
       return response.data;
     } catch (error) {
+      console.error('Event creation error:', error.response?.data || error.message);
       set({ error: error.message });
       throw error;
     }

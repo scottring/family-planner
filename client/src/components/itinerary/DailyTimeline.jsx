@@ -495,7 +495,7 @@ const DailyTimeline = ({ date }) => {
                 day: 'numeric' 
               })}
             </h1>
-            <p className="text-gray-600">Unified Daily Timeline</p>
+            <p className="text-gray-600">Today's Schedule</p>
           </div>
           
           {/* Weather Widget */}
@@ -512,125 +512,35 @@ const DailyTimeline = ({ date }) => {
         </div>
       </div>
 
-      {/* Priority Events - Current/Next (Large Cards) */}
-      {allPriorityEvents.length > 0 && (
-        <div className="space-y-4">
-          <h2 className="text-lg font-semibold text-gray-900 flex items-center space-x-2">
-            <Timer className="h-5 w-5 text-blue-600" />
-            <span>Current & Upcoming</span>
-          </h2>
-          {allPriorityEvents.map((event) => (
-            <DetailedEventCard key={event.id} event={event} />
-          ))}
-        </div>
-      )}
-
-      {/* Unified Timeline */}
+      {/* Unified Timeline with Integrated Cards */}
       <div className="bg-white rounded-lg shadow-sm overflow-hidden">
         <div className="px-6 py-4 border-b border-gray-200">
-          <h2 className="text-lg font-semibold text-gray-900">Daily Timeline</h2>
+          <h2 className="text-lg font-semibold text-gray-900">Today's Timeline</h2>
         </div>
         
-        <div 
-          ref={timelineRef}
-          className="overflow-y-auto max-h-96 scrollbar-thin scrollbar-track-gray-100 scrollbar-thumb-gray-300"
-        >
-          <div className="p-6">
-            <div className="flex">
-              {/* Time Labels */}
-              <div className="w-16 flex-shrink-0">
-                <div className="relative h-96">
-                  {timelineHours.map((hour, index) => (
-                    <div
-                      key={hour.hour24}
-                      className="absolute text-xs text-gray-500 -translate-y-2"
-                      style={{ top: `${(index / (timelineHours.length - 1)) * 100}%` }}
-                    >
-                      {hour.displayShort}
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Timeline Events */}
-              <div className="flex-1 relative ml-4">
-                <div className="relative h-96 border-l-2 border-gray-200">
-                  {/* Current Time Indicator */}
-                  {currentTimePosition !== null && (
-                    <div
-                      className="absolute left-0 w-full border-t-2 border-red-500 z-10"
-                      style={{ top: `${currentTimePosition}%` }}
-                    >
-                      <div className="absolute -left-1 w-2 h-2 bg-red-500 rounded-full"></div>
-                      <div className="absolute left-2 -top-2 text-xs text-red-500 font-medium bg-white px-1">
-                        Now
-                      </div>
-                    </div>
-                  )}
-
-                  {/* All Events on Timeline */}
-                  {todayEvents.map((event) => {
-                    const [startHour, startMinute] = event.time.split(':').map(Number);
-                    const [endHour, endMinute] = event.endTime.split(':').map(Number);
-                    
-                    const totalMinutesInDay = (22 - 6) * 60;
-                    const startMinutesFromStart = (startHour - 6) * 60 + startMinute;
-                    const endMinutesFromStart = (endHour - 6) * 60 + endMinute;
-                    
-                    const top = (startMinutesFromStart / totalMinutesInDay) * 100;
-                    const height = ((endMinutesFromStart - startMinutesFromStart) / totalMinutesInDay) * 100;
-                    
-                    return (
-                      <div
-                        key={event.id}
-                        className={`absolute left-4 right-4 rounded-lg border-l-4 p-2 cursor-pointer hover:shadow-md transition-all ${eventTypeColors[event.type]}`}
-                        style={{ top: `${top}%`, height: `${height}%` }}
-                        onClick={() => navigate(`/event/${event.id}`)}
-                      >
-                        <div className="flex items-center justify-between text-xs">
-                          <span className="font-medium text-gray-900 truncate">{event.title}</span>
-                          <span className="text-gray-500">
-                            {formatTime(event.time)}
-                          </span>
-                        </div>
-                        <div className="flex items-center space-x-2 text-xs text-gray-600 mt-1">
-                          {event.location && (
-                            <div className="flex items-center space-x-1">
-                              <MapPin className="h-2 w-2" />
-                              <span className="truncate">{event.location}</span>
-                            </div>
-                          )}
-                          {event.attendees && event.attendees.length > 0 && (
-                            <div className="flex items-center space-x-1">
-                              <Users className="h-2 w-2" />
-                              <span>{event.attendees.length}</span>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
+        <div className="p-6 space-y-4">
+          {/* Events displayed in chronological order */}
+          {todayEvents.length === 0 ? (
+            <div className="text-center py-12 text-gray-500">
+              <Clock className="h-12 w-12 mx-auto mb-3 text-gray-300" />
+              <p>No events scheduled for today</p>
             </div>
-          </div>
+          ) : (
+            todayEvents.map((event) => {
+              // Check if this is a current or next event for larger display
+              const isCurrentOrNext = allPriorityEvents.some(e => e.id === event.id);
+              
+              if (isCurrentOrNext) {
+                // Show as detailed card
+                return <DetailedEventCard key={event.id} event={event} />;
+              } else {
+                // Show as compact card
+                return <CompactEventCard key={event.id} event={event} />;
+              }
+            })
+          )}
         </div>
       </div>
-
-      {/* Compact Events - Past/Future */}
-      {allCompactEvents.length > 0 && (
-        <div className="space-y-4">
-          <h2 className="text-lg font-semibold text-gray-900 flex items-center space-x-2">
-            <Clock className="h-5 w-5 text-gray-600" />
-            <span>Other Events</span>
-          </h2>
-          <div className="space-y-2">
-            {allCompactEvents.map((event) => (
-              <CompactEventCard key={event.id} event={event} />
-            ))}
-          </div>
-        </div>
-      )}
 
       {/* Logistics Summary */}
       {todayEvents.some(event => event.packing_list?.length > 0 || event.contacts?.length > 0 || event.weather_dependent || event.parking_info) && (
