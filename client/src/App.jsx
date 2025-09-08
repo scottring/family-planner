@@ -17,6 +17,7 @@ import Settings from './pages/Settings';
 import MealsPage from './pages/MealsPage';
 import EventDetailPage from './pages/EventDetailPage';
 import SmartInbox from './components/inbox/SmartInbox';
+import UnifiedTaskManager from './components/tasks/UnifiedTaskManager';
 import PlanningSession from './components/planning/PlanningSession';
 import TemplatesPage from './pages/TemplatesPage';
 import { useAuthStore } from './stores/authStore';
@@ -59,6 +60,7 @@ function App() {
             <Route path="calendar-settings" element={<CalendarSettingsPage />} />
             <Route path="event/:id" element={<EventDetailPage />} />
             <Route path="tasks" element={<TasksPage />} />
+            <Route path="task-manager" element={<UnifiedTaskManager />} />
             <Route path="templates" element={<TemplatesPage />} />
             <Route path="meals" element={<MealsPage />} />
             <Route path="planning" element={<PlanningSession />} />

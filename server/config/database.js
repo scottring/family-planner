@@ -654,6 +654,42 @@ function initializeDatabase() {
       db.exec('ALTER TABLE tasks ADD COLUMN completed BOOLEAN DEFAULT FALSE');
       console.log('Added completed column to tasks table');
     }
+    
+    // Add planning workflow columns
+    if (!taskColumnNames.includes('review_action')) {
+      db.exec("ALTER TABLE tasks ADD COLUMN review_action TEXT CHECK(review_action IN ('completed', 'deferred_this_week', 'deferred_future', 'archived'))");
+      console.log('Added review_action column to tasks table');
+    }
+    
+    if (!taskColumnNames.includes('review_session_id')) {
+      db.exec('ALTER TABLE tasks ADD COLUMN review_session_id TEXT');
+      console.log('Added review_session_id column to tasks table');
+    }
+    
+    if (!taskColumnNames.includes('weekly_commitment_hours')) {
+      db.exec('ALTER TABLE tasks ADD COLUMN weekly_commitment_hours REAL DEFAULT 0');
+      console.log('Added weekly_commitment_hours column to tasks table');
+    }
+    
+    if (!taskColumnNames.includes('committed_session_id')) {
+      db.exec('ALTER TABLE tasks ADD COLUMN committed_session_id TEXT');
+      console.log('Added committed_session_id column to tasks table');
+    }
+    
+    if (!taskColumnNames.includes('committed_at')) {
+      db.exec('ALTER TABLE tasks ADD COLUMN committed_at DATETIME');
+      console.log('Added committed_at column to tasks table');
+    }
+    
+    if (!taskColumnNames.includes('created_from_inbox')) {
+      db.exec('ALTER TABLE tasks ADD COLUMN created_from_inbox BOOLEAN DEFAULT FALSE');
+      console.log('Added created_from_inbox column to tasks table');
+    }
+    
+    if (!taskColumnNames.includes('archived_at')) {
+      db.exec('ALTER TABLE tasks ADD COLUMN archived_at DATETIME');
+      console.log('Added archived_at column to tasks table');
+    }
   } catch (error) {
     console.log('Task table migration completed or columns already exist');
   }

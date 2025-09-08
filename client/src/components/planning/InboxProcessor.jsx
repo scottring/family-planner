@@ -39,6 +39,7 @@ const InboxProcessor = ({ sessionId, onProgress, onComplete }) => {
     time: '',
     duration: 60,
     assigned_to: null,
+    attendees: [],
     priority: 3,
     category: 'general',
     location: ''
@@ -48,7 +49,7 @@ const InboxProcessor = ({ sessionId, onProgress, onComplete }) => {
   const [skippedItems, setSkippedItems] = useState(new Set());
 
   const { user } = useAuthStore();
-  const { familyMembers } = useFamilyStore();
+  const { familyMembers, fetchFamilyMembers } = useFamilyStore();
   const { 
     items, 
     loading, 
@@ -57,12 +58,13 @@ const InboxProcessor = ({ sessionId, onProgress, onComplete }) => {
     deleteInboxItem,
     archiveInboxItem
   } = useInboxStore();
-  const { createTask } = useTaskStore();
+  const { addTask } = useTaskStore();
   const { createEvent } = useEventStore();
 
   useEffect(() => {
     fetchInboxItems();
-  }, [fetchInboxItems]);
+    fetchFamilyMembers();
+  }, [fetchInboxItems, fetchFamilyMembers]);
 
   // Filter only unprocessed items
   const unprocessedItems = items.filter(item => 
@@ -118,7 +120,7 @@ const InboxProcessor = ({ sessionId, onProgress, onComplete }) => {
     setIsProcessing(true);
     try {
       if (conversionType === 'task') {
-        await createTask({
+        await addTask({
           title: formData.title,
           description: formData.description,
           due_date: formData.date,
@@ -135,7 +137,8 @@ const InboxProcessor = ({ sessionId, onProgress, onComplete }) => {
           title: formData.title,
           description: formData.description,
           location: formData.location,
-          attendees: formData.assigned_to ? [formData.assigned_to] : [],
+          attendees: formData.attendees || [],
+          assigned_to: formData.assigned_to,
           category: formData.category || 'general',
           created_from_inbox: currentItem.id,
           is_draft: isDraft
@@ -510,25 +513,70 @@ const InboxProcessor = ({ sessionId, onProgress, onComplete }) => {
                   </div>
                 )}
 
-                {/* Assign To */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Assign To
-                  </label>
-                  <select
-                    value={formData.assigned_to || ''}
-                    onChange={(e) => setFormData({...formData, assigned_to: e.target.value ? parseInt(e.target.value) : null})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  >
-                    <option value="">Unassigned</option>
-                    <option value={user?.id}>Me</option>
-                    {familyMembers.map(member => (
-                      <option key={member.id} value={member.id}>
-                        {member.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                {/* Assignment - Different for tasks vs events */}
+                {conversionType === 'task' ? (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <User className="inline w-4 h-4 mr-1" />
+                      Assign To
+                    </label>
+                    <select
+                      value={formData.assigned_to || ''}
+                      onChange={(e) => setFormData({...formData, assigned_to: e.target.value ? parseInt(e.target.value) : null})}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    >
+                      <option value="">Unassigned</option>
+                      <option value={user?.id}>Me ({user?.name || user?.email})</option>
+                      {familyMembers.filter(m => m.id !== user?.id).map(member => (
+                        <option key={member.id} value={member.id}>
+                          {member.name} {member.role && `(${member.role})`}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                ) : (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <User className="inline w-4 h-4 mr-1" />
+                      Who's Involved? (Optional)
+                    </label>
+                    <div className="space-y-2">
+                      <label className="flex items-center">
+                        <input
+                          type="checkbox"
+                          checked={formData.assigned_to === user?.id}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setFormData({...formData, assigned_to: user?.id});
+                            } else {
+                              setFormData({...formData, assigned_to: null});
+                            }
+                          }}
+                          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 mr-2"
+                        />
+                        <span>Me ({user?.name || user?.email})</span>
+                      </label>
+                      {familyMembers.filter(m => m.id !== user?.id).map(member => (
+                        <label key={member.id} className="flex items-center">
+                          <input
+                            type="checkbox"
+                            checked={formData.attendees?.includes(member.name) || false}
+                            onChange={(e) => {
+                              const currentAttendees = formData.attendees || [];
+                              if (e.target.checked) {
+                                setFormData({...formData, attendees: [...currentAttendees, member.name]});
+                              } else {
+                                setFormData({...formData, attendees: currentAttendees.filter(a => a !== member.name)});
+                              }
+                            }}
+                            className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 mr-2"
+                          />
+                          <span>{member.name} {member.role && `(${member.role})`}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 {/* Category */}
                 <div>

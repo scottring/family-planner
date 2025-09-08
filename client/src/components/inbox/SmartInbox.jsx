@@ -12,7 +12,8 @@ import {
   Type,
   Image,
   Sparkles,
-  Send
+  Send,
+  CheckSquare
 } from 'lucide-react';
 import { useInboxStore } from '../../stores/inboxStore';
 import { useNavigate } from 'react-router-dom';
@@ -124,9 +125,9 @@ const SmartInbox = () => {
     }
   };
 
-  const startProcessing = () => {
-    // Navigate to planning session or open processor
-    navigate('/planning');
+  const goToTasks = () => {
+    // Navigate to unified task manager
+    navigate('/task-manager');
   };
 
   const getUrgencyColor = (score) => {
@@ -159,14 +160,14 @@ const SmartInbox = () => {
             </div>
           </div>
           
-          {/* Process Items Button - Primary Action */}
+          {/* Go to Tasks Button - Primary Action */}
           {capturedItems.length > 0 && (
             <button
-              onClick={startProcessing}
+              onClick={goToTasks}
               className="flex items-center px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
             >
-              <Sparkles className="w-5 h-5 mr-2" />
-              Process {capturedItems.length} Items
+              <CheckSquare className="w-5 h-5 mr-2" />
+              Go to Tasks ({capturedItems.length} to process)
               <ChevronRight className="w-5 h-5 ml-2" />
             </button>
           )}
@@ -436,19 +437,19 @@ const SmartInbox = () => {
         ))}
       </div>
 
-      {/* Bottom Action - Process Items */}
+      {/* Bottom Action - Go to Tasks */}
       {capturedItems.length > 5 && (
         <div className="mt-8 text-center">
           <button
-            onClick={startProcessing}
+            onClick={goToTasks}
             className="inline-flex items-center px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
           >
-            <Sparkles className="w-5 h-5 mr-2" />
-            Process All {capturedItems.length} Items
+            <CheckSquare className="w-5 h-5 mr-2" />
+            Go to Tasks - Process All {capturedItems.length} Items
             <ChevronRight className="w-5 h-5 ml-2" />
           </button>
           <p className="text-sm text-gray-600 mt-2">
-            Or start a weekly planning session to process and organize everything
+            Use the unified task manager to convert items to tasks or events
           </p>
         </div>
       )}

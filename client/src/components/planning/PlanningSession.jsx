@@ -24,6 +24,8 @@ import { useFamilyStore } from '../../stores/familyStore';
 import SessionReview from './SessionReview';
 import InboxProcessor from './InboxProcessor';
 import WeekPlanner from './WeekPlanner';
+import WeekCommitment from './WeekCommitment';
+import ActionItems from './ActionItems';
 
 const PlanningSession = () => {
   const { user } = useAuthStore();
@@ -82,20 +84,28 @@ const PlanningSession = () => {
       description: 'Convert inbox items to tasks and events'
     },
     {
+      id: 'commitment',
+      title: 'Week Commitment',
+      icon: CheckCircle,
+      color: 'orange',
+      component: WeekCommitment,
+      description: 'Select and assign tasks for the upcoming week'
+    },
+    {
       id: 'calendar',
-      title: 'Next Week Calendar',
+      title: 'Week Planning',
       icon: Calendar,
       color: 'green',
       component: WeekPlanner,
-      description: 'Plan and schedule upcoming week'
+      description: 'Schedule committed tasks and events for the week'
     },
     {
       id: 'actions',
       title: 'Action Items',
-      icon: CheckCircle,
-      color: 'orange',
+      icon: Users,
+      color: 'indigo',
       component: ActionItems,
-      description: 'Review and assign action items'
+      description: 'Review assignments, send notifications, and complete session'
     }
   ];
 
@@ -339,7 +349,7 @@ const PlanningSession = () => {
         </div>
 
         {/* Phase Navigation */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 mb-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2 mb-6">
           {quadrants.map((quadrant, index) => {
             const isActive = index === currentQuadrant;
             const isCompleted = index < currentQuadrant;
@@ -521,10 +531,10 @@ const PlanningSession = () => {
             <p className="text-gray-600 mb-6 max-w-2xl mx-auto">
               Your weekly planning session is designed to help you and your partner stay aligned, 
               process outstanding items, and prepare for the week ahead. Each session takes 60-90 minutes 
-              and covers four key areas.
+              and covers five key areas.
             </p>
             
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
               {quadrants.map((quadrant, index) => {
                 const Icon = quadrant.icon;
                 return (
@@ -603,23 +613,5 @@ const PlanningSession = () => {
   );
 };
 
-// Placeholder for ActionItems component - will be created separately
-const ActionItems = ({ sessionId, onProgress, onComplete }) => {
-  return (
-    <div className="p-6">
-      <h3 className="text-lg font-semibold text-gray-900 mb-4">Action Items</h3>
-      <p className="text-gray-600">Review and assign action items from your planning session.</p>
-      <div className="mt-6 flex justify-end">
-        <button
-          onClick={onComplete}
-          className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700"
-          aria-label="Complete action items phase"
-        >
-          Complete
-        </button>
-      </div>
-    </div>
-  );
-};
 
 export default PlanningSession;

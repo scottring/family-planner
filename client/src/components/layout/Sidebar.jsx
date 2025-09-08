@@ -7,7 +7,7 @@ const Sidebar = ({ isOpen = false, onClose = () => {} }) => {
     { to: '/inbox', icon: Inbox, label: 'Smart Inbox' },
     { to: '/daily', icon: Clock, label: 'Today' },
     { to: '/calendar', icon: Calendar, label: 'Calendar' },
-    { to: '/tasks', icon: CheckSquare, label: 'Tasks & Lists' },
+    { to: '/task-manager', icon: CheckSquare, label: 'Tasks' },
     { to: '/templates', icon: Layers, label: 'Templates' },
     { to: '/meals', icon: UtensilsCrossed, label: 'Meals' },
     { to: '/planning', icon: ClipboardList, label: 'Weekly Planning' },
