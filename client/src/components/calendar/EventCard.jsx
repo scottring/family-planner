@@ -1,12 +1,53 @@
 import { format } from 'date-fns';
 import { useState } from 'react';
-import { Clock, MapPin, Users, Brain, CheckSquare, ArrowUp, Timer, AlertCircle, ChevronDown, ChevronUp, Sparkles } from 'lucide-react';
+import { Clock, MapPin, Users, Brain, CheckSquare, ArrowUp, Timer, AlertCircle, ChevronDown, ChevronUp, Sparkles, Car, Bike, Navigation, Route, ArrowRight, ExternalLink } from 'lucide-react';
 import { aiService } from '../../services/ai';
+import { mapService } from '../../services/mapService';
+
+// Transportation mode specific icons and colors
+const transportationModeConfig = {
+  driving: { icon: Car, color: 'text-blue-600', bgColor: 'bg-blue-100', label: 'Driving' },
+  walking: { icon: Navigation, color: 'text-green-600', bgColor: 'bg-green-100', label: 'Walking' },
+  bicycling: { icon: Bike, color: 'text-yellow-600', bgColor: 'bg-yellow-100', label: 'Bicycling' },
+  transit: { icon: Route, color: 'text-purple-600', bgColor: 'bg-purple-100', label: 'Transit' }
+};
 
 const EventCard = ({ event, onEventUpdate }) => {
   const [isEnriching, setIsEnriching] = useState(false);
   const [showAISuggestions, setShowAISuggestions] = useState(false);
   const [enrichmentError, setEnrichmentError] = useState(null);
+
+  // Transportation event detection and helpers
+  const isTransportationEvent = (event) => {
+    return event.event_type === 'travel' || 
+           event.category === 'travel' || 
+           event.type === 'travel' ||
+           event.transportation_mode || 
+           event.driving_needed ||
+           event.starting_address ||
+           event.destination_address ||
+           (event.transportation_data && Object.keys(event.transportation_data).length > 0);
+  };
+
+  const handleOpenInMaps = (event) => {
+    const routeInfo = {
+      starting_address: event.transportation_data?.starting_address || event.starting_address,
+      destination_address: event.transportation_data?.destination_address || event.destination_address || event.location,
+      stops: event.transportation_data?.stops || event.stops || []
+    };
+    
+    if (routeInfo.starting_address && routeInfo.destination_address) {
+      const waypoints = routeInfo.stops?.map(stop => stop.address).filter(Boolean) || [];
+      const mapsUrl = mapService.generateNavigationUrl(
+        routeInfo.starting_address,
+        routeInfo.destination_address,
+        waypoints
+      );
+      if (mapsUrl) {
+        window.open(mapsUrl, '_blank');
+      }
+    }
+  };
 
   const getPriorityColor = (priority) => {
     switch (priority) {
@@ -121,11 +162,16 @@ const EventCard = ({ event, onEventUpdate }) => {
               </span>
             </div>
             
-            {event.location && (
-              <div className="flex items-center space-x-1">
-                <MapPin className="h-3 w-3" />
-                <span>{event.location}</span>
-              </div>
+            {/* Transportation Event Display */}
+            {isTransportationEvent(event) ? (
+              <TransportationEventDisplay event={event} onOpenInMaps={handleOpenInMaps} />
+            ) : (
+              event.location && (
+                <div className="flex items-center space-x-1">
+                  <MapPin className="h-3 w-3" />
+                  <span>{event.location}</span>
+                </div>
+              )
             )}
             
             {event.assignedTo && event.assignedTo.length > 0 && (
@@ -252,6 +298,46 @@ const EventCard = ({ event, onEventUpdate }) => {
           )}
         </div>
       </div>
+    </div>
+  );
+};
+
+// Transportation Event Display Component for Calendar
+const TransportationEventDisplay = ({ event, onOpenInMaps }) => {
+  const transportationMode = event.transportation_mode || event.transportation_data?.mode || 'driving';
+  const modeConfig = transportationModeConfig[transportationMode] || transportationModeConfig.driving;
+  const ModeIcon = modeConfig.icon;
+  const routeInfo = event.transportation_data?.route_info;
+  const routeDetails = {
+    starting_address: event.transportation_data?.starting_address || event.starting_address,
+    destination_address: event.transportation_data?.destination_address || event.destination_address || event.location,
+    stops: event.transportation_data?.stops || event.stops || []
+  };
+  
+  return (
+    <div className="flex items-center space-x-2 min-w-0">
+      <ModeIcon className={`h-3 w-3 ${modeConfig.color} flex-shrink-0`} />
+      <div className="flex items-center space-x-1 flex-1 min-w-0">
+        <div className="w-1 h-1 bg-green-500 rounded-full flex-shrink-0"></div>
+        <span className="text-xs text-gray-600 truncate">
+          {routeDetails.starting_address || 'Current'}
+        </span>
+        <ArrowRight className="h-2 w-2 text-gray-400 flex-shrink-0" />
+        <div className="w-1 h-1 bg-red-500 rounded-full flex-shrink-0"></div>
+        <span className="text-xs text-gray-600 truncate">
+          {routeDetails.destination_address || event.location || 'Destination'}
+        </span>
+      </div>
+      {routeInfo?.duration && (
+        <span className="text-xs text-gray-500 flex-shrink-0">{routeInfo.duration}</span>
+      )}
+      <button
+        onClick={() => onOpenInMaps(event)}
+        className={`${modeConfig.color} hover:opacity-80 flex-shrink-0`}
+        title="Open in Maps"
+      >
+        <ExternalLink className="h-3 w-3" />
+      </button>
     </div>
   );
 };

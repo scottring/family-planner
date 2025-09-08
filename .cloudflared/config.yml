@@ -1,0 +1,7 @@
+tunnel: 8d5b2dcb-76ee-46d5-a75d-9c5ce7b2659c
+credentials-file: /Users/scottkaufman/.cloudflared/8d5b2dcb-76ee-46d5-a75d-9c5ce7b2659c.json
+
+ingress:
+  - hostname: itineraries-backend.symphony-os.com
+    service: http://localhost:11001
+  - service: http_status:404

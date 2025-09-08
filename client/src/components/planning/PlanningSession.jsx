@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { 
   Play,
   Pause,
@@ -9,7 +9,14 @@ import {
   FileCheck,
   Calendar,
   List,
-  Settings
+  Settings,
+  Wifi,
+  WifiOff,
+  AlertCircle,
+  CheckCircle2,
+  Loader2,
+  Save,
+  X
 } from 'lucide-react';
 import { usePlanningStore } from '../../stores/planningStore';
 import { useAuthStore } from '../../stores/authStore';
@@ -26,6 +33,9 @@ const PlanningSession = () => {
     sessionProgress,
     isSessionActive,
     connectedPartners,
+    socket,
+    isConnected,
+    lastSaved,
     startSession,
     pauseSession,
     resumeSession,
@@ -38,6 +48,10 @@ const PlanningSession = () => {
   const [currentQuadrant, setCurrentQuadrant] = useState(0);
   const [showSettings, setShowSettings] = useState(false);
   const [showResumedAlert, setShowResumedAlert] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const [confirmAction, setConfirmAction] = useState(null);
   const [sessionSettings, setSessionSettings] = useState({
     duration: 90, // minutes
     autoSave: true,
@@ -89,6 +103,7 @@ const PlanningSession = () => {
   const CurrentQuadrantComponent = currentQuadrantData.component;
 
   const handleStartSession = async () => {
+    setErrorMessage('');
     try {
       const session = await startSession({
         participants: [user.id, ...familyMembers.filter(m => m.id !== user.id).map(m => m.id)],
@@ -98,24 +113,32 @@ const PlanningSession = () => {
       // Show alert if session was resumed
       if (session.resumed) {
         setShowResumedAlert(true);
-        setTimeout(() => setShowResumedAlert(false), 5000);
       }
     } catch (error) {
       console.error('Failed to start planning session:', error);
+      setErrorMessage('Failed to start planning session. Please try again.');
     }
   };
 
   const handleCompleteQuadrant = async () => {
     const nextQuadrant = currentQuadrant + 1;
     
-    // Save progress
-    await saveProgress();
-    
-    if (nextQuadrant < quadrants.length) {
-      setCurrentQuadrant(nextQuadrant);
-    } else {
-      // All quadrants complete - finish session
-      await completeSession();
+    try {
+      setIsSaving(true);
+      // Save progress
+      await saveProgress();
+      
+      if (nextQuadrant < quadrants.length) {
+        setCurrentQuadrant(nextQuadrant);
+      } else {
+        // All quadrants complete - finish session
+        await completeSession();
+      }
+    } catch (error) {
+      console.error('Failed to complete quadrant:', error);
+      setErrorMessage('Failed to save progress. Please try again.');
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -134,20 +157,76 @@ const PlanningSession = () => {
     return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
   };
 
+  // Define the callback outside of conditional rendering to avoid hooks order issues
+  const handleQuadrantProgress = useCallback((progress) => {
+    // Update progress for current quadrant
+    if (currentQuadrantData?.id) {
+      usePlanningStore.getState().updateQuadrantProgress(currentQuadrantData.id, progress);
+    }
+  }, [currentQuadrantData?.id]);
+
   return (
     <div className="max-w-7xl mx-auto p-6 space-y-6">
+      {/* Error Message */}
+      {errorMessage && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center">
+              <div className="flex-shrink-0">
+                <AlertCircle className="h-5 w-5 text-red-400" />
+              </div>
+              <div className="ml-3">
+                <h3 className="text-sm font-medium text-red-800">Error</h3>
+                <p className="text-sm text-red-700 mt-1">
+                  {errorMessage}
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={() => setErrorMessage('')}
+              className="flex-shrink-0 text-red-400 hover:text-red-600"
+              aria-label="Dismiss error"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Resumed Session Alert */}
       {showResumedAlert && (
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
-          <div className="flex items-center">
-            <div className="flex-shrink-0">
-              <RefreshCw className="h-5 w-5 text-blue-400" />
+          <div className="flex items-center justify-between">
+            <div className="flex items-center">
+              <div className="flex-shrink-0">
+                <RefreshCw className="h-5 w-5 text-blue-400" />
+              </div>
+              <div className="ml-3">
+                <h3 className="text-sm font-medium text-blue-800">Session Resumed</h3>
+                <p className="text-sm text-blue-700 mt-1">
+                  You've rejoined an existing planning session that was already in progress.
+                </p>
+              </div>
             </div>
-            <div className="ml-3">
-              <h3 className="text-sm font-medium text-blue-800">Session Resumed</h3>
-              <p className="text-sm text-blue-700 mt-1">
-                You've rejoined an existing planning session that was already in progress.
-              </p>
+            <div className="flex space-x-2">
+              <button
+                onClick={() => {
+                  // Start fresh session
+                  cancelSession().then(() => {
+                    handleStartSession();
+                  });
+                  setShowResumedAlert(false);
+                }}
+                className="px-3 py-1 bg-white border border-blue-300 text-blue-800 rounded text-sm hover:bg-blue-50"
+              >
+                Start Fresh
+              </button>
+              <button
+                onClick={() => setShowResumedAlert(false)}
+                className="px-3 py-1 bg-blue-600 text-white rounded text-sm hover:bg-blue-700"
+              >
+                Continue
+              </button>
             </div>
           </div>
         </div>
@@ -167,6 +246,41 @@ const PlanningSession = () => {
           </div>
           
           <div className="flex items-center space-x-4">
+            {/* Connection Status */}
+            {isSessionActive && (
+              <div className={`flex items-center space-x-2 px-3 py-1 rounded-full text-sm ${
+                isConnected 
+                  ? 'bg-green-100 text-green-800' 
+                  : 'bg-red-100 text-red-800 animate-pulse'
+              }`}>
+                {isConnected ? (
+                  <Wifi className="h-4 w-4" />
+                ) : (
+                  <WifiOff className="h-4 w-4" />
+                )}
+                <span>
+                  {isConnected ? 'Connected' : 'Reconnecting...'}
+                </span>
+              </div>
+            )}
+
+            {/* Save Status */}
+            {isSessionActive && (
+              <div className="flex items-center space-x-2 text-sm text-gray-600">
+                {isSaving ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span>Saving...</span>
+                  </>
+                ) : lastSaved ? (
+                  <>
+                    <CheckCircle2 className="h-4 w-4 text-green-500" />
+                    <span>Saved {new Date(lastSaved).toLocaleTimeString()}</span>
+                  </>
+                ) : null}
+              </div>
+            )}
+
             {/* Session Timer */}
             {isSessionActive && (
               <div className="flex items-center space-x-2 text-sm text-gray-600">
@@ -203,6 +317,7 @@ const PlanningSession = () => {
             <button
               onClick={() => setShowSettings(!showSettings)}
               className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-50"
+              aria-label="Open session settings"
             >
               <Settings className="h-5 w-5" />
             </button>
@@ -224,7 +339,7 @@ const PlanningSession = () => {
         </div>
 
         {/* Phase Navigation */}
-        <div className="grid grid-cols-4 gap-2 mb-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 mb-6">
           {quadrants.map((quadrant, index) => {
             const isActive = index === currentQuadrant;
             const isCompleted = index < currentQuadrant;
@@ -264,6 +379,7 @@ const PlanningSession = () => {
               <button
                 onClick={handleStartSession}
                 className="flex items-center space-x-2 bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                aria-label="Start new planning session"
               >
                 <Play className="h-4 w-4" />
                 <span>Start Planning Session</span>
@@ -271,22 +387,41 @@ const PlanningSession = () => {
             ) : (
               <>
                 <button
-                  onClick={pauseSession}
+                  onClick={() => {
+                    setConfirmAction(() => pauseSession);
+                    setShowConfirmDialog(true);
+                  }}
                   className="flex items-center space-x-2 bg-yellow-600 text-white px-4 py-2 rounded-lg hover:bg-yellow-700 transition-colors"
+                  aria-label="Pause planning session"
                 >
                   <Pause className="h-4 w-4" />
                   <span>Pause</span>
                 </button>
                 <button
-                  onClick={saveProgress}
-                  className="flex items-center space-x-2 bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors"
+                  onClick={async () => {
+                    setIsSaving(true);
+                    try {
+                      await saveProgress();
+                    } catch (error) {
+                      setErrorMessage('Failed to save progress. Please try again.');
+                    } finally {
+                      setIsSaving(false);
+                    }
+                  }}
+                  disabled={isSaving}
+                  className="flex items-center space-x-2 bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  aria-label="Save current progress"
                 >
-                  <RefreshCw className="h-4 w-4" />
-                  <span>Save Progress</span>
+                  {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                  <span>{isSaving ? 'Saving...' : 'Save Progress'}</span>
                 </button>
                 <button
-                  onClick={cancelSession}
+                  onClick={() => {
+                    setConfirmAction(() => cancelSession);
+                    setShowConfirmDialog(true);
+                  }}
                   className="flex items-center space-x-2 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors"
+                  aria-label="End planning session"
                 >
                   <span>End Session</span>
                 </button>
@@ -297,9 +432,11 @@ const PlanningSession = () => {
           {isSessionActive && (
             <button
               onClick={handleCompleteQuadrant}
-              className="flex items-center space-x-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors font-medium"
+              disabled={isSaving}
+              className="flex items-center space-x-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+              aria-label={currentQuadrant === quadrants.length - 1 ? 'Complete planning session' : 'Move to next phase'}
             >
-              <CheckCircle className="h-4 w-4" />
+              {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle className="h-4 w-4" />}
               <span>
                 {currentQuadrant === quadrants.length - 1 ? 'Complete Session' : 'Next Phase'}
               </span>
@@ -312,7 +449,7 @@ const PlanningSession = () => {
       {showSettings && (
         <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Session Settings</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Session Duration (minutes)
@@ -367,10 +504,7 @@ const PlanningSession = () => {
         <div className="bg-white rounded-2xl shadow-lg border border-gray-100">
           <CurrentQuadrantComponent 
             sessionId={currentSession?.id}
-            onProgress={(progress) => {
-              // Update progress for current quadrant
-              usePlanningStore.getState().updateQuadrantProgress(currentQuadrantData.id, progress);
-            }}
+            onProgress={handleQuadrantProgress}
             onComplete={handleCompleteQuadrant}
           />
         </div>
@@ -390,7 +524,7 @@ const PlanningSession = () => {
               and covers four key areas.
             </p>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
               {quadrants.map((quadrant, index) => {
                 const Icon = quadrant.icon;
                 return (
@@ -408,9 +542,60 @@ const PlanningSession = () => {
             <button
               onClick={handleStartSession}
               className="bg-blue-600 text-white px-8 py-3 rounded-lg hover:bg-blue-700 transition-colors font-medium text-lg"
+              aria-label="Start your weekly planning session"
             >
               Start Your Planning Session
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Confirmation Dialog */}
+      {showConfirmDialog && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-sm mx-4" role="dialog" aria-labelledby="confirm-title">
+            <h3 id="confirm-title" className="text-lg font-semibold text-gray-900 mb-2">
+              Confirm Action
+            </h3>
+            <p className="text-gray-600 mb-4">
+              {confirmAction === cancelSession 
+                ? 'Are you sure you want to end this planning session? Any unsaved progress will be lost.'
+                : 'Are you sure you want to pause this session?'
+              }
+            </p>
+            <div className="flex space-x-3 justify-end">
+              <button
+                onClick={() => {
+                  setShowConfirmDialog(false);
+                  setConfirmAction(null);
+                }}
+                className="px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50"
+                aria-label="Cancel action"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={async () => {
+                  setShowConfirmDialog(false);
+                  if (confirmAction) {
+                    try {
+                      await confirmAction();
+                    } catch (error) {
+                      setErrorMessage('Action failed. Please try again.');
+                    }
+                  }
+                  setConfirmAction(null);
+                }}
+                className={`px-4 py-2 text-white rounded-lg ${
+                  confirmAction === cancelSession 
+                    ? 'bg-red-600 hover:bg-red-700' 
+                    : 'bg-yellow-600 hover:bg-yellow-700'
+                }`}
+                aria-label="Confirm action"
+              >
+                {confirmAction === cancelSession ? 'End Session' : 'Pause'}
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -428,6 +613,7 @@ const ActionItems = ({ sessionId, onProgress, onComplete }) => {
         <button
           onClick={onComplete}
           className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700"
+          aria-label="Complete action items phase"
         >
           Complete
         </button>

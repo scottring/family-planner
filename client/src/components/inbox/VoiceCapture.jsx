@@ -98,16 +98,21 @@ const VoiceCapture = ({ onCapture, className = '' }) => {
       const inboxItem = await addInboxItem({
         raw_content: transcript,
         transcription: transcript,
-        input_type: 'voice'
+        input_type: 'voice',
+        status: 'pending'
       });
 
-      if (onCapture) {
-        onCapture(inboxItem);
-      }
-
-      // Reset
+      // Reset form
       setTranscript('');
       setRecordingTime(0);
+      setError('');
+
+      // Call the callback after successful save and reset
+      if (onCapture) {
+        setTimeout(() => {
+          onCapture(inboxItem);
+        }, 100); // Small delay to ensure state updates
+      }
     } catch (error) {
       setError('Failed to save voice note. Please try again.');
       console.error('Error saving voice note:', error);

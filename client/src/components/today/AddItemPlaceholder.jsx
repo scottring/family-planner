@@ -6,8 +6,10 @@ import {
   X,
   Clock,
   MapPin,
-  Users
+  Users,
+  Car
 } from 'lucide-react';
+import TransportationEventForm from '../events/TransportationEventForm';
 
 const AddItemPlaceholder = ({ 
   onAddEvent, 
@@ -17,7 +19,7 @@ const AddItemPlaceholder = ({
   showSuggestions = true 
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
-  const [itemType, setItemType] = useState('event'); // 'event' | 'task'
+  const [itemType, setItemType] = useState('event'); // 'event' | 'task' | 'transportation'
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -26,6 +28,13 @@ const AddItemPlaceholder = ({
     location: '',
     type: 'personal'
   });
+
+  // Auto-detect transportation keywords
+  const detectTransportationType = (title) => {
+    const lowerTitle = title.toLowerCase();
+    const transportKeywords = ['drive to', 'pick up', 'drop off', 'go to', 'travel to', 'ride to', 'trip to'];
+    return transportKeywords.some(keyword => lowerTitle.includes(keyword));
+  };
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -91,7 +100,17 @@ const AddItemPlaceholder = ({
       location: '',
       type: 'personal'
     });
+    setItemType('event');
     setIsExpanded(false);
+  };
+
+  const handleTransportationSave = (transportationEvent) => {
+    onAddEvent && onAddEvent(transportationEvent);
+    handleCancel();
+  };
+
+  const handleTransportationCancel = () => {
+    handleCancel();
   };
 
   const formatTimeForInput = (timeStr) => {
@@ -156,9 +175,31 @@ const AddItemPlaceholder = ({
                 <CheckSquare className="w-4 h-4" />
                 <span>Task</span>
               </button>
+              <button
+                onClick={() => {
+                  setItemType('transportation');
+                  setIsExpanded(true);
+                }}
+                className="flex items-center space-x-2 px-3 py-2 bg-orange-100 text-orange-700 rounded-lg hover:bg-orange-200 transition-colors text-sm"
+              >
+                <Car className="w-4 h-4" />
+                <span>Transportation</span>
+              </button>
             </div>
           </div>
         )}
+      </div>
+    );
+  }
+
+  // If transportation type is selected, render the full transportation form
+  if (itemType === 'transportation' && isExpanded) {
+    return (
+      <div className={className}>
+        <TransportationEventForm
+          onSave={handleTransportationSave}
+          onCancel={handleTransportationCancel}
+        />
       </div>
     );
   }
@@ -192,6 +233,17 @@ const AddItemPlaceholder = ({
                 <CheckSquare className="w-4 h-4" />
                 <span className="text-sm font-medium">Task</span>
               </button>
+              <button
+                onClick={() => setItemType('transportation')}
+                className={`flex items-center space-x-2 px-3 py-2 rounded-md transition-colors ${
+                  itemType === 'transportation' 
+                    ? 'bg-orange-600 text-white' 
+                    : 'text-gray-600 hover:bg-gray-200'
+                }`}
+              >
+                <Car className="w-4 h-4" />
+                <span className="text-sm font-medium">Transportation</span>
+              </button>
             </div>
           </div>
           <button
@@ -203,19 +255,42 @@ const AddItemPlaceholder = ({
           </button>
         </div>
 
-        {/* Form */}
+        {/* Regular Form */}
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Title */}
           <div>
             <input
               type="text"
               value={formData.title}
-              onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+              onChange={(e) => {
+                const newTitle = e.target.value;
+                setFormData({ ...formData, title: newTitle });
+                // Auto-suggest transportation type
+                if (detectTransportationType(newTitle) && itemType !== 'transportation') {
+                  // Show subtle hint but don't auto-change
+                }
+              }}
               placeholder={`${itemType === 'event' ? 'Event' : 'Task'} title...`}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               autoFocus
               required
             />
+            {/* Transportation suggestion hint */}
+            {detectTransportationType(formData.title) && itemType !== 'transportation' && (
+              <div className="mt-2 p-2 bg-orange-50 border border-orange-200 rounded-lg">
+                <div className="flex items-center space-x-2 text-orange-800 text-sm">
+                  <Car className="w-4 h-4" />
+                  <span>This looks like transportation - consider using the Transportation form for better planning</span>
+                  <button
+                    type="button"
+                    onClick={() => setItemType('transportation')}
+                    className="ml-2 text-orange-600 hover:text-orange-800 underline"
+                  >
+                    Switch
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Description */}

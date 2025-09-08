@@ -1,7 +1,8 @@
 import { useState, useMemo, useEffect } from 'react';
-import { Clock, MapPin, Users, Timer, Backpack, Phone, ChevronRight, Sparkles, ArrowUp } from 'lucide-react';
+import { Clock, MapPin, Users, Timer, Backpack, Phone, ChevronRight, Sparkles, ArrowUp, Car, Bike, Navigation, Route, ArrowRight, ExternalLink } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useEventStore } from '../../stores/eventStore';
+import { mapService } from '../../services/mapService';
 import { format, parseISO, startOfDay, endOfDay, differenceInMinutes } from 'date-fns';
 import EventAssignment from '../events/EventAssignment';
 
@@ -12,7 +13,9 @@ const eventTypeColors = {
   social: 'border-l-purple-500 bg-white hover:bg-purple-50',
   work: 'border-l-yellow-500 bg-white hover:bg-yellow-50',
   personal: 'border-l-gray-500 bg-white hover:bg-gray-50',
-  family: 'border-l-pink-500 bg-white hover:bg-pink-50'
+  family: 'border-l-pink-500 bg-white hover:bg-pink-50',
+  travel: 'border-l-indigo-500 bg-indigo-50 hover:bg-indigo-100',
+  transportation: 'border-l-indigo-500 bg-indigo-50 hover:bg-indigo-100'
 };
 
 const eventTypeIcons = {
@@ -22,7 +25,17 @@ const eventTypeIcons = {
   social: '👥',
   work: '💼',
   personal: '👤',
-  family: '👨‍👩‍👧‍👦'
+  family: '👨‍👩‍👧‍👦',
+  travel: '🚗',
+  transportation: '🚗'
+};
+
+// Transportation mode specific icons and colors
+const transportationModeConfig = {
+  driving: { icon: Car, color: 'text-blue-600', bgColor: 'bg-blue-100', label: 'Driving' },
+  walking: { icon: Navigation, color: 'text-green-600', bgColor: 'bg-green-100', label: 'Walking' },
+  bicycling: { icon: Bike, color: 'text-yellow-600', bgColor: 'bg-yellow-100', label: 'Bicycling' },
+  transit: { icon: Route, color: 'text-purple-600', bgColor: 'bg-purple-100', label: 'Transit' }
 };
 
 const TodaysTimeline = ({ date }) => {
@@ -90,6 +103,38 @@ const TodaysTimeline = ({ date }) => {
     const displayHour = hour > 12 ? hour - 12 : hour === 0 ? 12 : hour;
     const ampm = hour >= 12 ? 'PM' : 'AM';
     return `${displayHour}:${minute.toString().padStart(2, '0')} ${ampm}`;
+  };
+
+  // Transportation event helpers
+  const isTransportationEvent = (event) => {
+    return event.event_type === 'travel' || 
+           event.category === 'travel' || 
+           event.type === 'travel' ||
+           event.transportation_mode || 
+           event.driving_needed ||
+           event.starting_address ||
+           event.destination_address ||
+           (event.transportation_data && Object.keys(event.transportation_data).length > 0);
+  };
+
+  const handleOpenInMaps = (event) => {
+    const routeInfo = {
+      starting_address: event.transportation_data?.starting_address || event.starting_address,
+      destination_address: event.transportation_data?.destination_address || event.destination_address || event.location,
+      stops: event.transportation_data?.stops || event.stops || []
+    };
+    
+    if (routeInfo.starting_address && routeInfo.destination_address) {
+      const waypoints = routeInfo.stops?.map(stop => stop.address).filter(Boolean) || [];
+      const mapsUrl = mapService.generateNavigationUrl(
+        routeInfo.starting_address,
+        routeInfo.destination_address,
+        waypoints
+      );
+      if (mapsUrl) {
+        window.open(mapsUrl, '_blank');
+      }
+    }
   };
 
   const getTimeUntilEvent = (startTime) => {
@@ -284,12 +329,18 @@ const TodaysTimeline = ({ date }) => {
 
         {/* Event details */}
         <div className="space-y-2">
-          {/* Location */}
-          {event.location && (
-            <div className="flex items-center space-x-2 text-gray-700">
-              <MapPin className="h-4 w-4" />
-              <span>{event.location}</span>
+          {/* Transportation or Location */}
+          {isTransportationEvent(event) ? (
+            <div className="mb-2">
+              <TransportationEventDisplay event={event} onOpenInMaps={handleOpenInMaps} compact={false} />
             </div>
+          ) : (
+            event.location && (
+              <div className="flex items-center space-x-2 text-gray-700">
+                <MapPin className="h-4 w-4" />
+                <span>{event.location}</span>
+              </div>
+            )
           )}
 
           {/* Attendees */}
@@ -383,6 +434,77 @@ const TodaysTimeline = ({ date }) => {
           <EventCard event={event} />
         </div>
       ))}
+    </div>
+  );
+};
+
+// Transportation Event Display Component for TodaysTimeline
+const TransportationEventDisplay = ({ event, onOpenInMaps, compact = true }) => {
+  const transportationMode = event.transportation_mode || event.transportation_data?.mode || 'driving';
+  const modeConfig = transportationModeConfig[transportationMode] || transportationModeConfig.driving;
+  const ModeIcon = modeConfig.icon;
+  const routeInfo = event.transportation_data?.route_info;
+  const routeDetails = {
+    starting_address: event.transportation_data?.starting_address || event.starting_address,
+    destination_address: event.transportation_data?.destination_address || event.destination_address || event.location,
+    stops: event.transportation_data?.stops || event.stops || []
+  };
+  
+  if (compact) {
+    return (
+      <div className="flex items-center space-x-2">
+        <ModeIcon className={`h-3 w-3 ${modeConfig.color}`} />
+        <span className={`text-xs font-medium ${modeConfig.color}`}>{modeConfig.label}</span>
+        {routeInfo?.duration && (
+          <span className="text-xs text-gray-500">{routeInfo.duration}</span>
+        )}
+        {routeDetails.stops && routeDetails.stops.length > 0 && (
+          <span className="text-xs text-gray-500">{routeDetails.stops.length} stops</span>
+        )}
+      </div>
+    );
+  }
+  
+  return (
+    <div className={`${modeConfig.bgColor} rounded p-2 border border-gray-200`}>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center space-x-2">
+          <ModeIcon className={`h-4 w-4 ${modeConfig.color}`} />
+          <div className="flex-1">
+            <div className={`font-medium text-sm ${modeConfig.color}`}>{modeConfig.label}</div>
+            {routeInfo && (
+              <div className="text-xs text-gray-600">
+                {routeInfo.distance && `${routeInfo.distance} • `}
+                {routeInfo.duration}
+              </div>
+            )}
+          </div>
+        </div>
+        <button
+          onClick={() => onOpenInMaps(event)}
+          className={`flex items-center space-x-1 px-2 py-1 ${modeConfig.color} hover:opacity-80 rounded text-xs`}
+        >
+          <ExternalLink className="h-3 w-3" />
+          <span>Maps</span>
+        </button>
+      </div>
+      
+      {/* Route Summary */}
+      <div className="flex items-center space-x-2 text-xs mt-1">
+        <div className="flex items-center space-x-1 flex-1 min-w-0">
+          <div className="w-1.5 h-1.5 bg-green-500 rounded-full"></div>
+          <span className="text-gray-600 truncate">
+            {routeDetails.starting_address || 'Current location'}
+          </span>
+        </div>
+        <ArrowRight className="h-2 w-2 text-gray-400" />
+        <div className="flex items-center space-x-1 flex-1 min-w-0">
+          <div className="w-1.5 h-1.5 bg-red-500 rounded-full"></div>
+          <span className="text-gray-600 truncate">
+            {routeDetails.destination_address || event.location}
+          </span>
+        </div>
+      </div>
     </div>
   );
 };

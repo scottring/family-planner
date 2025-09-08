@@ -9,6 +9,11 @@ class TelegramBotService {
   }
 
   init() {
+    // TEMPORARILY DISABLED - Telegram causing 404 errors
+    console.log('⚠️  Telegram bot service temporarily disabled');
+    this.mockMode = true;
+    return;
+    
     const token = process.env.TELEGRAM_BOT_TOKEN;
     
     if (!token) {

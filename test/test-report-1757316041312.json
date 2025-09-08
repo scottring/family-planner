@@ -1,0 +1,1245 @@
+{
+  "timestamp": "2025-09-08T07:20:41.310Z",
+  "summary": {
+    "total": 31,
+    "passed": 1,
+    "failed": 30
+  },
+  "results": [
+    {
+      "name": "Create new planning session",
+      "status": "failed",
+      "error": "Request failed with status code 404",
+      "details": {
+        "message": "Request failed with status code 404",
+        "name": "AxiosError",
+        "stack": "AxiosError: Request failed with status code 404\n    at settle (/Users/scottkaufman/node_modules/axios/dist/node/axios.cjs:2090:12)\n    at IncomingMessage.handleStreamEnd (/Users/scottkaufman/node_modules/axios/dist/node/axios.cjs:3207:11)\n    at IncomingMessage.emit (node:events:520:35)\n    at endReadableNT (node:internal/streams/readable:1701:12)\n    at process.processTicksAndRejections (node:internal/process/task_queues:90:21)\n    at Axios.request (/Users/scottkaufman/node_modules/axios/dist/node/axios.cjs:4317:41)\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)\n    at async /Users/scottkaufman/Dropbox/01. Personal Master Folder/30-39 Music, Coding & Creative/38 Coding Projects/family-planner/test/planning-workflow-test-suite.js:99:24\n    at async PlanningWorkflowTestSuite.test (/Users/scottkaufman/Dropbox/01. Personal Master Folder/30-39 Music, Coding & Creative/38 Coding Projects/family-planner/test/planning-workflow-test-suite.js:532:7)\n    at async PlanningWorkflowTestSuite.sessionLifecycleTests (/Users/scottkaufman/Dropbox/01. Personal Master Folder/30-39 Music, Coding & Creative/38 Coding Projects/family-planner/test/planning-workflow-test-suite.js:98:5)\n    at async PlanningWorkflowTestSuite.runAllTests (/Users/scottkaufman/Dropbox/01. Personal Master Folder/30-39 Music, Coding & Creative/38 Coding Projects/family-planner/test/planning-workflow-test-suite.js:87:9)\n    at async runTests (/Users/scottkaufman/Dropbox/01. Personal Master Folder/30-39 Music, Coding & Creative/38 Coding Projects/family-planner/test/planning-workflow-test-suite.js:663:5)",
+        "config": {
+          "transitional": {
+            "silentJSONParsing": true,
+            "forcedJSONParsing": true,
+            "clarifyTimeoutError": false
+          },
+          "adapter": [
+            "xhr",
+            "http",
+            "fetch"
+          ],
+          "transformRequest": [
+            null
+          ],
+          "transformResponse": [
+            null
+          ],
+          "timeout": 0,
+          "xsrfCookieName": "XSRF-TOKEN",
+          "xsrfHeaderName": "X-XSRF-TOKEN",
+          "maxContentLength": -1,
+          "maxBodyLength": -1,
+          "env": {},
+          "headers": {
+            "Accept": "application/json, text/plain, */*",
+            "Content-Type": "application/json",
+            "Authorization": "Bearer test-auth-token-123",
+            "User-Agent": "axios/1.11.0",
+            "Content-Length": "98",
+            "Accept-Encoding": "gzip, compress, deflate, br"
+          },
+          "baseURL": "http://localhost:11001/api",
+          "method": "post",
+          "url": "/planning-session",
+          "data": "{\"settings\":{\"duration_minutes\":30,\"focus_areas\":[\"events\",\"tasks\",\"meals\"],\"participants\":[1,2]}}",
+          "allowAbsoluteUrls": true
+        },
+        "code": "ERR_BAD_REQUEST",
+        "status": 404
+      },
+      "timestamp": "2025-09-08T07:20:31.254Z"
+    },
+    {
+      "name": "Load existing session",
+      "status": "failed",
+      "error": "Request failed with status code 401",
+      "details": {
+        "message": "Request failed with status code 401",
+        "name": "AxiosError",
+        "stack": "AxiosError: Request failed with status code 401\n    at settle (/Users/scottkaufman/node_modules/axios/dist/node/axios.cjs:2090:12)\n    at IncomingMessage.handleStreamEnd (/Users/scottkaufman/node_modules/axios/dist/node/axios.cjs:3207:11)\n    at IncomingMessage.emit (node:events:520:35)\n    at endReadableNT (node:internal/streams/readable:1701:12)\n    at process.processTicksAndRejections (node:internal/process/task_queues:90:21)\n    at Axios.request (/Users/scottkaufman/node_modules/axios/dist/node/axios.cjs:4317:41)\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)\n    at async /Users/scottkaufman/Dropbox/01. Personal Master Folder/30-39 Music, Coding & Creative/38 Coding Projects/family-planner/test/planning-workflow-test-suite.js:114:24\n    at async PlanningWorkflowTestSuite.test (/Users/scottkaufman/Dropbox/01. Personal Master Folder/30-39 Music, Coding & Creative/38 Coding Projects/family-planner/test/planning-workflow-test-suite.js:532:7)\n    at async PlanningWorkflowTestSuite.sessionLifecycleTests (/Users/scottkaufman/Dropbox/01. Personal Master Folder/30-39 Music, Coding & Creative/38 Coding Projects/family-planner/test/planning-workflow-test-suite.js:113:5)\n    at async PlanningWorkflowTestSuite.runAllTests (/Users/scottkaufman/Dropbox/01. Personal Master Folder/30-39 Music, Coding & Creative/38 Coding Projects/family-planner/test/planning-workflow-test-suite.js:87:9)\n    at async runTests (/Users/scottkaufman/Dropbox/01. Personal Master Folder/30-39 Music, Coding & Creative/38 Coding Projects/family-planner/test/planning-workflow-test-suite.js:663:5)",
+        "config": {
+          "transitional": {
+            "silentJSONParsing": true,
+            "forcedJSONParsing": true,
+            "clarifyTimeoutError": false
+          },
+          "adapter": [
+            "xhr",
+            "http",
+            "fetch"
+          ],
+          "transformRequest": [
+            null
+          ],
+          "transformResponse": [
+            null
+          ],
+          "timeout": 0,
+          "xsrfCookieName": "XSRF-TOKEN",
+          "xsrfHeaderName": "X-XSRF-TOKEN",
+          "maxContentLength": -1,
+          "maxBodyLength": -1,
+          "env": {},
+          "headers": {
+            "Accept": "application/json, text/plain, */*",
+            "Content-Type": "application/json",
+            "Authorization": "Bearer test-auth-token-123",
+            "User-Agent": "axios/1.11.0",
+            "Accept-Encoding": "gzip, compress, deflate, br"
+          },
+          "baseURL": "http://localhost:11001/api",
+          "method": "get",
+          "url": "/planning-session/null",
+          "allowAbsoluteUrls": true
+        },
+        "code": "ERR_BAD_REQUEST",
+        "status": 401
+      },
+      "timestamp": "2025-09-08T07:20:31.256Z"
+    },
+    {
+      "name": "Get latest session",
+      "status": "failed",
+      "error": "Request failed with status code 401",
+      "details": {
+        "message": "Request failed with status code 401",
+        "name": "AxiosError",
+        "stack": "AxiosError: Request failed with status code 401\n    at settle (/Users/scottkaufman/node_modules/axios/dist/node/axios.cjs:2090:12)\n    at IncomingMessage.handleStreamEnd (/Users/scottkaufman/node_modules/axios/dist/node/axios.cjs:3207:11)\n    at IncomingMessage.emit (node:events:520:35)\n    at endReadableNT (node:internal/streams/readable:1701:12)\n    at process.processTicksAndRejections (node:internal/process/task_queues:90:21)\n    at Axios.request (/Users/scottkaufman/node_modules/axios/dist/node/axios.cjs:4317:41)\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)\n    at async /Users/scottkaufman/Dropbox/01. Personal Master Folder/30-39 Music, Coding & Creative/38 Coding Projects/family-planner/test/planning-workflow-test-suite.js:120:24\n    at async PlanningWorkflowTestSuite.test (/Users/scottkaufman/Dropbox/01. Personal Master Folder/30-39 Music, Coding & Creative/38 Coding Projects/family-planner/test/planning-workflow-test-suite.js:532:7)\n    at async PlanningWorkflowTestSuite.sessionLifecycleTests (/Users/scottkaufman/Dropbox/01. Personal Master Folder/30-39 Music, Coding & Creative/38 Coding Projects/family-planner/test/planning-workflow-test-suite.js:119:5)\n    at async PlanningWorkflowTestSuite.runAllTests (/Users/scottkaufman/Dropbox/01. Personal Master Folder/30-39 Music, Coding & Creative/38 Coding Projects/family-planner/test/planning-workflow-test-suite.js:87:9)\n    at async runTests (/Users/scottkaufman/Dropbox/01. Personal Master Folder/30-39 Music, Coding & Creative/38 Coding Projects/family-planner/test/planning-workflow-test-suite.js:663:5)",
+        "config": {
+          "transitional": {
+            "silentJSONParsing": true,
+            "forcedJSONParsing": true,
+            "clarifyTimeoutError": false
+          },
+          "adapter": [
+            "xhr",
+            "http",
+            "fetch"
+          ],
+          "transformRequest": [
+            null
+          ],
+          "transformResponse": [
+            null
+          ],
+          "timeout": 0,
+          "xsrfCookieName": "XSRF-TOKEN",
+          "xsrfHeaderName": "X-XSRF-TOKEN",
+          "maxContentLength": -1,
+          "maxBodyLength": -1,
+          "env": {},
+          "headers": {
+            "Accept": "application/json, text/plain, */*",
+            "Content-Type": "application/json",
+            "Authorization": "Bearer test-auth-token-123",
+            "User-Agent": "axios/1.11.0",
+            "Accept-Encoding": "gzip, compress, deflate, br"
+          },
+          "baseURL": "http://localhost:11001/api",
+          "method": "get",
+          "url": "/planning-session/latest",
+          "allowAbsoluteUrls": true
+        },
+        "code": "ERR_BAD_REQUEST",
+        "status": 401
+      },
+      "timestamp": "2025-09-08T07:20:31.257Z"
+    },
+    {
+      "name": "Update session progress",
+      "status": "failed",
+      "error": "Request failed with status code 404",
+      "details": {
+        "message": "Request failed with status code 404",
+        "name": "AxiosError",
+        "stack": "AxiosError: Request failed with status code 404\n    at settle (/Users/scottkaufman/node_modules/axios/dist/node/axios.cjs:2090:12)\n    at IncomingMessage.handleStreamEnd (/Users/scottkaufman/node_modules/axios/dist/node/axios.cjs:3207:11)\n    at IncomingMessage.emit (node:events:520:35)\n    at endReadableNT (node:internal/streams/readable:1701:12)\n    at process.processTicksAndRejections (node:internal/process/task_queues:90:21)\n    at Axios.request (/Users/scottkaufman/node_modules/axios/dist/node/axios.cjs:4317:41)\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)\n    at async /Users/scottkaufman/Dropbox/01. Personal Master Folder/30-39 Music, Coding & Creative/38 Coding Projects/family-planner/test/planning-workflow-test-suite.js:126:24\n    at async PlanningWorkflowTestSuite.test (/Users/scottkaufman/Dropbox/01. Personal Master Folder/30-39 Music, Coding & Creative/38 Coding Projects/family-planner/test/planning-workflow-test-suite.js:532:7)\n    at async PlanningWorkflowTestSuite.sessionLifecycleTests (/Users/scottkaufman/Dropbox/01. Personal Master Folder/30-39 Music, Coding & Creative/38 Coding Projects/family-planner/test/planning-workflow-test-suite.js:125:5)\n    at async PlanningWorkflowTestSuite.runAllTests (/Users/scottkaufman/Dropbox/01. Personal Master Folder/30-39 Music, Coding & Creative/38 Coding Projects/family-planner/test/planning-workflow-test-suite.js:87:9)\n    at async runTests (/Users/scottkaufman/Dropbox/01. Personal Master Folder/30-39 Music, Coding & Creative/38 Coding Projects/family-planner/test/planning-workflow-test-suite.js:663:5)",
+        "config": {
+          "transitional": {
+            "silentJSONParsing": true,
+            "forcedJSONParsing": true,
+            "clarifyTimeoutError": false
+          },
+          "adapter": [
+            "xhr",
+            "http",
+            "fetch"
+          ],
+          "transformRequest": [
+            null
+          ],
+          "transformResponse": [
+            null
+          ],
+          "timeout": 0,
+          "xsrfCookieName": "XSRF-TOKEN",
+          "xsrfHeaderName": "X-XSRF-TOKEN",
+          "maxContentLength": -1,
+          "maxBodyLength": -1,
+          "env": {},
+          "headers": {
+            "Accept": "application/json, text/plain, */*",
+            "Content-Type": "application/json",
+            "Authorization": "Bearer test-auth-token-123",
+            "User-Agent": "axios/1.11.0",
+            "Content-Length": "38",
+            "Accept-Encoding": "gzip, compress, deflate, br"
+          },
+          "baseURL": "http://localhost:11001/api",
+          "method": "put",
+          "url": "/planning-session/null/progress",
+          "data": "{\"quadrant\":\"events\",\"completed\":true}",
+          "allowAbsoluteUrls": true
+        },
+        "code": "ERR_BAD_REQUEST",
+        "status": 404
+      },
+      "timestamp": "2025-09-08T07:20:31.261Z"
+    },
+    {
+      "name": "Complete planning session",
+      "status": "failed",
+      "error": "Request failed with status code 401",
+      "details": {
+        "message": "Request failed with status code 401",
+        "name": "AxiosError",
+        "stack": "AxiosError: Request failed with status code 401\n    at settle (/Users/scottkaufman/node_modules/axios/dist/node/axios.cjs:2090:12)\n    at IncomingMessage.handleStreamEnd (/Users/scottkaufman/node_modules/axios/dist/node/axios.cjs:3207:11)\n    at IncomingMessage.emit (node:events:520:35)\n    at endReadableNT (node:internal/streams/readable:1701:12)\n    at process.processTicksAndRejections (node:internal/process/task_queues:90:21)\n    at Axios.request (/Users/scottkaufman/node_modules/axios/dist/node/axios.cjs:4317:41)\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)\n    at async /Users/scottkaufman/Dropbox/01. Personal Master Folder/30-39 Music, Coding & Creative/38 Coding Projects/family-planner/test/planning-workflow-test-suite.js:135:24\n    at async PlanningWorkflowTestSuite.test (/Users/scottkaufman/Dropbox/01. Personal Master Folder/30-39 Music, Coding & Creative/38 Coding Projects/family-planner/test/planning-workflow-test-suite.js:532:7)\n    at async PlanningWorkflowTestSuite.sessionLifecycleTests (/Users/scottkaufman/Dropbox/01. Personal Master Folder/30-39 Music, Coding & Creative/38 Coding Projects/family-planner/test/planning-workflow-test-suite.js:134:5)\n    at async PlanningWorkflowTestSuite.runAllTests (/Users/scottkaufman/Dropbox/01. Personal Master Folder/30-39 Music, Coding & Creative/38 Coding Projects/family-planner/test/planning-workflow-test-suite.js:87:9)\n    at async runTests (/Users/scottkaufman/Dropbox/01. Personal Master Folder/30-39 Music, Coding & Creative/38 Coding Projects/family-planner/test/planning-workflow-test-suite.js:663:5)",
+        "config": {
+          "transitional": {
+            "silentJSONParsing": true,
+            "forcedJSONParsing": true,
+            "clarifyTimeoutError": false
+          },
+          "adapter": [
+            "xhr",
+            "http",
+            "fetch"
+          ],
+          "transformRequest": [
+            null
+          ],
+          "transformResponse": [
+            null
+          ],
+          "timeout": 0,
+          "xsrfCookieName": "XSRF-TOKEN",
+          "xsrfHeaderName": "X-XSRF-TOKEN",
+          "maxContentLength": -1,
+          "maxBodyLength": -1,
+          "env": {},
+          "headers": {
+            "Accept": "application/json, text/plain, */*",
+            "Content-Type": "application/json",
+            "Authorization": "Bearer test-auth-token-123",
+            "User-Agent": "axios/1.11.0",
+            "Accept-Encoding": "gzip, compress, deflate, br"
+          },
+          "baseURL": "http://localhost:11001/api",
+          "method": "post",
+          "url": "/planning-session/null/complete",
+          "allowAbsoluteUrls": true
+        },
+        "code": "ERR_BAD_REQUEST",
+        "status": 401
+      },
+      "timestamp": "2025-09-08T07:20:31.262Z"
+    },
+    {
+      "name": "Handle session timeout",
+      "status": "failed",
+      "error": "Request failed with status code 404",
+      "details": {
+        "message": "Request failed with status code 404",
+        "name": "AxiosError",
+        "stack": "AxiosError: Request failed with status code 404\n    at settle (/Users/scottkaufman/node_modules/axios/dist/node/axios.cjs:2090:12)\n    at IncomingMessage.handleStreamEnd (/Users/scottkaufman/node_modules/axios/dist/node/axios.cjs:3207:11)\n    at IncomingMessage.emit (node:events:520:35)\n    at endReadableNT (node:internal/streams/readable:1701:12)\n    at process.processTicksAndRejections (node:internal/process/task_queues:90:21)\n    at Axios.request (/Users/scottkaufman/node_modules/axios/dist/node/axios.cjs:4317:41)\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)\n    at async /Users/scottkaufman/Dropbox/01. Personal Master Folder/30-39 Music, Coding & Creative/38 Coding Projects/family-planner/test/planning-workflow-test-suite.js:143:24\n    at async PlanningWorkflowTestSuite.test (/Users/scottkaufman/Dropbox/01. Personal Master Folder/30-39 Music, Coding & Creative/38 Coding Projects/family-planner/test/planning-workflow-test-suite.js:532:7)\n    at async PlanningWorkflowTestSuite.sessionLifecycleTests (/Users/scottkaufman/Dropbox/01. Personal Master Folder/30-39 Music, Coding & Creative/38 Coding Projects/family-planner/test/planning-workflow-test-suite.js:141:5)\n    at async PlanningWorkflowTestSuite.runAllTests (/Users/scottkaufman/Dropbox/01. Personal Master Folder/30-39 Music, Coding & Creative/38 Coding Projects/family-planner/test/planning-workflow-test-suite.js:87:9)\n    at async runTests (/Users/scottkaufman/Dropbox/01. Personal Master Folder/30-39 Music, Coding & Creative/38 Coding Projects/family-planner/test/planning-workflow-test-suite.js:663:5)",
+        "config": {
+          "transitional": {
+            "silentJSONParsing": true,
+            "forcedJSONParsing": true,
+            "clarifyTimeoutError": false
+          },
+          "adapter": [
+            "xhr",
+            "http",
+            "fetch"
+          ],
+          "transformRequest": [
+            null
+          ],
+          "transformResponse": [
+            null
+          ],
+          "timeout": 0,
+          "xsrfCookieName": "XSRF-TOKEN",
+          "xsrfHeaderName": "X-XSRF-TOKEN",
+          "maxContentLength": -1,
+          "maxBodyLength": -1,
+          "env": {},
+          "headers": {
+            "Accept": "application/json, text/plain, */*",
+            "Content-Type": "application/json",
+            "Authorization": "Bearer test-auth-token-123",
+            "User-Agent": "axios/1.11.0",
+            "Content-Length": "39",
+            "Accept-Encoding": "gzip, compress, deflate, br"
+          },
+          "baseURL": "http://localhost:11001/api",
+          "method": "post",
+          "url": "/planning-session",
+          "data": "{\"settings\":{\"duration_minutes\":0.016}}",
+          "allowAbsoluteUrls": true
+        },
+        "code": "ERR_BAD_REQUEST",
+        "status": 404
+      },
+      "timestamp": "2025-09-08T07:20:31.264Z"
+    },
+    {
+      "name": "Connect to WebSocket",
+      "status": "passed",
+      "timestamp": "2025-09-08T07:20:31.276Z"
+    },
+    {
+      "name": "Join planning session room",
+      "status": "failed",
+      "error": "Join session timeout",
+      "details": {},
+      "timestamp": "2025-09-08T07:20:34.278Z"
+    },
+    {
+      "name": "Broadcast task creation",
+      "status": "failed",
+      "error": "Task broadcast timeout",
+      "details": {},
+      "timestamp": "2025-09-08T07:20:37.280Z"
+    },
+    {
+      "name": "Handle participant changes",
+      "status": "failed",
+      "error": "Participant change timeout",
+      "details": {},
+      "timestamp": "2025-09-08T07:20:40.283Z"
+    },
+    {
+      "name": "Create task during planning",
+      "status": "failed",
+      "error": "Request failed with status code 404",
+      "details": {
+        "message": "Request failed with status code 404",
+        "name": "AxiosError",
+        "stack": "AxiosError: Request failed with status code 404\n    at settle (/Users/scottkaufman/node_modules/axios/dist/node/axios.cjs:2090:12)\n    at IncomingMessage.handleStreamEnd (/Users/scottkaufman/node_modules/axios/dist/node/axios.cjs:3207:11)\n    at IncomingMessage.emit (node:events:520:35)\n    at endReadableNT (node:internal/streams/readable:1701:12)\n    at process.processTicksAndRejections (node:internal/process/task_queues:90:21)\n    at Axios.request (/Users/scottkaufman/node_modules/axios/dist/node/axios.cjs:4317:41)\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)\n    at async /Users/scottkaufman/Dropbox/01. Personal Master Folder/30-39 Music, Coding & Creative/38 Coding Projects/family-planner/test/planning-workflow-test-suite.js:221:24\n    at async PlanningWorkflowTestSuite.test (/Users/scottkaufman/Dropbox/01. Personal Master Folder/30-39 Music, Coding & Creative/38 Coding Projects/family-planner/test/planning-workflow-test-suite.js:532:7)\n    at async PlanningWorkflowTestSuite.taskManagementTests (/Users/scottkaufman/Dropbox/01. Personal Master Folder/30-39 Music, Coding & Creative/38 Coding Projects/family-planner/test/planning-workflow-test-suite.js:220:5)\n    at async PlanningWorkflowTestSuite.runAllTests (/Users/scottkaufman/Dropbox/01. Personal Master Folder/30-39 Music, Coding & Creative/38 Coding Projects/family-planner/test/planning-workflow-test-suite.js:87:9)\n    at async runTests (/Users/scottkaufman/Dropbox/01. Personal Master Folder/30-39 Music, Coding & Creative/38 Coding Projects/family-planner/test/planning-workflow-test-suite.js:663:5)",
+        "config": {
+          "transitional": {
+            "silentJSONParsing": true,
+            "forcedJSONParsing": true,
+            "clarifyTimeoutError": false
+          },
+          "adapter": [
+            "xhr",
+            "http",
+            "fetch"
+          ],
+          "transformRequest": [
+            null
+          ],
+          "transformResponse": [
+            null
+          ],
+          "timeout": 0,
+          "xsrfCookieName": "XSRF-TOKEN",
+          "xsrfHeaderName": "X-XSRF-TOKEN",
+          "maxContentLength": -1,
+          "maxBodyLength": -1,
+          "env": {},
+          "headers": {
+            "Accept": "application/json, text/plain, */*",
+            "Content-Type": "application/json",
+            "Authorization": "Bearer test-auth-token-123",
+            "User-Agent": "axios/1.11.0",
+            "Content-Length": "114",
+            "Accept-Encoding": "gzip, compress, deflate, br"
+          },
+          "baseURL": "http://localhost:11001/api",
+          "method": "post",
+          "url": "/planning-session/tasks",
+          "data": "{\"session_id\":null,\"title\":\"Weekly grocery shopping\",\"assigned_to\":1,\"due_date\":\"2024-12-25\",\"category\":\"errands\"}",
+          "allowAbsoluteUrls": true
+        },
+        "code": "ERR_BAD_REQUEST",
+        "status": 404
+      },
+      "timestamp": "2025-09-08T07:20:40.287Z"
+    },
+    {
+      "name": "Bulk assign tasks",
+      "status": "failed",
+      "error": "Request failed with status code 404",
+      "details": {
+        "message": "Request failed with status code 404",
+        "name": "AxiosError",
+        "stack": "AxiosError: Request failed with status code 404\n    at settle (/Users/scottkaufman/node_modules/axios/dist/node/axios.cjs:2090:12)\n    at IncomingMessage.handleStreamEnd (/Users/scottkaufman/node_modules/axios/dist/node/axios.cjs:3207:11)\n    at IncomingMessage.emit (node:events:520:35)\n    at endReadableNT (node:internal/streams/readable:1701:12)\n    at process.processTicksAndRejections (node:internal/process/task_queues:90:21)\n    at Axios.request (/Users/scottkaufman/node_modules/axios/dist/node/axios.cjs:4317:41)\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)\n    at async /Users/scottkaufman/Dropbox/01. Personal Master Folder/30-39 Music, Coding & Creative/38 Coding Projects/family-planner/test/planning-workflow-test-suite.js:241:24\n    at async PlanningWorkflowTestSuite.test (/Users/scottkaufman/Dropbox/01. Personal Master Folder/30-39 Music, Coding & Creative/38 Coding Projects/family-planner/test/planning-workflow-test-suite.js:532:7)\n    at async PlanningWorkflowTestSuite.taskManagementTests (/Users/scottkaufman/Dropbox/01. Personal Master Folder/30-39 Music, Coding & Creative/38 Coding Projects/family-planner/test/planning-workflow-test-suite.js:234:5)\n    at async PlanningWorkflowTestSuite.runAllTests (/Users/scottkaufman/Dropbox/01. Personal Master Folder/30-39 Music, Coding & Creative/38 Coding Projects/family-planner/test/planning-workflow-test-suite.js:87:9)\n    at async runTests (/Users/scottkaufman/Dropbox/01. Personal Master Folder/30-39 Music, Coding & Creative/38 Coding Projects/family-planner/test/planning-workflow-test-suite.js:663:5)",
+        "config": {
+          "transitional": {
+            "silentJSONParsing": true,
+            "forcedJSONParsing": true,
+            "clarifyTimeoutError": false
+          },
+          "adapter": [
+            "xhr",
+            "http",
+            "fetch"
+          ],
+          "transformRequest": [
+            null
+          ],
+          "transformResponse": [
+            null
+          ],
+          "timeout": 0,
+          "xsrfCookieName": "XSRF-TOKEN",
+          "xsrfHeaderName": "X-XSRF-TOKEN",
+          "maxContentLength": -1,
+          "maxBodyLength": -1,
+          "env": {},
+          "headers": {
+            "Accept": "application/json, text/plain, */*",
+            "Content-Type": "application/json",
+            "Authorization": "Bearer test-auth-token-123",
+            "User-Agent": "axios/1.11.0",
+            "Content-Length": "134",
+            "Accept-Encoding": "gzip, compress, deflate, br"
+          },
+          "baseURL": "http://localhost:11001/api",
+          "method": "post",
+          "url": "/planning-session/tasks/bulk",
+          "data": "{\"session_id\":null,\"tasks\":[{\"title\":\"Task 1\",\"assigned_to\":1},{\"title\":\"Task 2\",\"assigned_to\":2},{\"title\":\"Task 3\",\"assigned_to\":1}]}",
+          "allowAbsoluteUrls": true
+        },
+        "code": "ERR_BAD_REQUEST",
+        "status": 404
+      },
+      "timestamp": "2025-09-08T07:20:40.289Z"
+    },
+    {
+      "name": "Reassign task",
+      "status": "failed",
+      "error": "Request failed with status code 404",
+      "details": {
+        "message": "Request failed with status code 404",
+        "name": "AxiosError",
+        "stack": "AxiosError: Request failed with status code 404\n    at settle (/Users/scottkaufman/node_modules/axios/dist/node/axios.cjs:2090:12)\n    at IncomingMessage.handleStreamEnd (/Users/scottkaufman/node_modules/axios/dist/node/axios.cjs:3207:11)\n    at IncomingMessage.emit (node:events:520:35)\n    at endReadableNT (node:internal/streams/readable:1701:12)\n    at process.processTicksAndRejections (node:internal/process/task_queues:90:21)\n    at Axios.request (/Users/scottkaufman/node_modules/axios/dist/node/axios.cjs:4317:41)\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)\n    at async /Users/scottkaufman/Dropbox/01. Personal Master Folder/30-39 Music, Coding & Creative/38 Coding Projects/family-planner/test/planning-workflow-test-suite.js:251:30\n    at async PlanningWorkflowTestSuite.test (/Users/scottkaufman/Dropbox/01. Personal Master Folder/30-39 Music, Coding & Creative/38 Coding Projects/family-planner/test/planning-workflow-test-suite.js:532:7)\n    at async PlanningWorkflowTestSuite.taskManagementTests (/Users/scottkaufman/Dropbox/01. Personal Master Folder/30-39 Music, Coding & Creative/38 Coding Projects/family-planner/test/planning-workflow-test-suite.js:250:5)\n    at async PlanningWorkflowTestSuite.runAllTests (/Users/scottkaufman/Dropbox/01. Personal Master Folder/30-39 Music, Coding & Creative/38 Coding Projects/family-planner/test/planning-workflow-test-suite.js:87:9)\n    at async runTests (/Users/scottkaufman/Dropbox/01. Personal Master Folder/30-39 Music, Coding & Creative/38 Coding Projects/family-planner/test/planning-workflow-test-suite.js:663:5)",
+        "config": {
+          "transitional": {
+            "silentJSONParsing": true,
+            "forcedJSONParsing": true,
+            "clarifyTimeoutError": false
+          },
+          "adapter": [
+            "xhr",
+            "http",
+            "fetch"
+          ],
+          "transformRequest": [
+            null
+          ],
+          "transformResponse": [
+            null
+          ],
+          "timeout": 0,
+          "xsrfCookieName": "XSRF-TOKEN",
+          "xsrfHeaderName": "X-XSRF-TOKEN",
+          "maxContentLength": -1,
+          "maxBodyLength": -1,
+          "env": {},
+          "headers": {
+            "Accept": "application/json, text/plain, */*",
+            "Content-Type": "application/json",
+            "Authorization": "Bearer test-auth-token-123",
+            "User-Agent": "axios/1.11.0",
+            "Content-Length": "63",
+            "Accept-Encoding": "gzip, compress, deflate, br"
+          },
+          "baseURL": "http://localhost:11001/api",
+          "method": "post",
+          "url": "/planning-session/tasks",
+          "data": "{\"session_id\":null,\"title\":\"Reassignable task\",\"assigned_to\":1}",
+          "allowAbsoluteUrls": true
+        },
+        "code": "ERR_BAD_REQUEST",
+        "status": 404
+      },
+      "timestamp": "2025-09-08T07:20:40.290Z"
+    },
+    {
+      "name": "Get session tasks summary",
+      "status": "failed",
+      "error": "Request failed with status code 404",
+      "details": {
+        "message": "Request failed with status code 404",
+        "name": "AxiosError",
+        "stack": "AxiosError: Request failed with status code 404\n    at settle (/Users/scottkaufman/node_modules/axios/dist/node/axios.cjs:2090:12)\n    at IncomingMessage.handleStreamEnd (/Users/scottkaufman/node_modules/axios/dist/node/axios.cjs:3207:11)\n    at IncomingMessage.emit (node:events:520:35)\n    at endReadableNT (node:internal/streams/readable:1701:12)\n    at process.processTicksAndRejections (node:internal/process/task_queues:90:21)\n    at Axios.request (/Users/scottkaufman/node_modules/axios/dist/node/axios.cjs:4317:41)\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)\n    at async /Users/scottkaufman/Dropbox/01. Personal Master Folder/30-39 Music, Coding & Creative/38 Coding Projects/family-planner/test/planning-workflow-test-suite.js:268:24\n    at async PlanningWorkflowTestSuite.test (/Users/scottkaufman/Dropbox/01. Personal Master Folder/30-39 Music, Coding & Creative/38 Coding Projects/family-planner/test/planning-workflow-test-suite.js:532:7)\n    at async PlanningWorkflowTestSuite.taskManagementTests (/Users/scottkaufman/Dropbox/01. Personal Master Folder/30-39 Music, Coding & Creative/38 Coding Projects/family-planner/test/planning-workflow-test-suite.js:267:5)\n    at async PlanningWorkflowTestSuite.runAllTests (/Users/scottkaufman/Dropbox/01. Personal Master Folder/30-39 Music, Coding & Creative/38 Coding Projects/family-planner/test/planning-workflow-test-suite.js:87:9)\n    at async runTests (/Users/scottkaufman/Dropbox/01. Personal Master Folder/30-39 Music, Coding & Creative/38 Coding Projects/family-planner/test/planning-workflow-test-suite.js:663:5)",
+        "config": {
+          "transitional": {
+            "silentJSONParsing": true,
+            "forcedJSONParsing": true,
+            "clarifyTimeoutError": false
+          },
+          "adapter": [
+            "xhr",
+            "http",
+            "fetch"
+          ],
+          "transformRequest": [
+            null
+          ],
+          "transformResponse": [
+            null
+          ],
+          "timeout": 0,
+          "xsrfCookieName": "XSRF-TOKEN",
+          "xsrfHeaderName": "X-XSRF-TOKEN",
+          "maxContentLength": -1,
+          "maxBodyLength": -1,
+          "env": {},
+          "headers": {
+            "Accept": "application/json, text/plain, */*",
+            "Content-Type": "application/json",
+            "Authorization": "Bearer test-auth-token-123",
+            "User-Agent": "axios/1.11.0",
+            "Accept-Encoding": "gzip, compress, deflate, br"
+          },
+          "baseURL": "http://localhost:11001/api",
+          "method": "get",
+          "url": "/planning-session/null/summary",
+          "allowAbsoluteUrls": true
+        },
+        "code": "ERR_BAD_REQUEST",
+        "status": 404
+      },
+      "timestamp": "2025-09-08T07:20:40.292Z"
+    },
+    {
+      "name": "Get weekly analytics",
+      "status": "failed",
+      "error": "Request failed with status code 401",
+      "details": {
+        "message": "Request failed with status code 401",
+        "name": "AxiosError",
+        "stack": "AxiosError: Request failed with status code 401\n    at settle (/Users/scottkaufman/node_modules/axios/dist/node/axios.cjs:2090:12)\n    at IncomingMessage.handleStreamEnd (/Users/scottkaufman/node_modules/axios/dist/node/axios.cjs:3207:11)\n    at IncomingMessage.emit (node:events:520:35)\n    at endReadableNT (node:internal/streams/readable:1701:12)\n    at process.processTicksAndRejections (node:internal/process/task_queues:90:21)\n    at Axios.request (/Users/scottkaufman/node_modules/axios/dist/node/axios.cjs:4317:41)\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)\n    at async /Users/scottkaufman/Dropbox/01. Personal Master Folder/30-39 Music, Coding & Creative/38 Coding Projects/family-planner/test/planning-workflow-test-suite.js:283:24\n    at async PlanningWorkflowTestSuite.test (/Users/scottkaufman/Dropbox/01. Personal Master Folder/30-39 Music, Coding & Creative/38 Coding Projects/family-planner/test/planning-workflow-test-suite.js:532:7)\n    at async PlanningWorkflowTestSuite.analyticsTests (/Users/scottkaufman/Dropbox/01. Personal Master Folder/30-39 Music, Coding & Creative/38 Coding Projects/family-planner/test/planning-workflow-test-suite.js:279:5)\n    at async PlanningWorkflowTestSuite.runAllTests (/Users/scottkaufman/Dropbox/01. Personal Master Folder/30-39 Music, Coding & Creative/38 Coding Projects/family-planner/test/planning-workflow-test-suite.js:87:9)\n    at async runTests (/Users/scottkaufman/Dropbox/01. Personal Master Folder/30-39 Music, Coding & Creative/38 Coding Projects/family-planner/test/planning-workflow-test-suite.js:663:5)",
+        "config": {
+          "transitional": {
+            "silentJSONParsing": true,
+            "forcedJSONParsing": true,
+            "clarifyTimeoutError": false
+          },
+          "adapter": [
+            "xhr",
+            "http",
+            "fetch"
+          ],
+          "transformRequest": [
+            null
+          ],
+          "transformResponse": [
+            null
+          ],
+          "timeout": 0,
+          "xsrfCookieName": "XSRF-TOKEN",
+          "xsrfHeaderName": "X-XSRF-TOKEN",
+          "maxContentLength": -1,
+          "maxBodyLength": -1,
+          "env": {},
+          "headers": {
+            "Accept": "application/json, text/plain, */*",
+            "Content-Type": "application/json",
+            "Authorization": "Bearer test-auth-token-123",
+            "User-Agent": "axios/1.11.0",
+            "Accept-Encoding": "gzip, compress, deflate, br"
+          },
+          "baseURL": "http://localhost:11001/api",
+          "params": {
+            "start_date": "2024-12-01",
+            "end_date": "2024-12-31"
+          },
+          "method": "get",
+          "url": "/planning-session/analytics",
+          "allowAbsoluteUrls": true
+        },
+        "code": "ERR_BAD_REQUEST",
+        "status": 401
+      },
+      "timestamp": "2025-09-08T07:20:40.293Z"
+    },
+    {
+      "name": "Get member-specific analytics",
+      "status": "failed",
+      "error": "Request failed with status code 401",
+      "details": {
+        "message": "Request failed with status code 401",
+        "name": "AxiosError",
+        "stack": "AxiosError: Request failed with status code 401\n    at settle (/Users/scottkaufman/node_modules/axios/dist/node/axios.cjs:2090:12)\n    at IncomingMessage.handleStreamEnd (/Users/scottkaufman/node_modules/axios/dist/node/axios.cjs:3207:11)\n    at IncomingMessage.emit (node:events:520:35)\n    at endReadableNT (node:internal/streams/readable:1701:12)\n    at process.processTicksAndRejections (node:internal/process/task_queues:90:21)\n    at Axios.request (/Users/scottkaufman/node_modules/axios/dist/node/axios.cjs:4317:41)\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)\n    at async /Users/scottkaufman/Dropbox/01. Personal Master Folder/30-39 Music, Coding & Creative/38 Coding Projects/family-planner/test/planning-workflow-test-suite.js:294:24\n    at async PlanningWorkflowTestSuite.test (/Users/scottkaufman/Dropbox/01. Personal Master Folder/30-39 Music, Coding & Creative/38 Coding Projects/family-planner/test/planning-workflow-test-suite.js:532:7)\n    at async PlanningWorkflowTestSuite.analyticsTests (/Users/scottkaufman/Dropbox/01. Personal Master Folder/30-39 Music, Coding & Creative/38 Coding Projects/family-planner/test/planning-workflow-test-suite.js:293:5)\n    at async PlanningWorkflowTestSuite.runAllTests (/Users/scottkaufman/Dropbox/01. Personal Master Folder/30-39 Music, Coding & Creative/38 Coding Projects/family-planner/test/planning-workflow-test-suite.js:87:9)\n    at async runTests (/Users/scottkaufman/Dropbox/01. Personal Master Folder/30-39 Music, Coding & Creative/38 Coding Projects/family-planner/test/planning-workflow-test-suite.js:663:5)",
+        "config": {
+          "transitional": {
+            "silentJSONParsing": true,
+            "forcedJSONParsing": true,
+            "clarifyTimeoutError": false
+          },
+          "adapter": [
+            "xhr",
+            "http",
+            "fetch"
+          ],
+          "transformRequest": [
+            null
+          ],
+          "transformResponse": [
+            null
+          ],
+          "timeout": 0,
+          "xsrfCookieName": "XSRF-TOKEN",
+          "xsrfHeaderName": "X-XSRF-TOKEN",
+          "maxContentLength": -1,
+          "maxBodyLength": -1,
+          "env": {},
+          "headers": {
+            "Accept": "application/json, text/plain, */*",
+            "Content-Type": "application/json",
+            "Authorization": "Bearer test-auth-token-123",
+            "User-Agent": "axios/1.11.0",
+            "Accept-Encoding": "gzip, compress, deflate, br"
+          },
+          "baseURL": "http://localhost:11001/api",
+          "params": {
+            "start_date": "2024-12-01",
+            "end_date": "2024-12-31",
+            "member_id": 1
+          },
+          "method": "get",
+          "url": "/planning-session/analytics",
+          "allowAbsoluteUrls": true
+        },
+        "code": "ERR_BAD_REQUEST",
+        "status": 401
+      },
+      "timestamp": "2025-09-08T07:20:40.294Z"
+    },
+    {
+      "name": "Review completed sessions",
+      "status": "failed",
+      "error": "Request failed with status code 401",
+      "details": {
+        "message": "Request failed with status code 401",
+        "name": "AxiosError",
+        "stack": "AxiosError: Request failed with status code 401\n    at settle (/Users/scottkaufman/node_modules/axios/dist/node/axios.cjs:2090:12)\n    at IncomingMessage.handleStreamEnd (/Users/scottkaufman/node_modules/axios/dist/node/axios.cjs:3207:11)\n    at IncomingMessage.emit (node:events:520:35)\n    at endReadableNT (node:internal/streams/readable:1701:12)\n    at process.processTicksAndRejections (node:internal/process/task_queues:90:21)\n    at Axios.request (/Users/scottkaufman/node_modules/axios/dist/node/axios.cjs:4317:41)\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)\n    at async /Users/scottkaufman/Dropbox/01. Personal Master Folder/30-39 Music, Coding & Creative/38 Coding Projects/family-planner/test/planning-workflow-test-suite.js:307:24\n    at async PlanningWorkflowTestSuite.test (/Users/scottkaufman/Dropbox/01. Personal Master Folder/30-39 Music, Coding & Creative/38 Coding Projects/family-planner/test/planning-workflow-test-suite.js:532:7)\n    at async PlanningWorkflowTestSuite.analyticsTests (/Users/scottkaufman/Dropbox/01. Personal Master Folder/30-39 Music, Coding & Creative/38 Coding Projects/family-planner/test/planning-workflow-test-suite.js:306:5)\n    at async PlanningWorkflowTestSuite.runAllTests (/Users/scottkaufman/Dropbox/01. Personal Master Folder/30-39 Music, Coding & Creative/38 Coding Projects/family-planner/test/planning-workflow-test-suite.js:87:9)\n    at async runTests (/Users/scottkaufman/Dropbox/01. Personal Master Folder/30-39 Music, Coding & Creative/38 Coding Projects/family-planner/test/planning-workflow-test-suite.js:663:5)",
+        "config": {
+          "transitional": {
+            "silentJSONParsing": true,
+            "forcedJSONParsing": true,
+            "clarifyTimeoutError": false
+          },
+          "adapter": [
+            "xhr",
+            "http",
+            "fetch"
+          ],
+          "transformRequest": [
+            null
+          ],
+          "transformResponse": [
+            null
+          ],
+          "timeout": 0,
+          "xsrfCookieName": "XSRF-TOKEN",
+          "xsrfHeaderName": "X-XSRF-TOKEN",
+          "maxContentLength": -1,
+          "maxBodyLength": -1,
+          "env": {},
+          "headers": {
+            "Accept": "application/json, text/plain, */*",
+            "Content-Type": "application/json",
+            "Authorization": "Bearer test-auth-token-123",
+            "User-Agent": "axios/1.11.0",
+            "Accept-Encoding": "gzip, compress, deflate, br"
+          },
+          "baseURL": "http://localhost:11001/api",
+          "params": {
+            "status": "completed",
+            "limit": 10
+          },
+          "method": "get",
+          "url": "/planning-session/history",
+          "allowAbsoluteUrls": true
+        },
+        "code": "ERR_BAD_REQUEST",
+        "status": 401
+      },
+      "timestamp": "2025-09-08T07:20:40.295Z"
+    },
+    {
+      "name": "Export session data",
+      "status": "failed",
+      "error": "Request failed with status code 404",
+      "details": {
+        "message": "Request failed with status code 404",
+        "name": "AxiosError",
+        "stack": "AxiosError: Request failed with status code 404\n    at settle (/Users/scottkaufman/node_modules/axios/dist/node/axios.cjs:2090:12)\n    at IncomingMessage.handleStreamEnd (/Users/scottkaufman/node_modules/axios/dist/node/axios.cjs:3207:11)\n    at IncomingMessage.emit (node:events:520:35)\n    at endReadableNT (node:internal/streams/readable:1701:12)\n    at process.processTicksAndRejections (node:internal/process/task_queues:90:21)\n    at Axios.request (/Users/scottkaufman/node_modules/axios/dist/node/axios.cjs:4317:41)\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)\n    at async /Users/scottkaufman/Dropbox/01. Personal Master Folder/30-39 Music, Coding & Creative/38 Coding Projects/family-planner/test/planning-workflow-test-suite.js:316:24\n    at async PlanningWorkflowTestSuite.test (/Users/scottkaufman/Dropbox/01. Personal Master Folder/30-39 Music, Coding & Creative/38 Coding Projects/family-planner/test/planning-workflow-test-suite.js:532:7)\n    at async PlanningWorkflowTestSuite.analyticsTests (/Users/scottkaufman/Dropbox/01. Personal Master Folder/30-39 Music, Coding & Creative/38 Coding Projects/family-planner/test/planning-workflow-test-suite.js:315:5)\n    at async PlanningWorkflowTestSuite.runAllTests (/Users/scottkaufman/Dropbox/01. Personal Master Folder/30-39 Music, Coding & Creative/38 Coding Projects/family-planner/test/planning-workflow-test-suite.js:87:9)\n    at async runTests (/Users/scottkaufman/Dropbox/01. Personal Master Folder/30-39 Music, Coding & Creative/38 Coding Projects/family-planner/test/planning-workflow-test-suite.js:663:5)",
+        "config": {
+          "transitional": {
+            "silentJSONParsing": true,
+            "forcedJSONParsing": true,
+            "clarifyTimeoutError": false
+          },
+          "adapter": [
+            "xhr",
+            "http",
+            "fetch"
+          ],
+          "transformRequest": [
+            null
+          ],
+          "transformResponse": [
+            null
+          ],
+          "timeout": 0,
+          "xsrfCookieName": "XSRF-TOKEN",
+          "xsrfHeaderName": "X-XSRF-TOKEN",
+          "maxContentLength": -1,
+          "maxBodyLength": -1,
+          "env": {},
+          "headers": {
+            "Accept": "application/json, text/plain, */*",
+            "Content-Type": "application/json",
+            "Authorization": "Bearer test-auth-token-123",
+            "User-Agent": "axios/1.11.0",
+            "Accept-Encoding": "gzip, compress, deflate, br"
+          },
+          "baseURL": "http://localhost:11001/api",
+          "method": "get",
+          "url": "/planning-session/null/export",
+          "allowAbsoluteUrls": true
+        },
+        "code": "ERR_BAD_REQUEST",
+        "status": 404
+      },
+      "timestamp": "2025-09-08T07:20:40.296Z"
+    },
+    {
+      "name": "Handle invalid session ID",
+      "status": "failed",
+      "error": "Should return 404",
+      "details": {
+        "generatedMessage": false,
+        "code": "ERR_ASSERTION",
+        "actual": false,
+        "expected": true,
+        "operator": "==",
+        "diff": "simple"
+      },
+      "timestamp": "2025-09-08T07:20:40.297Z"
+    },
+    {
+      "name": "Handle missing required fields",
+      "status": "failed",
+      "error": "Should return 400",
+      "details": {
+        "generatedMessage": false,
+        "code": "ERR_ASSERTION",
+        "actual": false,
+        "expected": true,
+        "operator": "==",
+        "diff": "simple"
+      },
+      "timestamp": "2025-09-08T07:20:40.298Z"
+    },
+    {
+      "name": "Handle concurrent session conflicts",
+      "status": "failed",
+      "error": "Request failed with status code 404",
+      "details": {
+        "message": "Request failed with status code 404",
+        "name": "AxiosError",
+        "stack": "AxiosError: Request failed with status code 404\n    at settle (/Users/scottkaufman/node_modules/axios/dist/node/axios.cjs:2090:12)\n    at IncomingMessage.handleStreamEnd (/Users/scottkaufman/node_modules/axios/dist/node/axios.cjs:3207:11)\n    at IncomingMessage.emit (node:events:520:35)\n    at endReadableNT (node:internal/streams/readable:1701:12)\n    at process.processTicksAndRejections (node:internal/process/task_queues:90:21)\n    at Axios.request (/Users/scottkaufman/node_modules/axios/dist/node/axios.cjs:4317:41)\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)\n    at async /Users/scottkaufman/Dropbox/01. Personal Master Folder/30-39 Music, Coding & Creative/38 Coding Projects/family-planner/test/planning-workflow-test-suite.js:351:28\n    at async PlanningWorkflowTestSuite.test (/Users/scottkaufman/Dropbox/01. Personal Master Folder/30-39 Music, Coding & Creative/38 Coding Projects/family-planner/test/planning-workflow-test-suite.js:532:7)\n    at async PlanningWorkflowTestSuite.errorHandlingTests (/Users/scottkaufman/Dropbox/01. Personal Master Folder/30-39 Music, Coding & Creative/38 Coding Projects/family-planner/test/planning-workflow-test-suite.js:349:5)\n    at async PlanningWorkflowTestSuite.runAllTests (/Users/scottkaufman/Dropbox/01. Personal Master Folder/30-39 Music, Coding & Creative/38 Coding Projects/family-planner/test/planning-workflow-test-suite.js:87:9)\n    at async runTests (/Users/scottkaufman/Dropbox/01. Personal Master Folder/30-39 Music, Coding & Creative/38 Coding Projects/family-planner/test/planning-workflow-test-suite.js:663:5)",
+        "config": {
+          "transitional": {
+            "silentJSONParsing": true,
+            "forcedJSONParsing": true,
+            "clarifyTimeoutError": false
+          },
+          "adapter": [
+            "xhr",
+            "http",
+            "fetch"
+          ],
+          "transformRequest": [
+            null
+          ],
+          "transformResponse": [
+            null
+          ],
+          "timeout": 0,
+          "xsrfCookieName": "XSRF-TOKEN",
+          "xsrfHeaderName": "X-XSRF-TOKEN",
+          "maxContentLength": -1,
+          "maxBodyLength": -1,
+          "env": {},
+          "headers": {
+            "Accept": "application/json, text/plain, */*",
+            "Content-Type": "application/json",
+            "Authorization": "Bearer test-auth-token-123",
+            "User-Agent": "axios/1.11.0",
+            "Content-Length": "36",
+            "Accept-Encoding": "gzip, compress, deflate, br"
+          },
+          "baseURL": "http://localhost:11001/api",
+          "method": "post",
+          "url": "/planning-session",
+          "data": "{\"settings\":{\"duration_minutes\":30}}",
+          "allowAbsoluteUrls": true
+        },
+        "code": "ERR_BAD_REQUEST",
+        "status": 404
+      },
+      "timestamp": "2025-09-08T07:20:40.299Z"
+    },
+    {
+      "name": "Handle invalid date ranges",
+      "status": "failed",
+      "error": "Should return 400",
+      "details": {
+        "generatedMessage": false,
+        "code": "ERR_ASSERTION",
+        "actual": false,
+        "expected": true,
+        "operator": "==",
+        "diff": "simple"
+      },
+      "timestamp": "2025-09-08T07:20:40.300Z"
+    },
+    {
+      "name": "Quadrant navigation flow",
+      "status": "failed",
+      "error": "Request failed with status code 404",
+      "details": {
+        "message": "Request failed with status code 404",
+        "name": "AxiosError",
+        "stack": "AxiosError: Request failed with status code 404\n    at settle (/Users/scottkaufman/node_modules/axios/dist/node/axios.cjs:2090:12)\n    at IncomingMessage.handleStreamEnd (/Users/scottkaufman/node_modules/axios/dist/node/axios.cjs:3207:11)\n    at IncomingMessage.emit (node:events:520:35)\n    at endReadableNT (node:internal/streams/readable:1701:12)\n    at process.processTicksAndRejections (node:internal/process/task_queues:90:21)\n    at Axios.request (/Users/scottkaufman/node_modules/axios/dist/node/axios.cjs:4317:41)\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)\n    at async /Users/scottkaufman/Dropbox/01. Personal Master Folder/30-39 Music, Coding & Creative/38 Coding Projects/family-planner/test/planning-workflow-test-suite.js:390:26\n    at async PlanningWorkflowTestSuite.test (/Users/scottkaufman/Dropbox/01. Personal Master Folder/30-39 Music, Coding & Creative/38 Coding Projects/family-planner/test/planning-workflow-test-suite.js:532:7)\n    at async PlanningWorkflowTestSuite.uiWorkflowTests (/Users/scottkaufman/Dropbox/01. Personal Master Folder/30-39 Music, Coding & Creative/38 Coding Projects/family-planner/test/planning-workflow-test-suite.js:385:5)\n    at async PlanningWorkflowTestSuite.runAllTests (/Users/scottkaufman/Dropbox/01. Personal Master Folder/30-39 Music, Coding & Creative/38 Coding Projects/family-planner/test/planning-workflow-test-suite.js:87:9)\n    at async runTests (/Users/scottkaufman/Dropbox/01. Personal Master Folder/30-39 Music, Coding & Creative/38 Coding Projects/family-planner/test/planning-workflow-test-suite.js:663:5)",
+        "config": {
+          "transitional": {
+            "silentJSONParsing": true,
+            "forcedJSONParsing": true,
+            "clarifyTimeoutError": false
+          },
+          "adapter": [
+            "xhr",
+            "http",
+            "fetch"
+          ],
+          "transformRequest": [
+            null
+          ],
+          "transformResponse": [
+            null
+          ],
+          "timeout": 0,
+          "xsrfCookieName": "XSRF-TOKEN",
+          "xsrfHeaderName": "X-XSRF-TOKEN",
+          "maxContentLength": -1,
+          "maxBodyLength": -1,
+          "env": {},
+          "headers": {
+            "Accept": "application/json, text/plain, */*",
+            "Content-Type": "application/json",
+            "Authorization": "Bearer test-auth-token-123",
+            "User-Agent": "axios/1.11.0",
+            "Content-Length": "21",
+            "Accept-Encoding": "gzip, compress, deflate, br"
+          },
+          "baseURL": "http://localhost:11001/api",
+          "method": "put",
+          "url": "/planning-session/null/current-quadrant",
+          "data": "{\"quadrant\":\"events\"}",
+          "allowAbsoluteUrls": true
+        },
+        "code": "ERR_BAD_REQUEST",
+        "status": 404
+      },
+      "timestamp": "2025-09-08T07:20:40.301Z"
+    },
+    {
+      "name": "Smart suggestions",
+      "status": "failed",
+      "error": "Request failed with status code 404",
+      "details": {
+        "message": "Request failed with status code 404",
+        "name": "AxiosError",
+        "stack": "AxiosError: Request failed with status code 404\n    at settle (/Users/scottkaufman/node_modules/axios/dist/node/axios.cjs:2090:12)\n    at IncomingMessage.handleStreamEnd (/Users/scottkaufman/node_modules/axios/dist/node/axios.cjs:3207:11)\n    at IncomingMessage.emit (node:events:520:35)\n    at endReadableNT (node:internal/streams/readable:1701:12)\n    at process.processTicksAndRejections (node:internal/process/task_queues:90:21)\n    at Axios.request (/Users/scottkaufman/node_modules/axios/dist/node/axios.cjs:4317:41)\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)\n    at async /Users/scottkaufman/Dropbox/01. Personal Master Folder/30-39 Music, Coding & Creative/38 Coding Projects/family-planner/test/planning-workflow-test-suite.js:400:24\n    at async PlanningWorkflowTestSuite.test (/Users/scottkaufman/Dropbox/01. Personal Master Folder/30-39 Music, Coding & Creative/38 Coding Projects/family-planner/test/planning-workflow-test-suite.js:532:7)\n    at async PlanningWorkflowTestSuite.uiWorkflowTests (/Users/scottkaufman/Dropbox/01. Personal Master Folder/30-39 Music, Coding & Creative/38 Coding Projects/family-planner/test/planning-workflow-test-suite.js:399:5)\n    at async PlanningWorkflowTestSuite.runAllTests (/Users/scottkaufman/Dropbox/01. Personal Master Folder/30-39 Music, Coding & Creative/38 Coding Projects/family-planner/test/planning-workflow-test-suite.js:87:9)\n    at async runTests (/Users/scottkaufman/Dropbox/01. Personal Master Folder/30-39 Music, Coding & Creative/38 Coding Projects/family-planner/test/planning-workflow-test-suite.js:663:5)",
+        "config": {
+          "transitional": {
+            "silentJSONParsing": true,
+            "forcedJSONParsing": true,
+            "clarifyTimeoutError": false
+          },
+          "adapter": [
+            "xhr",
+            "http",
+            "fetch"
+          ],
+          "transformRequest": [
+            null
+          ],
+          "transformResponse": [
+            null
+          ],
+          "timeout": 0,
+          "xsrfCookieName": "XSRF-TOKEN",
+          "xsrfHeaderName": "X-XSRF-TOKEN",
+          "maxContentLength": -1,
+          "maxBodyLength": -1,
+          "env": {},
+          "headers": {
+            "Accept": "application/json, text/plain, */*",
+            "Content-Type": "application/json",
+            "Authorization": "Bearer test-auth-token-123",
+            "User-Agent": "axios/1.11.0",
+            "Accept-Encoding": "gzip, compress, deflate, br"
+          },
+          "baseURL": "http://localhost:11001/api",
+          "params": {
+            "quadrant": "events"
+          },
+          "method": "get",
+          "url": "/planning-session/null/suggestions",
+          "allowAbsoluteUrls": true
+        },
+        "code": "ERR_BAD_REQUEST",
+        "status": 404
+      },
+      "timestamp": "2025-09-08T07:20:40.302Z"
+    },
+    {
+      "name": "Template application",
+      "status": "failed",
+      "error": "Request failed with status code 404",
+      "details": {
+        "message": "Request failed with status code 404",
+        "name": "AxiosError",
+        "stack": "AxiosError: Request failed with status code 404\n    at settle (/Users/scottkaufman/node_modules/axios/dist/node/axios.cjs:2090:12)\n    at IncomingMessage.handleStreamEnd (/Users/scottkaufman/node_modules/axios/dist/node/axios.cjs:3207:11)\n    at IncomingMessage.emit (node:events:520:35)\n    at endReadableNT (node:internal/streams/readable:1701:12)\n    at process.processTicksAndRejections (node:internal/process/task_queues:90:21)\n    at Axios.request (/Users/scottkaufman/node_modules/axios/dist/node/axios.cjs:4317:41)\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)\n    at async /Users/scottkaufman/Dropbox/01. Personal Master Folder/30-39 Music, Coding & Creative/38 Coding Projects/family-planner/test/planning-workflow-test-suite.js:409:24\n    at async PlanningWorkflowTestSuite.test (/Users/scottkaufman/Dropbox/01. Personal Master Folder/30-39 Music, Coding & Creative/38 Coding Projects/family-planner/test/planning-workflow-test-suite.js:532:7)\n    at async PlanningWorkflowTestSuite.uiWorkflowTests (/Users/scottkaufman/Dropbox/01. Personal Master Folder/30-39 Music, Coding & Creative/38 Coding Projects/family-planner/test/planning-workflow-test-suite.js:408:5)\n    at async PlanningWorkflowTestSuite.runAllTests (/Users/scottkaufman/Dropbox/01. Personal Master Folder/30-39 Music, Coding & Creative/38 Coding Projects/family-planner/test/planning-workflow-test-suite.js:87:9)\n    at async runTests (/Users/scottkaufman/Dropbox/01. Personal Master Folder/30-39 Music, Coding & Creative/38 Coding Projects/family-planner/test/planning-workflow-test-suite.js:663:5)",
+        "config": {
+          "transitional": {
+            "silentJSONParsing": true,
+            "forcedJSONParsing": true,
+            "clarifyTimeoutError": false
+          },
+          "adapter": [
+            "xhr",
+            "http",
+            "fetch"
+          ],
+          "transformRequest": [
+            null
+          ],
+          "transformResponse": [
+            null
+          ],
+          "timeout": 0,
+          "xsrfCookieName": "XSRF-TOKEN",
+          "xsrfHeaderName": "X-XSRF-TOKEN",
+          "maxContentLength": -1,
+          "maxBodyLength": -1,
+          "env": {},
+          "headers": {
+            "Accept": "application/json, text/plain, */*",
+            "Content-Type": "application/json",
+            "Authorization": "Bearer test-auth-token-123",
+            "User-Agent": "axios/1.11.0",
+            "Content-Length": "51",
+            "Accept-Encoding": "gzip, compress, deflate, br"
+          },
+          "baseURL": "http://localhost:11001/api",
+          "method": "post",
+          "url": "/planning-session/null/apply-template",
+          "data": "{\"template_id\":\"weekly_routine\",\"quadrant\":\"tasks\"}",
+          "allowAbsoluteUrls": true
+        },
+        "code": "ERR_BAD_REQUEST",
+        "status": 404
+      },
+      "timestamp": "2025-09-08T07:20:40.303Z"
+    },
+    {
+      "name": "Progress indicators",
+      "status": "failed",
+      "error": "Request failed with status code 404",
+      "details": {
+        "message": "Request failed with status code 404",
+        "name": "AxiosError",
+        "stack": "AxiosError: Request failed with status code 404\n    at settle (/Users/scottkaufman/node_modules/axios/dist/node/axios.cjs:2090:12)\n    at IncomingMessage.handleStreamEnd (/Users/scottkaufman/node_modules/axios/dist/node/axios.cjs:3207:11)\n    at IncomingMessage.emit (node:events:520:35)\n    at endReadableNT (node:internal/streams/readable:1701:12)\n    at process.processTicksAndRejections (node:internal/process/task_queues:90:21)\n    at Axios.request (/Users/scottkaufman/node_modules/axios/dist/node/axios.cjs:4317:41)\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)\n    at async /Users/scottkaufman/Dropbox/01. Personal Master Folder/30-39 Music, Coding & Creative/38 Coding Projects/family-planner/test/planning-workflow-test-suite.js:419:24\n    at async PlanningWorkflowTestSuite.test (/Users/scottkaufman/Dropbox/01. Personal Master Folder/30-39 Music, Coding & Creative/38 Coding Projects/family-planner/test/planning-workflow-test-suite.js:532:7)\n    at async PlanningWorkflowTestSuite.uiWorkflowTests (/Users/scottkaufman/Dropbox/01. Personal Master Folder/30-39 Music, Coding & Creative/38 Coding Projects/family-planner/test/planning-workflow-test-suite.js:418:5)\n    at async PlanningWorkflowTestSuite.runAllTests (/Users/scottkaufman/Dropbox/01. Personal Master Folder/30-39 Music, Coding & Creative/38 Coding Projects/family-planner/test/planning-workflow-test-suite.js:87:9)\n    at async runTests (/Users/scottkaufman/Dropbox/01. Personal Master Folder/30-39 Music, Coding & Creative/38 Coding Projects/family-planner/test/planning-workflow-test-suite.js:663:5)",
+        "config": {
+          "transitional": {
+            "silentJSONParsing": true,
+            "forcedJSONParsing": true,
+            "clarifyTimeoutError": false
+          },
+          "adapter": [
+            "xhr",
+            "http",
+            "fetch"
+          ],
+          "transformRequest": [
+            null
+          ],
+          "transformResponse": [
+            null
+          ],
+          "timeout": 0,
+          "xsrfCookieName": "XSRF-TOKEN",
+          "xsrfHeaderName": "X-XSRF-TOKEN",
+          "maxContentLength": -1,
+          "maxBodyLength": -1,
+          "env": {},
+          "headers": {
+            "Accept": "application/json, text/plain, */*",
+            "Content-Type": "application/json",
+            "Authorization": "Bearer test-auth-token-123",
+            "User-Agent": "axios/1.11.0",
+            "Accept-Encoding": "gzip, compress, deflate, br"
+          },
+          "baseURL": "http://localhost:11001/api",
+          "method": "get",
+          "url": "/planning-session/null/progress",
+          "allowAbsoluteUrls": true
+        },
+        "code": "ERR_BAD_REQUEST",
+        "status": 404
+      },
+      "timestamp": "2025-09-08T07:20:40.303Z"
+    },
+    {
+      "name": "Undo/redo functionality",
+      "status": "failed",
+      "error": "Request failed with status code 404",
+      "details": {
+        "message": "Request failed with status code 404",
+        "name": "AxiosError",
+        "stack": "AxiosError: Request failed with status code 404\n    at settle (/Users/scottkaufman/node_modules/axios/dist/node/axios.cjs:2090:12)\n    at IncomingMessage.handleStreamEnd (/Users/scottkaufman/node_modules/axios/dist/node/axios.cjs:3207:11)\n    at IncomingMessage.emit (node:events:520:35)\n    at endReadableNT (node:internal/streams/readable:1701:12)\n    at process.processTicksAndRejections (node:internal/process/task_queues:90:21)\n    at Axios.request (/Users/scottkaufman/node_modules/axios/dist/node/axios.cjs:4317:41)\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)\n    at async /Users/scottkaufman/Dropbox/01. Personal Master Folder/30-39 Music, Coding & Creative/38 Coding Projects/family-planner/test/planning-workflow-test-suite.js:429:30\n    at async PlanningWorkflowTestSuite.test (/Users/scottkaufman/Dropbox/01. Personal Master Folder/30-39 Music, Coding & Creative/38 Coding Projects/family-planner/test/planning-workflow-test-suite.js:532:7)\n    at async PlanningWorkflowTestSuite.uiWorkflowTests (/Users/scottkaufman/Dropbox/01. Personal Master Folder/30-39 Music, Coding & Creative/38 Coding Projects/family-planner/test/planning-workflow-test-suite.js:427:5)\n    at async PlanningWorkflowTestSuite.runAllTests (/Users/scottkaufman/Dropbox/01. Personal Master Folder/30-39 Music, Coding & Creative/38 Coding Projects/family-planner/test/planning-workflow-test-suite.js:87:9)\n    at async runTests (/Users/scottkaufman/Dropbox/01. Personal Master Folder/30-39 Music, Coding & Creative/38 Coding Projects/family-planner/test/planning-workflow-test-suite.js:663:5)",
+        "config": {
+          "transitional": {
+            "silentJSONParsing": true,
+            "forcedJSONParsing": true,
+            "clarifyTimeoutError": false
+          },
+          "adapter": [
+            "xhr",
+            "http",
+            "fetch"
+          ],
+          "transformRequest": [
+            null
+          ],
+          "transformResponse": [
+            null
+          ],
+          "timeout": 0,
+          "xsrfCookieName": "XSRF-TOKEN",
+          "xsrfHeaderName": "X-XSRF-TOKEN",
+          "maxContentLength": -1,
+          "maxBodyLength": -1,
+          "env": {},
+          "headers": {
+            "Accept": "application/json, text/plain, */*",
+            "Content-Type": "application/json",
+            "Authorization": "Bearer test-auth-token-123",
+            "User-Agent": "axios/1.11.0",
+            "Content-Length": "42",
+            "Accept-Encoding": "gzip, compress, deflate, br"
+          },
+          "baseURL": "http://localhost:11001/api",
+          "method": "post",
+          "url": "/planning-session/tasks",
+          "data": "{\"session_id\":null,\"title\":\"Task to undo\"}",
+          "allowAbsoluteUrls": true
+        },
+        "code": "ERR_BAD_REQUEST",
+        "status": 404
+      },
+      "timestamp": "2025-09-08T07:20:40.304Z"
+    },
+    {
+      "name": "Session creation performance",
+      "status": "failed",
+      "error": "Request failed with status code 404",
+      "details": {
+        "message": "Request failed with status code 404",
+        "name": "AxiosError",
+        "stack": "AxiosError: Request failed with status code 404\n    at settle (/Users/scottkaufman/node_modules/axios/dist/node/axios.cjs:2090:12)\n    at IncomingMessage.handleStreamEnd (/Users/scottkaufman/node_modules/axios/dist/node/axios.cjs:3207:11)\n    at IncomingMessage.emit (node:events:520:35)\n    at endReadableNT (node:internal/streams/readable:1701:12)\n    at process.processTicksAndRejections (node:internal/process/task_queues:90:21)\n    at Axios.request (/Users/scottkaufman/node_modules/axios/dist/node/axios.cjs:4317:41)\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)\n    at async /Users/scottkaufman/Dropbox/01. Personal Master Folder/30-39 Music, Coding & Creative/38 Coding Projects/family-planner/test/planning-workflow-test-suite.js:459:24\n    at async PlanningWorkflowTestSuite.test (/Users/scottkaufman/Dropbox/01. Personal Master Folder/30-39 Music, Coding & Creative/38 Coding Projects/family-planner/test/planning-workflow-test-suite.js:532:7)\n    at async PlanningWorkflowTestSuite.performanceTests (/Users/scottkaufman/Dropbox/01. Personal Master Folder/30-39 Music, Coding & Creative/38 Coding Projects/family-planner/test/planning-workflow-test-suite.js:456:5)\n    at async PlanningWorkflowTestSuite.runAllTests (/Users/scottkaufman/Dropbox/01. Personal Master Folder/30-39 Music, Coding & Creative/38 Coding Projects/family-planner/test/planning-workflow-test-suite.js:87:9)\n    at async runTests (/Users/scottkaufman/Dropbox/01. Personal Master Folder/30-39 Music, Coding & Creative/38 Coding Projects/family-planner/test/planning-workflow-test-suite.js:663:5)",
+        "config": {
+          "transitional": {
+            "silentJSONParsing": true,
+            "forcedJSONParsing": true,
+            "clarifyTimeoutError": false
+          },
+          "adapter": [
+            "xhr",
+            "http",
+            "fetch"
+          ],
+          "transformRequest": [
+            null
+          ],
+          "transformResponse": [
+            null
+          ],
+          "timeout": 0,
+          "xsrfCookieName": "XSRF-TOKEN",
+          "xsrfHeaderName": "X-XSRF-TOKEN",
+          "maxContentLength": -1,
+          "maxBodyLength": -1,
+          "env": {},
+          "headers": {
+            "Accept": "application/json, text/plain, */*",
+            "Content-Type": "application/json",
+            "Authorization": "Bearer test-auth-token-123",
+            "User-Agent": "axios/1.11.0",
+            "Content-Length": "36",
+            "Accept-Encoding": "gzip, compress, deflate, br"
+          },
+          "baseURL": "http://localhost:11001/api",
+          "method": "post",
+          "url": "/planning-session",
+          "data": "{\"settings\":{\"duration_minutes\":30}}",
+          "allowAbsoluteUrls": true
+        },
+        "code": "ERR_BAD_REQUEST",
+        "status": 404
+      },
+      "timestamp": "2025-09-08T07:20:40.305Z"
+    },
+    {
+      "name": "Bulk operations performance",
+      "status": "failed",
+      "error": "Request failed with status code 404",
+      "details": {
+        "message": "Request failed with status code 404",
+        "name": "AxiosError",
+        "stack": "AxiosError: Request failed with status code 404\n    at settle (/Users/scottkaufman/node_modules/axios/dist/node/axios.cjs:2090:12)\n    at IncomingMessage.handleStreamEnd (/Users/scottkaufman/node_modules/axios/dist/node/axios.cjs:3207:11)\n    at IncomingMessage.emit (node:events:520:35)\n    at endReadableNT (node:internal/streams/readable:1701:12)\n    at process.processTicksAndRejections (node:internal/process/task_queues:90:21)\n    at Axios.request (/Users/scottkaufman/node_modules/axios/dist/node/axios.cjs:4317:41)\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)\n    at async /Users/scottkaufman/Dropbox/01. Personal Master Folder/30-39 Music, Coding & Creative/38 Coding Projects/family-planner/test/planning-workflow-test-suite.js:481:24\n    at async PlanningWorkflowTestSuite.test (/Users/scottkaufman/Dropbox/01. Personal Master Folder/30-39 Music, Coding & Creative/38 Coding Projects/family-planner/test/planning-workflow-test-suite.js:532:7)\n    at async PlanningWorkflowTestSuite.performanceTests (/Users/scottkaufman/Dropbox/01. Personal Master Folder/30-39 Music, Coding & Creative/38 Coding Projects/family-planner/test/planning-workflow-test-suite.js:472:5)\n    at async PlanningWorkflowTestSuite.runAllTests (/Users/scottkaufman/Dropbox/01. Personal Master Folder/30-39 Music, Coding & Creative/38 Coding Projects/family-planner/test/planning-workflow-test-suite.js:87:9)\n    at async runTests (/Users/scottkaufman/Dropbox/01. Personal Master Folder/30-39 Music, Coding & Creative/38 Coding Projects/family-planner/test/planning-workflow-test-suite.js:663:5)",
+        "config": {
+          "transitional": {
+            "silentJSONParsing": true,
+            "forcedJSONParsing": true,
+            "clarifyTimeoutError": false
+          },
+          "adapter": [
+            "xhr",
+            "http",
+            "fetch"
+          ],
+          "transformRequest": [
+            null
+          ],
+          "transformResponse": [
+            null
+          ],
+          "timeout": 0,
+          "xsrfCookieName": "XSRF-TOKEN",
+          "xsrfHeaderName": "X-XSRF-TOKEN",
+          "maxContentLength": -1,
+          "maxBodyLength": -1,
+          "env": {},
+          "headers": {
+            "Accept": "application/json, text/plain, */*",
+            "Content-Type": "application/json",
+            "Authorization": "Bearer test-auth-token-123",
+            "User-Agent": "axios/1.11.0",
+            "Content-Length": "3269",
+            "Accept-Encoding": "gzip, compress, deflate, br"
+          },
+          "baseURL": "http://localhost:11001/api",
+          "method": "post",
+          "url": "/planning-session/tasks/bulk",
+          "data": "{\"session_id\":null,\"tasks\":[{\"title\":\"Bulk task 0\",\"assigned_to\":1,\"due_date\":\"2024-12-31\"},{\"title\":\"Bulk task 1\",\"assigned_to\":2,\"due_date\":\"2024-12-31\"},{\"title\":\"Bulk task 2\",\"assigned_to\":1,\"due_date\":\"2024-12-31\"},{\"title\":\"Bulk task 3\",\"assigned_to\":2,\"due_date\":\"2024-12-31\"},{\"title\":\"Bulk task 4\",\"assigned_to\":1,\"due_date\":\"2024-12-31\"},{\"title\":\"Bulk task 5\",\"assigned_to\":2,\"due_date\":\"2024-12-31\"},{\"title\":\"Bulk task 6\",\"assigned_to\":1,\"due_date\":\"2024-12-31\"},{\"title\":\"Bulk task 7\",\"assigned_to\":2,\"due_date\":\"2024-12-31\"},{\"title\":\"Bulk task 8\",\"assigned_to\":1,\"due_date\":\"2024-12-31\"},{\"title\":\"Bulk task 9\",\"assigned_to\":2,\"due_date\":\"2024-12-31\"},{\"title\":\"Bulk task 10\",\"assigned_to\":1,\"due_date\":\"2024-12-31\"},{\"title\":\"Bulk task 11\",\"assigned_to\":2,\"due_date\":\"2024-12-31\"},{\"title\":\"Bulk task 12\",\"assigned_to\":1,\"due_date\":\"2024-12-31\"},{\"title\":\"Bulk task 13\",\"assigned_to\":2,\"due_date\":\"2024-12-31\"},{\"title\":\"Bulk task 14\",\"assigned_to\":1,\"due_date\":\"2024-12-31\"},{\"title\":\"Bulk task 15\",\"assigned_to\":2,\"due_date\":\"2024-12-31\"},{\"title\":\"Bulk task 16\",\"assigned_to\":1,\"due_date\":\"2024-12-31\"},{\"title\":\"Bulk task 17\",\"assigned_to\":2,\"due_date\":\"2024-12-31\"},{\"title\":\"Bulk task 18\",\"assigned_to\":1,\"due_date\":\"2024-12-31\"},{\"title\":\"Bulk task 19\",\"assigned_to\":2,\"due_date\":\"2024-12-31\"},{\"title\":\"Bulk task 20\",\"assigned_to\":1,\"due_date\":\"2024-12-31\"},{\"title\":\"Bulk task 21\",\"assigned_to\":2,\"due_date\":\"2024-12-31\"},{\"title\":\"Bulk task 22\",\"assigned_to\":1,\"due_date\":\"2024-12-31\"},{\"title\":\"Bulk task 23\",\"assigned_to\":2,\"due_date\":\"2024-12-31\"},{\"title\":\"Bulk task 24\",\"assigned_to\":1,\"due_date\":\"2024-12-31\"},{\"title\":\"Bulk task 25\",\"assigned_to\":2,\"due_date\":\"2024-12-31\"},{\"title\":\"Bulk task 26\",\"assigned_to\":1,\"due_date\":\"2024-12-31\"},{\"title\":\"Bulk task 27\",\"assigned_to\":2,\"due_date\":\"2024-12-31\"},{\"title\":\"Bulk task 28\",\"assigned_to\":1,\"due_date\":\"2024-12-31\"},{\"title\":\"Bulk task 29\",\"assigned_to\":2,\"due_date\":\"2024-12-31\"},{\"title\":\"Bulk task 30\",\"assigned_to\":1,\"due_date\":\"2024-12-31\"},{\"title\":\"Bulk task 31\",\"assigned_to\":2,\"due_date\":\"2024-12-31\"},{\"title\":\"Bulk task 32\",\"assigned_to\":1,\"due_date\":\"2024-12-31\"},{\"title\":\"Bulk task 33\",\"assigned_to\":2,\"due_date\":\"2024-12-31\"},{\"title\":\"Bulk task 34\",\"assigned_to\":1,\"due_date\":\"2024-12-31\"},{\"title\":\"Bulk task 35\",\"assigned_to\":2,\"due_date\":\"2024-12-31\"},{\"title\":\"Bulk task 36\",\"assigned_to\":1,\"due_date\":\"2024-12-31\"},{\"title\":\"Bulk task 37\",\"assigned_to\":2,\"due_date\":\"2024-12-31\"},{\"title\":\"Bulk task 38\",\"assigned_to\":1,\"due_date\":\"2024-12-31\"},{\"title\":\"Bulk task 39\",\"assigned_to\":2,\"due_date\":\"2024-12-31\"},{\"title\":\"Bulk task 40\",\"assigned_to\":1,\"due_date\":\"2024-12-31\"},{\"title\":\"Bulk task 41\",\"assigned_to\":2,\"due_date\":\"2024-12-31\"},{\"title\":\"Bulk task 42\",\"assigned_to\":1,\"due_date\":\"2024-12-31\"},{\"title\":\"Bulk task 43\",\"assigned_to\":2,\"due_date\":\"2024-12-31\"},{\"title\":\"Bulk task 44\",\"assigned_to\":1,\"due_date\":\"2024-12-31\"},{\"title\":\"Bulk task 45\",\"assigned_to\":2,\"due_date\":\"2024-12-31\"},{\"title\":\"Bulk task 46\",\"assigned_to\":1,\"due_date\":\"2024-12-31\"},{\"title\":\"Bulk task 47\",\"assigned_to\":2,\"due_date\":\"2024-12-31\"},{\"title\":\"Bulk task 48\",\"assigned_to\":1,\"due_date\":\"2024-12-31\"},{\"title\":\"Bulk task 49\",\"assigned_to\":2,\"due_date\":\"2024-12-31\"}]}",
+          "allowAbsoluteUrls": true
+        },
+        "code": "ERR_BAD_REQUEST",
+        "status": 404
+      },
+      "timestamp": "2025-09-08T07:20:40.305Z"
+    },
+    {
+      "name": "Analytics query performance",
+      "status": "failed",
+      "error": "Request failed with status code 401",
+      "details": {
+        "message": "Request failed with status code 401",
+        "name": "AxiosError",
+        "stack": "AxiosError: Request failed with status code 401\n    at settle (/Users/scottkaufman/node_modules/axios/dist/node/axios.cjs:2090:12)\n    at IncomingMessage.handleStreamEnd (/Users/scottkaufman/node_modules/axios/dist/node/axios.cjs:3207:11)\n    at IncomingMessage.emit (node:events:520:35)\n    at endReadableNT (node:internal/streams/readable:1701:12)\n    at process.processTicksAndRejections (node:internal/process/task_queues:90:21)\n    at Axios.request (/Users/scottkaufman/node_modules/axios/dist/node/axios.cjs:4317:41)\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)\n    at async /Users/scottkaufman/Dropbox/01. Personal Master Folder/30-39 Music, Coding & Creative/38 Coding Projects/family-planner/test/planning-workflow-test-suite.js:495:24\n    at async PlanningWorkflowTestSuite.test (/Users/scottkaufman/Dropbox/01. Personal Master Folder/30-39 Music, Coding & Creative/38 Coding Projects/family-planner/test/planning-workflow-test-suite.js:532:7)\n    at async PlanningWorkflowTestSuite.performanceTests (/Users/scottkaufman/Dropbox/01. Personal Master Folder/30-39 Music, Coding & Creative/38 Coding Projects/family-planner/test/planning-workflow-test-suite.js:492:5)\n    at async PlanningWorkflowTestSuite.runAllTests (/Users/scottkaufman/Dropbox/01. Personal Master Folder/30-39 Music, Coding & Creative/38 Coding Projects/family-planner/test/planning-workflow-test-suite.js:87:9)\n    at async runTests (/Users/scottkaufman/Dropbox/01. Personal Master Folder/30-39 Music, Coding & Creative/38 Coding Projects/family-planner/test/planning-workflow-test-suite.js:663:5)",
+        "config": {
+          "transitional": {
+            "silentJSONParsing": true,
+            "forcedJSONParsing": true,
+            "clarifyTimeoutError": false
+          },
+          "adapter": [
+            "xhr",
+            "http",
+            "fetch"
+          ],
+          "transformRequest": [
+            null
+          ],
+          "transformResponse": [
+            null
+          ],
+          "timeout": 0,
+          "xsrfCookieName": "XSRF-TOKEN",
+          "xsrfHeaderName": "X-XSRF-TOKEN",
+          "maxContentLength": -1,
+          "maxBodyLength": -1,
+          "env": {},
+          "headers": {
+            "Accept": "application/json, text/plain, */*",
+            "Content-Type": "application/json",
+            "Authorization": "Bearer test-auth-token-123",
+            "User-Agent": "axios/1.11.0",
+            "Accept-Encoding": "gzip, compress, deflate, br"
+          },
+          "baseURL": "http://localhost:11001/api",
+          "params": {
+            "start_date": "2024-01-01",
+            "end_date": "2024-12-31"
+          },
+          "method": "get",
+          "url": "/planning-session/analytics",
+          "allowAbsoluteUrls": true
+        },
+        "code": "ERR_BAD_REQUEST",
+        "status": 401
+      },
+      "timestamp": "2025-09-08T07:20:40.306Z"
+    },
+    {
+      "name": "WebSocket message latency",
+      "status": "failed",
+      "error": "WebSocket ping timeout",
+      "details": {},
+      "timestamp": "2025-09-08T07:20:41.308Z"
+    }
+  ],
+  "recommendations": [
+    {
+      "area": "Real-time Features",
+      "issue": "WebSocket connection issues",
+      "suggestion": "Check Socket.io configuration and ensure proper event handling"
+    },
+    {
+      "area": "Performance",
+      "issue": "Performance benchmarks not met",
+      "suggestion": "Profile slow operations and implement caching where appropriate"
+    }
+  ]
+}

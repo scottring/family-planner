@@ -12,7 +12,11 @@ import {
   ShoppingCart,
   Users,
   Video,
-  LayoutTemplate
+  LayoutTemplate,
+  CheckSquare,
+  Square,
+  ChevronDown,
+  ChevronRight
 } from 'lucide-react';
 import { useTaskStore } from '../../stores/taskStore';
 import { useFamilyStore } from '../../stores/familyStore';
@@ -25,6 +29,8 @@ import MeetingPrepTemplate from './templates/MeetingPrepTemplate';
 const SmartTaskItem = ({ task, onEdit, event }) => {
   const [isHovered, setIsHovered] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
+  const [checklistItems, setChecklistItems] = useState(task.checklistItems || []);
+  const [showChecklist, setShowChecklist] = useState(false);
   const { toggleTaskComplete, deleteTask, updateTask } = useTaskStore();
   const { getFamilyMemberById } = useFamilyStore();
 
@@ -97,8 +103,29 @@ const SmartTaskItem = ({ task, onEdit, event }) => {
     setIsExpanded(!isExpanded);
   };
 
+  const toggleChecklistItem = (index) => {
+    const updatedItems = [...checklistItems];
+    updatedItems[index] = {
+      ...updatedItems[index],
+      completed: !updatedItems[index].completed
+    };
+    setChecklistItems(updatedItems);
+    
+    // Update the task with new checklist state
+    updateTask(task.id, {
+      ...task,
+      checklistItems: updatedItems
+    });
+  };
+
+  const toggleChecklist = () => {
+    setShowChecklist(!showChecklist);
+  };
+
   const isOverdue = task.dueDate && new Date(task.dueDate) < new Date() && !task.completed;
   const hasTemplate = task.templateType && task.templateType !== 'none';
+  const hasChecklist = checklistItems && checklistItems.length > 0;
+  const completedChecklistCount = checklistItems.filter(item => item.completed).length;
 
   // Render template component based on type
   const renderTemplate = () => {
@@ -273,6 +300,45 @@ const SmartTaskItem = ({ task, onEdit, event }) => {
 
       {/* Render template component if expanded */}
       {renderTemplate()}
+      
+      {/* Render checklist if task has checklist items */}
+      {hasChecklist && (
+        <div className="mt-4 border-t border-gray-200 pt-4">
+          <button
+            onClick={toggleChecklist}
+            className="flex items-center space-x-2 text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors"
+          >
+            {showChecklist ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+            <span>Checklist</span>
+            <span className="text-xs text-gray-500 ml-2">
+              ({completedChecklistCount}/{checklistItems.length} completed)
+            </span>
+          </button>
+          
+          {showChecklist && (
+            <div className="mt-3 space-y-2">
+              {checklistItems.map((item, index) => (
+                <button
+                  key={index}
+                  onClick={() => toggleChecklistItem(index)}
+                  className={`flex items-start space-x-2 w-full text-left p-2 rounded-lg hover:bg-gray-50 transition-colors ${
+                    item.completed ? 'text-gray-500' : 'text-gray-700'
+                  }`}
+                >
+                  {item.completed ? (
+                    <CheckSquare className="h-4 w-4 text-green-600 mt-0.5 flex-shrink-0" />
+                  ) : (
+                    <Square className="h-4 w-4 text-gray-400 mt-0.5 flex-shrink-0" />
+                  )}
+                  <span className={`text-sm ${item.completed ? 'line-through' : ''}`}>
+                    {item.text}
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 };

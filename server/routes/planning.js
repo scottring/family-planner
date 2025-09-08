@@ -6,6 +6,9 @@ const auth = require('../middleware/auth');
 
 const db = require('../config/database');
 
+// Debug logging to verify route is loaded
+console.log('[Planning Routes] Loading planning session routes...');
+
 // Initialize planning sessions table
 db.exec(`
   CREATE TABLE IF NOT EXISTS planning_sessions (
@@ -274,6 +277,7 @@ router.get('/:sessionId', auth, async (req, res) => {
 
 // GET /api/planning-session/latest - Get most recent session
 router.get('/latest', auth, async (req, res) => {
+  console.log('[Planning Routes] GET /latest endpoint called');
   try {
     // Get user's family_id
     const userQuery = db.prepare('SELECT family_id FROM users WHERE id = ?');
@@ -483,6 +487,7 @@ router.post('/:sessionId/complete', auth, async (req, res) => {
 
 // GET /api/planning-session/analytics - Get analytics data for review
 router.get('/analytics', auth, async (req, res) => {
+  console.log('[Planning Routes] GET /analytics endpoint called with query:', req.query);
   try {
     const { start_date, end_date, member_id } = req.query;
 
@@ -770,4 +775,5 @@ router.get('/history', auth, async (req, res) => {
   }
 });
 
+console.log('[Planning Routes] Routes defined, exporting router...');
 module.exports = router;

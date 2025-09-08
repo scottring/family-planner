@@ -284,9 +284,10 @@ function initializeDatabase() {
       transcription TEXT,
       input_type TEXT CHECK(input_type IN ('voice', 'text', 'image')) NOT NULL,
       parsed_data TEXT DEFAULT '{}',
-      status TEXT DEFAULT 'pending' CHECK(status IN ('pending', 'processed', 'converted', 'archived')),
+      status TEXT DEFAULT 'pending' CHECK(status IN ('pending', 'processed', 'converted', 'archived', 'snoozed')),
       urgency_score INTEGER DEFAULT 3 CHECK(urgency_score >= 1 AND urgency_score <= 5),
       category TEXT,
+      snooze_until DATETIME,
       created_by INTEGER REFERENCES users(id),
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       processed_at DATETIME,
@@ -495,6 +496,21 @@ function initializeDatabase() {
       db.exec("ALTER TABLE events ADD COLUMN category TEXT DEFAULT 'personal'");
       console.log('Added category column to events table');
     }
+    
+    if (!columnNames.includes('is_draft')) {
+      db.exec("ALTER TABLE events ADD COLUMN is_draft BOOLEAN DEFAULT FALSE");
+      console.log('Added is_draft column to events table');
+    }
+    
+    if (!columnNames.includes('created_from_inbox')) {
+      db.exec("ALTER TABLE events ADD COLUMN created_from_inbox INTEGER");
+      console.log('Added created_from_inbox column to events table');
+    }
+    
+    if (!columnNames.includes('date')) {
+      db.exec("ALTER TABLE events ADD COLUMN date DATE");
+      console.log('Added date column to events table');
+    }
 
     // Add Phase 2.1 recurring event fields
     if (!columnNames.includes('is_recurring')) {
@@ -670,6 +686,11 @@ function initializeDatabase() {
     if (!inboxColumnNames.includes('processing_confidence')) {
       db.exec('ALTER TABLE inbox_items ADD COLUMN processing_confidence REAL DEFAULT 1.0');
       console.log('Added processing_confidence column to inbox_items table');
+    }
+    
+    if (!inboxColumnNames.includes('snooze_until')) {
+      db.exec('ALTER TABLE inbox_items ADD COLUMN snooze_until DATETIME');
+      console.log('Added snooze_until column to inbox_items table');
     }
   } catch (error) {
     console.log('Inbox table migration completed or columns already exist');

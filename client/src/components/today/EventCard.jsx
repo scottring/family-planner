@@ -13,7 +13,17 @@ import {
   MoreVertical,
   CheckCircle,
   Circle,
-  AlertTriangle
+  AlertTriangle,
+  Car,
+  Bike,
+  Navigation,
+  Route,
+  ArrowRight,
+  ExternalLink,
+  Eye,
+  AlertCircle,
+  Info,
+  ParkingCircle
 } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import PreparationTimeline from '../coordinator/PreparationTimeline';
@@ -23,6 +33,7 @@ import TemplateEditor from '../templates/TemplateEditor';
 import DuringEventChecklist from '../templates/DuringEventChecklist';
 import { useTemplateStore } from '../../stores/templateStore';
 import { useEventStore } from '../../stores/eventStore';
+import { mapService } from '../../services/mapService';
 
 const eventTypeColors = {
   school: 'border-l-blue-500 bg-white',
@@ -31,7 +42,9 @@ const eventTypeColors = {
   social: 'border-l-purple-500 bg-white',
   work: 'border-l-yellow-500 bg-white',
   personal: 'border-l-gray-500 bg-white',
-  family: 'border-l-pink-500 bg-white'
+  family: 'border-l-pink-500 bg-white',
+  travel: 'border-l-indigo-500 bg-indigo-50',
+  transportation: 'border-l-indigo-500 bg-indigo-50'
 };
 
 const eventTypeIcons = {
@@ -41,7 +54,17 @@ const eventTypeIcons = {
   social: '👥',
   work: '💼',
   personal: '👤',
-  family: '👨‍👩‍👧‍👦'
+  family: '👨‍👩‍👧‍👦',
+  travel: '🚗',
+  transportation: '🚗'
+};
+
+// Transportation mode specific icons and colors
+const transportationModeConfig = {
+  driving: { icon: Car, color: 'text-blue-600', bgColor: 'bg-blue-100', label: 'Driving' },
+  walking: { icon: Navigation, color: 'text-green-600', bgColor: 'bg-green-100', label: 'Walking' },
+  bicycling: { icon: Bike, color: 'text-yellow-600', bgColor: 'bg-yellow-100', label: 'Bicycling' },
+  transit: { icon: Route, color: 'text-purple-600', bgColor: 'bg-purple-100', label: 'Transit' }
 };
 
 const EventCard = ({ 
@@ -234,6 +257,75 @@ const EventCard = ({
 
   const handleCloseTemplateEditor = () => {
     setShowTemplateEditor(false);
+  };
+
+  // Transportation event detection and helpers
+  const isTransportationEvent = (event) => {
+    return event.event_type === 'travel' || 
+           event.category === 'travel' || 
+           event.type === 'travel' ||
+           event.transportation_mode || 
+           event.driving_needed ||
+           event.starting_address ||
+           event.destination_address ||
+           (event.transportation_data && Object.keys(event.transportation_data).length > 0);
+  };
+
+  const getTransportationMode = (event) => {
+    return event.transportation_mode || 
+           event.transportation_data?.mode || 
+           (event.driving_needed ? 'driving' : 'driving');
+  };
+
+  const getRouteInfo = (event) => {
+    if (event.transportation_data) {
+      return {
+        starting_address: event.transportation_data.starting_address || event.starting_address,
+        destination_address: event.transportation_data.destination_address || event.destination_address,
+        stops: event.transportation_data.stops || [],
+        route_info: event.transportation_data.route_info
+      };
+    }
+    return {
+      starting_address: event.starting_address,
+      destination_address: event.destination_address || event.location,
+      stops: event.stops || [],
+      route_info: null
+    };
+  };
+
+  const handleOpenInMaps = (event) => {
+    const routeInfo = getRouteInfo(event);
+    if (routeInfo.starting_address && routeInfo.destination_address) {
+      const waypoints = routeInfo.stops?.map(stop => stop.address).filter(Boolean) || [];
+      const mapsUrl = mapService.generateNavigationUrl(
+        routeInfo.starting_address,
+        routeInfo.destination_address,
+        waypoints
+      );
+      if (mapsUrl) {
+        window.open(mapsUrl, '_blank');
+      }
+    }
+  };
+
+  const formatRouteSummary = (event) => {
+    const routeInfo = getRouteInfo(event);
+    const stops = routeInfo.stops || [];
+    const routeData = routeInfo.route_info;
+    
+    let summary = '';
+    if (stops.length > 0) {
+      summary += `${stops.length} stop${stops.length > 1 ? 's' : ''}`;
+    }
+    if (routeData?.duration) {
+      summary += summary ? ` • ${routeData.duration}` : routeData.duration;
+    }
+    if (routeData?.distance) {
+      summary += summary ? ` • ${routeData.distance}` : routeData.distance;
+    }
+    
+    return summary || 'Route details';
   };
 
   if (variant === 'small' && !isExpanded) {
@@ -497,6 +589,13 @@ const EventCard = ({
           <p className="text-gray-700 mb-4 text-base leading-relaxed">{event.description}</p>
         )}
 
+        {/* Transportation Event Special Display */}
+        {isTransportationEvent(event) && (
+          <div className="mb-4">
+            <TransportationEventDisplay event={event} onOpenInMaps={handleOpenInMaps} />
+          </div>
+        )}
+
         {/* AI Preparation info */}
         {event.ai_enriched && (event.preparation_time || event.departure_time) && (
           <div className="flex items-center space-x-4 mb-4 text-sm">
@@ -655,6 +754,243 @@ const EventCard = ({
         />
       )}
     </>
+  );
+};
+
+// Transportation Event Display Component
+const TransportationEventDisplay = ({ event, onOpenInMaps }) => {
+  const [showRoute, setShowRoute] = useState(false);
+  const [trafficInfo, setTrafficInfo] = useState(null);
+  const [parkingInfo, setParkingInfo] = useState(null);
+  const [loadingTraffic, setLoadingTraffic] = useState(false);
+  
+  const transportationMode = event.transportation_mode || event.transportation_data?.mode || 'driving';
+  const modeConfig = transportationModeConfig[transportationMode] || transportationModeConfig.driving;
+  const ModeIcon = modeConfig.icon;
+  const routeInfo = event.transportation_data?.route_info;
+  const routeDetails = {
+    starting_address: event.transportation_data?.starting_address || event.starting_address,
+    destination_address: event.transportation_data?.destination_address || event.destination_address || event.location,
+    stops: event.transportation_data?.stops || event.stops || []
+  };
+  
+  const isDepartureTime = () => {
+    if (!event.departure_time && !event.start_time) return false;
+    const now = new Date();
+    const departureTime = new Date(event.departure_time || event.start_time);
+    const diffMs = departureTime.getTime() - now.getTime();
+    return diffMs > 0 && diffMs <= 30 * 60 * 1000; // Within 30 minutes
+  };
+  
+  const getTrafficInfo = async () => {
+    if (!routeDetails.starting_address || !routeDetails.destination_address) return;
+    
+    setLoadingTraffic(true);
+    try {
+      const traffic = await mapService.getTrafficInfo(
+        routeDetails.starting_address,
+        routeDetails.destination_address
+      );
+      setTrafficInfo(traffic);
+    } catch (error) {
+      console.error('Error fetching traffic info:', error);
+    }
+    setLoadingTraffic(false);
+  };
+  
+  const getParkingInfo = async () => {
+    if (!routeDetails.destination_address) return;
+    
+    try {
+      const parking = await mapService.findParking(routeDetails.destination_address);
+      setParkingInfo(parking);
+    } catch (error) {
+      console.error('Error fetching parking info:', error);
+    }
+  };
+  
+  useEffect(() => {
+    if (transportationMode === 'driving') {
+      getTrafficInfo();
+      getParkingInfo();
+    }
+  }, [transportationMode, routeDetails.starting_address, routeDetails.destination_address]);
+  
+  return (
+    <div className={`${modeConfig.bgColor} rounded-lg p-4 border-l-4 border-indigo-500`}>
+      {/* Transportation Mode Header */}
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center space-x-3">
+          <div className={`p-2 rounded-lg ${modeConfig.bgColor} ring-2 ring-white`}>
+            <ModeIcon className={`h-5 w-5 ${modeConfig.color}`} />
+          </div>
+          <div>
+            <div className="flex items-center space-x-2">
+              <h3 className={`font-semibold ${modeConfig.color}`}>{modeConfig.label} Trip</h3>
+              {isDepartureTime() && (
+                <div className="flex items-center space-x-1 px-2 py-1 bg-orange-100 text-orange-800 rounded-full text-xs font-medium">
+                  <AlertCircle className="h-3 w-3" />
+                  <span>Leave Soon</span>
+                </div>
+              )}
+            </div>
+            <p className="text-sm text-gray-600">
+              {formatRouteSummary(event)}
+            </p>
+          </div>
+        </div>
+        
+        {/* Departure Time */}
+        {(event.departure_time || event.start_time) && (
+          <div className={`text-right`}>
+            <div className={`flex items-center space-x-1 ${modeConfig.color} font-semibold`}>
+              <Clock className="h-4 w-4" />
+              <span>{formatTime(event.departure_time || event.start_time)}</span>
+            </div>
+            <p className="text-xs text-gray-600">Departure</p>
+          </div>
+        )}
+      </div>
+      
+      {/* Route Information */}
+      <div className="mb-3">
+        <div className="flex items-center space-x-2 text-sm">
+          <div className="flex items-center space-x-2 flex-1 min-w-0">
+            <div className="w-2 h-2 bg-green-500 rounded-full flex-shrink-0"></div>
+            <span className="text-gray-700 truncate">
+              {routeDetails.starting_address || 'Current location'}
+            </span>
+          </div>
+          <ArrowRight className="h-3 w-3 text-gray-400 flex-shrink-0" />
+          <div className="flex items-center space-x-2 flex-1 min-w-0">
+            <div className="w-2 h-2 bg-red-500 rounded-full flex-shrink-0"></div>
+            <span className="text-gray-700 truncate">
+              {routeDetails.destination_address || event.location || 'Destination'}
+            </span>
+          </div>
+        </div>
+      </div>
+      
+      {/* Route Stats */}
+      {routeInfo && (
+        <div className="flex items-center space-x-4 mb-3 text-sm">
+          {routeInfo.distance && (
+            <div className="flex items-center space-x-1 text-gray-600">
+              <Route className="h-3 w-3" />
+              <span>{routeInfo.distance}</span>
+            </div>
+          )}
+          {routeInfo.duration && (
+            <div className="flex items-center space-x-1 text-gray-600">
+              <Timer className="h-3 w-3" />
+              <span>{routeInfo.duration}</span>
+            </div>
+          )}
+          {routeDetails.stops && routeDetails.stops.length > 0 && (
+            <div className="flex items-center space-x-1 text-gray-600">
+              <MapPin className="h-3 w-3" />
+              <span>{routeDetails.stops.length} stop{routeDetails.stops.length > 1 ? 's' : ''}</span>
+            </div>
+          )}
+        </div>
+      )}
+      
+      {/* Traffic Status */}
+      {trafficInfo && (
+        <div className={`flex items-center space-x-2 mb-3 px-2 py-1 rounded text-xs ${
+          trafficInfo.condition === 'light' ? 'bg-green-100 text-green-800' :
+          trafficInfo.condition === 'moderate' ? 'bg-yellow-100 text-yellow-800' :
+          'bg-red-100 text-red-800'
+        }`}>
+          <div className={`w-2 h-2 rounded-full ${
+            trafficInfo.condition === 'light' ? 'bg-green-500' :
+            trafficInfo.condition === 'moderate' ? 'bg-yellow-500' :
+            'bg-red-500'
+          }`}></div>
+          <span className="font-medium capitalize">{trafficInfo.condition} traffic</span>
+          {trafficInfo.delay && <span>({trafficInfo.delay} delay)</span>}
+        </div>
+      )}
+      
+      {/* Expanded Route Details */}
+      {showRoute && routeDetails.stops && routeDetails.stops.length > 0 && (
+        <div className="mt-3 p-3 bg-white rounded-lg border border-gray-200">
+          <h4 className="font-medium text-gray-900 mb-2">Route Stops</h4>
+          <div className="space-y-2">
+            {routeDetails.stops.map((stop, index) => (
+              <div key={index} className="flex items-center space-x-3 text-sm">
+                <div className="flex-shrink-0 w-6 h-6 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-xs font-medium">
+                  {index + 1}
+                </div>
+                <div className="flex-1">
+                  <p className="text-gray-700">{stop.name || 'Stop'}</p>
+                  <p className="text-xs text-gray-500">{stop.address}</p>
+                  {stop.additional_time && (
+                    <p className="text-xs text-blue-600">+{stop.additional_time}</p>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+      
+      {/* Parking Information */}
+      {transportationMode === 'driving' && parkingInfo && parkingInfo.length > 0 && (
+        <div className="mt-3 p-3 bg-white rounded-lg border border-gray-200">
+          <h4 className="font-medium text-gray-900 mb-2 flex items-center space-x-1">
+            <ParkingCircle className="h-4 w-4" />
+            <span>Parking Options</span>
+          </h4>
+          <div className="space-y-2">
+            {parkingInfo.slice(0, 2).map(parking => (
+              <div key={parking.id} className="flex justify-between text-sm">
+                <div>
+                  <p className="text-gray-700">{parking.name}</p>
+                  <p className="text-xs text-gray-500">{parking.distance} away</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-gray-700">{parking.price}</p>
+                  <p className="text-xs text-gray-500">{parking.availability}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+      
+      {/* Action Buttons */}
+      <div className="flex items-center justify-between mt-4 pt-3 border-t border-gray-200">
+        <div className="flex items-center space-x-2">
+          {routeDetails.stops && routeDetails.stops.length > 0 && (
+            <button
+              onClick={() => setShowRoute(!showRoute)}
+              className="flex items-center space-x-1 px-3 py-1 text-xs text-gray-600 hover:text-gray-800 hover:bg-white rounded"
+            >
+              <Eye className="h-3 w-3" />
+              <span>{showRoute ? 'Hide Route' : 'View Route'}</span>
+            </button>
+          )}
+          {transportationMode === 'driving' && !loadingTraffic && (
+            <button
+              onClick={getTrafficInfo}
+              className="flex items-center space-x-1 px-3 py-1 text-xs text-gray-600 hover:text-gray-800 hover:bg-white rounded"
+            >
+              <Info className="h-3 w-3" />
+              <span>Check Traffic</span>
+            </button>
+          )}
+        </div>
+        
+        <button
+          onClick={() => onOpenInMaps(event)}
+          className={`flex items-center space-x-1 px-3 py-2 ${modeConfig.color} ${modeConfig.bgColor} hover:opacity-80 rounded-lg text-sm font-medium transition-colors`}
+        >
+          <ExternalLink className="h-3 w-3" />
+          <span>Open in Maps</span>
+        </button>
+      </div>
+    </div>
   );
 };
 

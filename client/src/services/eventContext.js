@@ -271,13 +271,27 @@ export const generatePreparationTimeline = (event, pattern = null) => {
       duration: 0,
       templateType: 'driving',
       templateData: {
-        destination: event.location || event.title,
-        estimatedTravelTime: FAMILY_CONFIG.commuteBudget,
+        // Auto-populate with smart defaults
+        destinationAddress: event.location || event.venue || event.address || '',
+        startAddress: '', // Will be populated by user/template
+        transportation_mode: 'driving',
+        
+        // Event-specific transportation suggestions
+        ...getTransportationSuggestions(event, analysis),
+        
+        // Time-based data
         departureTime: departureTime,
-        // Default driving template data structure
+        arrival_time: event.start_time,
+        estimatedTravelTime: FAMILY_CONFIG.commuteBudget,
+        
+        // Route preferences
         routePreference: 'fastest',
         trafficAlerts: true,
         alternateRoutes: false,
+        
+        // Event context
+        eventTitle: event.title,
+        eventType: analysis?.patternName || 'general',
         notes: ''
       }
     });
@@ -331,6 +345,109 @@ const getPreparationActivity = (analysis) => {
   }
   
   return activities.join(', ');
+};
+
+/**
+ * Get smart transportation suggestions based on event type and patterns
+ * @param {Object} event - Event object
+ * @param {Object} analysis - Event pattern analysis
+ * @returns {Object} - Transportation suggestions
+ */
+const getTransportationSuggestions = (event, analysis) => {
+  const suggestions = {
+    stops: [],
+    parking_info: '',
+    preparation_checklist: []
+  };
+
+  // Add event-type specific stops and considerations
+  if (analysis?.patternName === 'sports') {
+    suggestions.stops.push({
+      type: 'suggestion',
+      category: 'sports',
+      name: 'Sports store (if needed)',
+      reason: 'Equipment or uniform needs'
+    });
+    suggestions.preparation_checklist.push({
+      id: 'sports-gear',
+      text: 'Check all sports equipment is packed',
+      completed: false
+    });
+    suggestions.parking_info = 'Sports venues often have limited parking. Arrive early to secure a spot close to the fields.';
+  }
+
+  if (analysis?.patternName === 'medical') {
+    suggestions.stops.push({
+      type: 'suggestion',
+      category: 'medical',
+      name: 'Pharmacy (if needed)',
+      reason: 'Fill prescriptions after appointment'
+    });
+    suggestions.preparation_checklist.push({
+      id: 'insurance-check',
+      text: 'Bring insurance cards and ID',
+      completed: false
+    });
+    suggestions.parking_info = 'Medical offices often validate parking. Ask about parking validation at check-in.';
+  }
+
+  if (analysis?.patternName === 'school') {
+    suggestions.preparation_checklist.push({
+      id: 'school-materials',
+      text: 'Pack any required documents or materials',
+      completed: false
+    });
+    suggestions.parking_info = 'School parking may be limited during events. Consider alternative parking areas.';
+  }
+
+  if (analysis?.patternName === 'social') {
+    suggestions.stops.push({
+      type: 'suggestion',
+      category: 'social',
+      name: 'Gift shop/store (if needed)',
+      reason: 'Last-minute gift or card purchase'
+    });
+    suggestions.preparation_checklist.push({
+      id: 'gift-check',
+      text: 'Confirm gift is wrapped and card is signed',
+      completed: false
+    });
+  }
+
+  // Time-based suggestions
+  const eventTime = new Date(event.start_time);
+  const eventHour = eventTime.getHours();
+
+  if (eventHour >= 17) { // Evening events
+    suggestions.stops.push({
+      type: 'suggestion',
+      category: 'time',
+      name: 'Gas station',
+      reason: 'Fuel up for return trip in the dark'
+    });
+  }
+
+  if (eventHour < 9) { // Morning events
+    suggestions.stops.push({
+      type: 'suggestion',
+      category: 'time',
+      name: 'Coffee shop',
+      reason: 'Morning caffeine stop'
+    });
+  }
+
+  // Weekend vs weekday considerations
+  const isWeekend = eventTime.getDay() === 0 || eventTime.getDay() === 6;
+  if (isWeekend) {
+    suggestions.stops.push({
+      type: 'suggestion',
+      category: 'weekend',
+      name: 'Grocery store',
+      reason: 'Weekend errands while out'
+    });
+  }
+
+  return suggestions;
 };
 
 /**

@@ -45,8 +45,14 @@ router.post('/events', auth, async (req, res) => {
     const eventData = req.body;
     
     // Required fields validation
-    if (!eventData.title || !eventData.start_time || !eventData.end_time) {
-      return res.status(400).json({ message: 'Title, start time, and end time are required' });
+    // For draft events, we don't require start_time and end_time
+    if (!eventData.title) {
+      return res.status(400).json({ message: 'Title is required' });
+    }
+    
+    // If it's not a draft, require start and end times
+    if (!eventData.is_draft && (!eventData.start_time || !eventData.end_time)) {
+      return res.status(400).json({ message: 'Start time and end time are required for non-draft events' });
     }
     
     // Prepare values for insertion
@@ -55,8 +61,9 @@ router.post('/events', auth, async (req, res) => {
         title, description, start_time, end_time, location,
         category, event_type, attendees, notes, resources, 
         checklist, structured_checklist, checklist_completed_items, 
-        assigned_to, created_by, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+        assigned_to, created_by, date, is_draft, created_from_inbox,
+        created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
     `);
     
     const result = stmt.run(
@@ -74,7 +81,10 @@ router.post('/events', auth, async (req, res) => {
       typeof eventData.structured_checklist === 'object' ? db.stringifyJSON(eventData.structured_checklist) : db.stringifyJSON([]),
       db.stringifyJSON([]), // checklist_completed_items - empty by default
       eventData.assigned_to || null,
-      req.user.id
+      req.user.id,
+      eventData.date || null,
+      eventData.is_draft ? 1 : 0,  // Convert boolean to integer for SQLite
+      eventData.created_from_inbox || null
     );
     
     // Return the created event
@@ -164,7 +174,8 @@ router.put('/events/:id', auth, async (req, res) => {
       'event_type', 'preparation_list', 'resources', 'packing_list',
       'contacts', 'parking_info', 'weather_dependent', 'meal_requirements',
       'notes', 'checklist', 'structured_checklist', 'checklist_completed_items',
-      'assigned_to', 'attendees', 'category', 'recurrence_type', 'recurrence_days', 'recurrence_end_date'
+      'assigned_to', 'attendees', 'category', 'recurrence_type', 'recurrence_days', 'recurrence_end_date',
+      'date', 'is_draft', 'created_from_inbox'
     ];
     
     // JSON fields that need to be stringified
@@ -177,6 +188,9 @@ router.put('/events/:id', auth, async (req, res) => {
         // Handle JSON fields
         if (jsonFields.includes(key) && typeof updates[key] === 'object') {
           values.push(db.stringifyJSON(updates[key]));
+        } else if (key === 'is_draft') {
+          // Convert boolean to integer for SQLite
+          values.push(updates[key] ? 1 : 0);
         } else {
           values.push(updates[key]);
         }

@@ -47,11 +47,11 @@ const WeekPlanner = ({ sessionId, onProgress, onComplete }) => {
   const { familyMembers } = useFamilyStore();
 
   useEffect(() => {
-    // Set next week's date range
+    // Set current week's date range (starting from Sunday)
     const today = new Date();
-    const nextWeek = new Date(today);
-    nextWeek.setDate(today.getDate() + 7 - today.getDay()); // Next Sunday
-    setWeekStart(nextWeek);
+    const currentWeekStart = new Date(today);
+    currentWeekStart.setDate(today.getDate() - today.getDay()); // This Sunday
+    setWeekStart(currentWeekStart);
     
     fetchEvents();
     fetchTasks();
@@ -222,14 +222,31 @@ const WeekPlanner = ({ sessionId, onProgress, onComplete }) => {
     if (!draggedEvent) return;
     
     try {
-      // Calculate new start time maintaining the same hour/minute
-      const originalTime = new Date(draggedEvent.start_time);
-      const newStartTime = new Date(targetDate);
-      newStartTime.setHours(originalTime.getHours(), originalTime.getMinutes());
-      
-      await updateEvent(draggedEvent.id, {
-        start_time: newStartTime.toISOString()
-      });
+      // Check if this is an unscheduled event
+      if (draggedEvent.is_draft || !draggedEvent.date) {
+        // Schedule the event for this day
+        const newStartTime = new Date(targetDate);
+        newStartTime.setHours(9, 0, 0, 0); // Default to 9 AM
+        
+        const newEndTime = new Date(targetDate);
+        newEndTime.setHours(10, 0, 0, 0); // Default 1 hour duration
+        
+        await updateEvent(draggedEvent.id, {
+          date: targetDate.toISOString().split('T')[0],
+          start_time: newStartTime.toISOString(),
+          end_time: newEndTime.toISOString(),
+          is_draft: false // No longer a draft
+        });
+      } else {
+        // Move existing scheduled event
+        const originalTime = new Date(draggedEvent.start_time);
+        const newStartTime = new Date(targetDate);
+        newStartTime.setHours(originalTime.getHours(), originalTime.getMinutes());
+        
+        await updateEvent(draggedEvent.id, {
+          start_time: newStartTime.toISOString()
+        });
+      }
       
       fetchEvents();
       checkForConflicts();
@@ -306,12 +323,39 @@ const WeekPlanner = ({ sessionId, onProgress, onComplete }) => {
         </div>
       </div>
 
+      {/* Unscheduled Events - Only show draft events created from inbox in this session */}
+      {events.filter(e => e.is_draft === true).length > 0 && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+          <h3 className="text-sm font-semibold text-blue-900 mb-3 flex items-center">
+            <Sparkles className="h-4 w-4 mr-2" />
+            Items to Schedule ({events.filter(e => e.is_draft === true).length})
+          </h3>
+          <div className="flex flex-wrap gap-2">
+            {events.filter(e => e.is_draft === true).map(event => (
+              <div
+                key={event.id}
+                draggable
+                onDragStart={(e) => {
+                  setDraggedEvent(event);
+                  e.dataTransfer.effectAllowed = 'move';
+                }}
+                className="bg-white px-3 py-2 rounded-lg border border-blue-300 cursor-move hover:shadow-md transition-shadow flex items-center space-x-2"
+              >
+                <Calendar className="h-3 w-3 text-blue-600" />
+                <span className="text-sm font-medium">{event.title}</span>
+              </div>
+            ))}
+          </div>
+          <p className="text-xs text-blue-700 mt-2">Drag items to a day on the calendar to schedule them</p>
+        </div>
+      )}
+
       {/* Week Calendar Grid */}
       <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-        <div className="grid grid-cols-7 gap-0">
+        <div className="grid grid-cols-1 sm:grid-cols-7 gap-0">
           {/* Day Headers */}
           {weekDays.map((day, index) => (
-            <div key={index} className="p-3 border-r border-b border-gray-200 bg-gray-50">
+            <div key={index} className="p-3 sm:border-r border-b border-gray-200 bg-gray-50">
               <div className="text-center">
                 <div className="text-sm font-medium text-gray-900">
                   {day.toLocaleDateString(undefined, { weekday: 'short' })}
@@ -334,7 +378,7 @@ const WeekPlanner = ({ sessionId, onProgress, onComplete }) => {
             return (
               <div
                 key={`content-${index}`}
-                className="p-2 border-r border-gray-200 min-h-48 bg-white"
+                className="p-2 sm:border-r border-gray-200 min-h-48 sm:min-h-32 bg-white"
                 onDragOver={(e) => e.preventDefault()}
                 onDrop={(e) => handleEventDrop(e, day)}
               >
@@ -547,7 +591,7 @@ const WeekPlanner = ({ sessionId, onProgress, onComplete }) => {
       {/* Stats Summary */}
       <div className="bg-gray-50 rounded-lg p-4">
         <h4 className="font-medium text-gray-900 mb-3">Week Overview</h4>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <div className="text-center">
             <div className="text-2xl font-bold text-blue-900">
               {events.filter(e => {

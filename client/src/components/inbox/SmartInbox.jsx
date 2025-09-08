@@ -2,28 +2,33 @@ import { useState, useEffect } from 'react';
 import { 
   Search, 
   Filter,
-  Check,
-  X,
   Clock,
-  Calendar,
-  List,
   Trash2,
   Archive,
-  AlertTriangle
+  AlertTriangle,
+  Inbox,
+  ChevronRight,
+  Mic,
+  Type,
+  Image,
+  Sparkles,
+  Send
 } from 'lucide-react';
 import { useInboxStore } from '../../stores/inboxStore';
+import { useNavigate } from 'react-router-dom';
 import VoiceCapture from './VoiceCapture';
 
 const SmartInbox = () => {
-  const [currentView, setCurrentView] = useState('urgent');
+  const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedItems, setSelectedItems] = useState(new Set());
-  const [showBulkActions, setShowBulkActions] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
+  const [textInput, setTextInput] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [captureMode, setCaptureMode] = useState('text'); // 'text' or 'voice'
   const [filters, setFilters] = useState({
-    category: 'all',
+    urgency: 'all',
     inputType: 'all',
-    status: 'all'
+    timeframe: 'all'
   });
 
   const { 
@@ -31,7 +36,7 @@ const SmartInbox = () => {
     loading, 
     error,
     fetchInboxItems,
-    processInboxItem,
+    addInboxItem,
     deleteInboxItem,
     archiveInboxItem,
     snoozeInboxItem
@@ -41,22 +46,23 @@ const SmartInbox = () => {
     fetchInboxItems();
   }, [fetchInboxItems]);
 
-  const views = [
-    { id: 'urgent', name: 'Urgent', icon: AlertTriangle, color: 'red' },
-    { id: 'thisweek', name: 'This Week', icon: Calendar, color: 'blue' },
-    { id: 'everything', name: 'Everything', icon: List, color: 'gray' }
-  ];
+  // Filter only unprocessed items (captured state)
+  const capturedItems = items.filter(item => 
+    item.status === 'pending' || item.status === 'snoozed'
+  );
 
-  const filteredItems = items.filter(item => {
+  const filteredItems = capturedItems.filter(item => {
     // Text search
     if (searchQuery && !item.raw_content.toLowerCase().includes(searchQuery.toLowerCase()) &&
         !item.transcription?.toLowerCase().includes(searchQuery.toLowerCase())) {
       return false;
     }
 
-    // Filter by category
-    if (filters.category !== 'all' && item.category !== filters.category) {
-      return false;
+    // Filter by urgency
+    if (filters.urgency !== 'all') {
+      if (filters.urgency === 'urgent' && item.urgency_score < 4) return false;
+      if (filters.urgency === 'normal' && (item.urgency_score < 2 || item.urgency_score > 3)) return false;
+      if (filters.urgency === 'low' && item.urgency_score > 2) return false;
     }
 
     // Filter by input type
@@ -64,156 +70,180 @@ const SmartInbox = () => {
       return false;
     }
 
-    // Filter by status
-    if (filters.status !== 'all' && item.status !== filters.status) {
-      return false;
+    // Filter by timeframe
+    if (filters.timeframe !== 'all') {
+      const now = new Date();
+      const createdAt = new Date(item.created_at);
+      const dayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+      const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+      
+      if (filters.timeframe === 'today' && createdAt < dayAgo) return false;
+      if (filters.timeframe === 'week' && createdAt < weekAgo) return false;
     }
 
-    // View-specific filtering
-    const now = new Date();
-    const weekFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
-    const createdAt = new Date(item.created_at);
-
-    switch (currentView) {
-      case 'urgent':
-        return item.urgency_score >= 4;
-      case 'thisweek':
-        return createdAt >= now && createdAt <= weekFromNow;
-      case 'everything':
-      default:
-        return true;
-    }
+    return true;
   });
 
-  const toggleItemSelection = (itemId) => {
-    const newSelected = new Set(selectedItems);
-    if (newSelected.has(itemId)) {
-      newSelected.delete(itemId);
-    } else {
-      newSelected.add(itemId);
-    }
-    setSelectedItems(newSelected);
-    setShowBulkActions(newSelected.size > 0);
-  };
-
-  const selectAll = () => {
-    setSelectedItems(new Set(filteredItems.map(item => item.id)));
-    setShowBulkActions(true);
-  };
-
-  const deselectAll = () => {
-    setSelectedItems(new Set());
-    setShowBulkActions(false);
-  };
-
-  const handleBulkAction = async (action) => {
-    const selectedItemIds = Array.from(selectedItems);
+  const handleSnooze = async (item) => {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    tomorrow.setHours(9, 0, 0, 0);
     
-    try {
-      switch (action) {
-        case 'delete':
-          await Promise.all(selectedItemIds.map(id => deleteInboxItem(id)));
-          break;
-        case 'archive':
-          await Promise.all(selectedItemIds.map(id => archiveInboxItem(id)));
-          break;
-        case 'snooze':
-          const snoozeUntil = new Date();
-          snoozeUntil.setHours(snoozeUntil.getHours() + 24);
-          await Promise.all(selectedItemIds.map(id => snoozeInboxItem(id, snoozeUntil)));
-          break;
-      }
-      
-      deselectAll();
-      fetchInboxItems(); // Refresh the list
-    } catch (error) {
-      console.error('Bulk action failed:', error);
+    await snoozeInboxItem(item.id, tomorrow);
+    fetchInboxItems();
+  };
+
+  const handleDelete = async (item) => {
+    if (confirm('Are you sure you want to delete this item?')) {
+      await deleteInboxItem(item.id);
+      fetchInboxItems();
     }
   };
 
-  const handleConvertToEvent = async (item) => {
+  const handleArchive = async (item) => {
+    await archiveInboxItem(item.id);
+    fetchInboxItems();
+  };
+
+  const handleTextSubmit = async (e) => {
+    e.preventDefault();
+    if (!textInput.trim()) return;
+    
+    setIsSubmitting(true);
     try {
-      await processInboxItem(item.id, 'event');
+      await addInboxItem({
+        raw_content: textInput,
+        input_type: 'text'
+      });
+      setTextInput('');
       fetchInboxItems();
     } catch (error) {
-      console.error('Failed to convert to event:', error);
+      console.error('Failed to add text item:', error);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
-  const handleConvertToTask = async (item) => {
-    try {
-      await processInboxItem(item.id, 'task');
-      fetchInboxItems();
-    } catch (error) {
-      console.error('Failed to convert to task:', error);
-    }
+  const startProcessing = () => {
+    // Navigate to planning session or open processor
+    navigate('/planning');
   };
 
   const getUrgencyColor = (score) => {
-    if (score >= 5) return 'bg-red-500';
-    if (score >= 4) return 'bg-orange-500';
-    if (score >= 3) return 'bg-yellow-500';
-    if (score >= 2) return 'bg-blue-500';
-    return 'bg-gray-500';
+    if (score >= 4) return 'text-red-600 bg-red-50';
+    if (score >= 3) return 'text-yellow-600 bg-yellow-50';
+    return 'text-gray-600 bg-gray-50';
   };
 
-  const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleString();
+  const getInputTypeIcon = (type) => {
+    switch (type) {
+      case 'voice': return <Mic className="w-4 h-4" />;
+      case 'text': return <Type className="w-4 h-4" />;
+      case 'image': return <Image className="w-4 h-4" />;
+      default: return <Inbox className="w-4 h-4" />;
+    }
   };
-
-  if (loading) {
-    return (
-      <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
-      </div>
-    );
-  }
 
   return (
     <div className="max-w-6xl mx-auto p-6">
       {/* Header */}
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900 mb-2">Smart Inbox</h1>
-        <p className="text-gray-600">Capture, organize, and process your thoughts and tasks</p>
-      </div>
+      <div className="mb-8">
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center space-x-3">
+            <Inbox className="w-8 h-8 text-blue-600" />
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">Smart Inbox</h1>
+              <p className="text-sm text-gray-600 mt-1">
+                Capture ideas and thoughts • {capturedItems.length} items to process
+              </p>
+            </div>
+          </div>
+          
+          {/* Process Items Button - Primary Action */}
+          {capturedItems.length > 0 && (
+            <button
+              onClick={startProcessing}
+              className="flex items-center px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+            >
+              <Sparkles className="w-5 h-5 mr-2" />
+              Process {capturedItems.length} Items
+              <ChevronRight className="w-5 h-5 ml-2" />
+            </button>
+          )}
+        </div>
 
-      {/* Voice Capture */}
-      <div className="mb-6">
-        <VoiceCapture 
-          onCapture={() => fetchInboxItems()}
-          className="max-w-md mx-auto"
-        />
-      </div>
+        {/* Capture Input - Text or Voice */}
+        <div className="bg-gradient-to-r from-blue-50 to-purple-50 border border-blue-200 rounded-xl p-6">
+          {/* Mode Toggle */}
+          <div className="flex items-center justify-center mb-4 bg-white/50 rounded-lg p-1 max-w-xs mx-auto">
+            <button
+              onClick={() => setCaptureMode('text')}
+              className={`flex items-center px-4 py-2 rounded-md transition-all ${
+                captureMode === 'text' 
+                  ? 'bg-white text-blue-600 shadow-sm' 
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              <Type className="w-4 h-4 mr-2" />
+              Text
+            </button>
+            <button
+              onClick={() => setCaptureMode('voice')}
+              className={`flex items-center px-4 py-2 rounded-md transition-all ${
+                captureMode === 'voice' 
+                  ? 'bg-white text-blue-600 shadow-sm' 
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              <Mic className="w-4 h-4 mr-2" />
+              Voice
+            </button>
+          </div>
 
-      {/* View Tabs */}
-      <div className="mb-6">
-        <nav className="flex space-x-1 bg-gray-100 rounded-lg p-1">
-          {views.map(view => {
-            const Icon = view.icon;
-            const isActive = currentView === view.id;
-            return (
-              <button
-                key={view.id}
-                onClick={() => setCurrentView(view.id)}
-                className={`
-                  flex items-center px-4 py-2 rounded-md text-sm font-medium transition-colors
-                  ${isActive 
-                    ? 'bg-white text-gray-900 shadow-sm' 
-                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-                  }
-                `}
-              >
-                <Icon className="w-4 h-4 mr-2" />
-                {view.name}
-                <span className={`ml-2 px-2 py-0.5 text-xs rounded-full ${
-                  isActive ? 'bg-gray-100 text-gray-700' : 'bg-gray-200 text-gray-600'
-                }`}>
-                  {filteredItems.length}
-                </span>
-              </button>
-            );
-          })}
-        </nav>
+          {/* Text Input */}
+          {captureMode === 'text' && (
+            <form onSubmit={handleTextSubmit} className="space-y-4">
+              <div>
+                <textarea
+                  value={textInput}
+                  onChange={(e) => setTextInput(e.target.value)}
+                  placeholder="Type your thought, idea, or reminder..."
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
+                  rows={3}
+                  disabled={isSubmitting}
+                />
+              </div>
+              <div className="flex justify-end">
+                <button
+                  type="submit"
+                  disabled={!textInput.trim() || isSubmitting}
+                  className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+                >
+                  {isSubmitting ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      Adding...
+                    </>
+                  ) : (
+                    <>
+                      <Send className="w-4 h-4 mr-2" />
+                      Add to Inbox
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          )}
+
+          {/* Voice Capture */}
+          {captureMode === 'voice' && (
+            <VoiceCapture 
+              onCapture={(item) => {
+                fetchInboxItems();
+              }}
+            />
+          )}
+        </div>
       </div>
 
       {/* Search and Filters */}
@@ -222,7 +252,7 @@ const SmartInbox = () => {
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
           <input
             type="text"
-            placeholder="Search inbox items..."
+            placeholder="Search captured items..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
@@ -235,6 +265,11 @@ const SmartInbox = () => {
         >
           <Filter className="w-5 h-5 mr-2" />
           Filters
+          {Object.values(filters).some(f => f !== 'all') && (
+            <span className="ml-2 px-2 py-0.5 bg-blue-100 text-blue-700 text-xs rounded-full">
+              Active
+            </span>
+          )}
         </button>
       </div>
 
@@ -243,17 +278,16 @@ const SmartInbox = () => {
         <div className="mb-6 bg-gray-50 border border-gray-200 rounded-lg p-4">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Urgency</label>
               <select
-                value={filters.category}
-                onChange={(e) => setFilters({...filters, category: e.target.value})}
+                value={filters.urgency}
+                onChange={(e) => setFilters({...filters, urgency: e.target.value})}
                 className="w-full border border-gray-300 rounded-md px-3 py-2"
               >
-                <option value="all">All Categories</option>
-                <option value="task">Tasks</option>
-                <option value="event">Events</option>
-                <option value="note">Notes</option>
-                <option value="reminder">Reminders</option>
+                <option value="all">All Urgency Levels</option>
+                <option value="urgent">Urgent (4-5)</option>
+                <option value="normal">Normal (2-3)</option>
+                <option value="low">Low (1)</option>
               </select>
             </div>
             
@@ -272,201 +306,152 @@ const SmartInbox = () => {
             </div>
             
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Timeframe</label>
               <select
-                value={filters.status}
-                onChange={(e) => setFilters({...filters, status: e.target.value})}
+                value={filters.timeframe}
+                onChange={(e) => setFilters({...filters, timeframe: e.target.value})}
                 className="w-full border border-gray-300 rounded-md px-3 py-2"
               >
-                <option value="all">All Status</option>
-                <option value="pending">Pending</option>
-                <option value="processed">Processed</option>
-                <option value="converted">Converted</option>
-                <option value="archived">Archived</option>
+                <option value="all">All Time</option>
+                <option value="today">Today</option>
+                <option value="week">This Week</option>
               </select>
             </div>
           </div>
         </div>
       )}
 
-      {/* Bulk Actions */}
-      {showBulkActions && (
-        <div className="mb-4 bg-blue-50 border border-blue-200 rounded-lg p-4">
-          <div className="flex items-center justify-between">
-            <span className="text-sm font-medium text-blue-900">
-              {selectedItems.size} items selected
-            </span>
-            <div className="flex space-x-2">
-              <button
-                onClick={() => handleBulkAction('archive')}
-                className="px-3 py-1 bg-gray-600 text-white rounded-md hover:bg-gray-700 text-sm"
-              >
-                Archive
-              </button>
-              <button
-                onClick={() => handleBulkAction('snooze')}
-                className="px-3 py-1 bg-yellow-600 text-white rounded-md hover:bg-yellow-700 text-sm"
-              >
-                Snooze 24h
-              </button>
-              <button
-                onClick={() => handleBulkAction('delete')}
-                className="px-3 py-1 bg-red-600 text-white rounded-md hover:bg-red-700 text-sm"
-              >
-                Delete
-              </button>
-              <button
-                onClick={deselectAll}
-                className="px-3 py-1 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 text-sm"
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
+      {/* Loading State */}
+      {loading && (
+        <div className="flex items-center justify-center py-12">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
         </div>
       )}
 
-      {/* Selection Controls */}
-      {filteredItems.length > 0 && (
-        <div className="mb-4 flex items-center justify-between">
-          <div className="flex items-center space-x-2">
-            <button
-              onClick={selectAll}
-              className="text-sm text-blue-600 hover:text-blue-700"
-            >
-              Select All
-            </button>
-            {selectedItems.size > 0 && (
-              <button
-                onClick={deselectAll}
-                className="text-sm text-gray-600 hover:text-gray-700"
-              >
-                Deselect All
-              </button>
-            )}
-          </div>
-          <span className="text-sm text-gray-500">
-            {filteredItems.length} items
-          </span>
-        </div>
-      )}
-
-      {/* Items List */}
+      {/* Error State */}
       {error && (
-        <div className="mb-4 bg-red-50 border border-red-200 rounded-lg p-4">
-          <p className="text-red-700">{error}</p>
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+          <div className="flex items-center">
+            <AlertTriangle className="w-5 h-5 text-red-600 mr-2" />
+            <span className="text-red-800">{error}</span>
+          </div>
         </div>
       )}
 
-      <div className="space-y-4">
-        {filteredItems.length === 0 ? (
-          <div className="text-center py-12">
-            <div className="text-gray-400 mb-4">
-              <List className="w-12 h-12 mx-auto" />
-            </div>
-            <h3 className="text-lg font-medium text-gray-900 mb-2">No items found</h3>
-            <p className="text-gray-500">
-              {currentView === 'urgent' && 'No urgent items in your inbox.'}
-              {currentView === 'thisweek' && 'No items from this week.'}
-              {currentView === 'everything' && 'Your inbox is empty. Start by adding a voice note!'}
-            </p>
-          </div>
-        ) : (
-          filteredItems.map(item => (
-            <div
-              key={item.id}
-              className={`
-                border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow
-                ${selectedItems.has(item.id) ? 'ring-2 ring-blue-500 bg-blue-50' : 'bg-white'}
-              `}
-            >
-              <div className="flex items-start space-x-4">
-                {/* Selection Checkbox */}
-                <button
-                  onClick={() => toggleItemSelection(item.id)}
-                  className={`
-                    w-5 h-5 rounded border-2 flex items-center justify-center mt-1
-                    ${selectedItems.has(item.id)
-                      ? 'bg-blue-500 border-blue-500'
-                      : 'border-gray-300 hover:border-gray-400'
-                    }
-                  `}
-                >
-                  {selectedItems.has(item.id) && (
-                    <Check className="w-3 h-3 text-white" />
+      {/* Empty State */}
+      {!loading && filteredItems.length === 0 && (
+        <div className="bg-gray-50 rounded-xl p-12 text-center">
+          <Inbox className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">
+            {searchQuery || Object.values(filters).some(f => f !== 'all') 
+              ? 'No items match your filters'
+              : 'Your inbox is empty'}
+          </h3>
+          <p className="text-gray-600 max-w-md mx-auto">
+            {searchQuery || Object.values(filters).some(f => f !== 'all')
+              ? 'Try adjusting your search or filters'
+              : 'Start capturing ideas using voice or text input above'}
+          </p>
+        </div>
+      )}
+
+      {/* Items List - Simplified */}
+      <div className="space-y-3">
+        {filteredItems.map((item) => (
+          <div
+            key={item.id}
+            className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
+          >
+            <div className="flex items-start justify-between">
+              <div className="flex-1">
+                {/* Item Header */}
+                <div className="flex items-center gap-2 mb-2">
+                  {/* Input Type Icon */}
+                  <span className="text-gray-500">
+                    {getInputTypeIcon(item.input_type)}
+                  </span>
+                  
+                  {/* Urgency Indicator */}
+                  {item.urgency_score >= 3 && (
+                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${getUrgencyColor(item.urgency_score)}`}>
+                      Urgency: {item.urgency_score}
+                    </span>
                   )}
-                </button>
-
-                <div className="flex-1 min-w-0">
-                  {/* Header */}
-                  <div className="flex items-center space-x-2 mb-2">
-                    <div className={`w-3 h-3 rounded-full ${getUrgencyColor(item.urgency_score)}`}></div>
-                    <span className="text-xs text-gray-500 capitalize">
-                      {item.input_type}
+                  
+                  {/* Time */}
+                  <span className="text-xs text-gray-500">
+                    {new Date(item.created_at).toLocaleString()}
+                  </span>
+                  
+                  {/* Snoozed indicator */}
+                  {item.status === 'snoozed' && item.snooze_until && (
+                    <span className="flex items-center text-xs text-yellow-600 bg-yellow-50 px-2 py-0.5 rounded-full">
+                      <Clock className="w-3 h-3 mr-1" />
+                      Snoozed until {new Date(item.snooze_until).toLocaleDateString()}
                     </span>
-                    <span className="text-xs text-gray-500">•</span>
-                    <span className="text-xs text-gray-500">
-                      {formatDate(item.created_at)}
-                    </span>
-                    {item.category && (
-                      <>
-                        <span className="text-xs text-gray-500">•</span>
-                        <span className="text-xs px-2 py-0.5 bg-gray-100 text-gray-700 rounded-full capitalize">
-                          {item.category}
-                        </span>
-                      </>
-                    )}
-                  </div>
-
-                  {/* Content */}
-                  <div className="mb-3">
-                    <p className="text-gray-900 line-clamp-3">
-                      {item.transcription || item.raw_content}
-                    </p>
-                  </div>
-
-                  {/* Actions */}
-                  <div className="flex flex-wrap gap-2">
-                    <button
-                      onClick={() => handleConvertToEvent(item)}
-                      className="px-3 py-1 bg-green-100 text-green-800 rounded-md hover:bg-green-200 text-sm font-medium"
-                    >
-                      → Event
-                    </button>
-                    <button
-                      onClick={() => handleConvertToTask(item)}
-                      className="px-3 py-1 bg-blue-100 text-blue-800 rounded-md hover:bg-blue-200 text-sm font-medium"
-                    >
-                      → Task
-                    </button>
-                    <button
-                      onClick={() => snoozeInboxItem(item.id, new Date(Date.now() + 24 * 60 * 60 * 1000))}
-                      className="px-3 py-1 bg-yellow-100 text-yellow-800 rounded-md hover:bg-yellow-200 text-sm"
-                    >
-                      <Clock className="w-4 h-4 inline mr-1" />
-                      Snooze
-                    </button>
-                    <button
-                      onClick={() => archiveInboxItem(item.id)}
-                      className="px-3 py-1 bg-gray-100 text-gray-800 rounded-md hover:bg-gray-200 text-sm"
-                    >
-                      <Archive className="w-4 h-4 inline mr-1" />
-                      Archive
-                    </button>
-                    <button
-                      onClick={() => deleteInboxItem(item.id)}
-                      className="px-3 py-1 bg-red-100 text-red-800 rounded-md hover:bg-red-200 text-sm"
-                    >
-                      <Trash2 className="w-4 h-4 inline mr-1" />
-                      Delete
-                    </button>
-                  </div>
+                  )}
                 </div>
+
+                {/* Content */}
+                <div className="text-gray-900">
+                  {item.transcription || item.raw_content}
+                </div>
+
+                {/* AI Category if available */}
+                {item.category && (
+                  <div className="mt-2">
+                    <span className="text-xs text-gray-500">
+                      AI suggested: <span className="font-medium text-gray-700">{item.category}</span>
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              {/* Simple Actions - No Conversion */}
+              <div className="flex items-center gap-1 ml-4">
+                <button
+                  onClick={() => handleSnooze(item)}
+                  className="p-2 text-gray-500 hover:text-yellow-600 hover:bg-yellow-50 rounded-lg transition-colors"
+                  title="Snooze until tomorrow"
+                >
+                  <Clock className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => handleArchive(item)}
+                  className="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                  title="Archive"
+                >
+                  <Archive className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => handleDelete(item)}
+                  className="p-2 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                  title="Delete"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
               </div>
             </div>
-          ))
-        )}
+          </div>
+        ))}
       </div>
+
+      {/* Bottom Action - Process Items */}
+      {capturedItems.length > 5 && (
+        <div className="mt-8 text-center">
+          <button
+            onClick={startProcessing}
+            className="inline-flex items-center px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+          >
+            <Sparkles className="w-5 h-5 mr-2" />
+            Process All {capturedItems.length} Items
+            <ChevronRight className="w-5 h-5 ml-2" />
+          </button>
+          <p className="text-sm text-gray-600 mt-2">
+            Or start a weekly planning session to process and organize everything
+          </p>
+        </div>
+      )}
     </div>
   );
 };

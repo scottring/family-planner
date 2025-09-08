@@ -37,7 +37,9 @@ export const useInboxStore = create((set, get) => ({
         ...itemData,
         urgency_score: calculateUrgencyScore(content),
         category: detectCategory(content),
-        parsed_data: JSON.stringify(parsedContent)
+        parsed_data: JSON.stringify(parsedContent),
+        status: itemData.status || 'pending',
+        created_at: itemData.created_at || new Date().toISOString()
       };
 
       const response = await api.post('/inbox', processedData);

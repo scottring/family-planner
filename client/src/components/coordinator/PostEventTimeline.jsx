@@ -17,13 +17,21 @@ import {
   Circle,
   Trash2,
   X,
-  RefreshCw
+  RefreshCw,
+  Car,
+  Navigation,
+  Route,
+  MapPin,
+  Fuel,
+  ShoppingBag,
+  Utensils
 } from 'lucide-react';
 import { useEventTemplateStore } from '../../stores/eventTemplateStore';
 import { useAuthStore } from '../../stores/authStore';
 import { eventContextService } from '../../services/eventContext';
 import TemplateSelector from '../templates/TemplateSelector';
 import SmartTaskItem from '../timeline/SmartTaskItem';
+import TransportationModal from '../events/TransportationModal';
 
 const PostEventTimeline = ({ event, className = '', socket }) => {
   const { user } = useAuthStore();
@@ -35,6 +43,8 @@ const PostEventTimeline = ({ event, className = '', socket }) => {
   const [usingTemplate, setUsingTemplate] = useState(false);
   const [customTasks, setCustomTasks] = useState([]);
   const [showReplaceOptions, setShowReplaceOptions] = useState(false);
+  const [showReturnTripModal, setShowReturnTripModal] = useState(false);
+  const [originalTripData, setOriginalTripData] = useState(null);
   
   if (!event) return null;
 
@@ -44,6 +54,42 @@ const PostEventTimeline = ({ event, className = '', socket }) => {
     const eventType = event.category?.toLowerCase() || event.type?.toLowerCase() || '';
     const currentTime = new Date();
     const eventEndTime = new Date(event.end_time || event.start_time);
+    
+    // Check if event had transportation and add return trip
+    const hasTransportationData = event.transportation_data || event.transportation_mode;
+    if (hasTransportationData) {
+      tasks.push({
+        id: 'return-trip',
+        title: 'Plan return trip',
+        time: new Date(eventEndTime.getTime() + 15 * 60000), // 15 min after event ends
+        icon: Navigation,
+        color: 'indigo',
+        description: 'Plan route back home with any stops needed',
+        templateType: 'return-transportation',
+        templateData: {
+          originalTrip: {
+            transportation_mode: event.transportation_mode || event.transportation_data?.mode,
+            starting_address: event.transportation_data?.starting_address || event.starting_address,
+            destination_address: event.transportation_data?.destination_address || event.location,
+            stops: event.transportation_data?.stops || [],
+            parking_info: event.parking_info || event.transportation_data?.parking_info
+          }
+        }
+      });
+      
+      // Add parking/car location note if driving
+      const transportMode = event.transportation_mode || event.transportation_data?.mode;
+      if (transportMode === 'driving') {
+        tasks.push({
+          id: 'parking-location',
+          title: 'Note parking location',
+          time: new Date(eventEndTime.getTime() + 5 * 60000), // 5 min after
+          icon: Car,
+          color: 'blue',
+          description: 'Record where you parked for easy return'
+        });
+      }
+    }
     
     // Common follow-up tasks for all events
     tasks.push({
@@ -164,6 +210,42 @@ const PostEventTimeline = ({ event, className = '', socket }) => {
         icon: DollarSign,
         color: 'emerald',
         description: 'File any reimbursable expenses'
+      });
+    }
+
+    // Add post-event stops suggestions based on event type and time
+    const eventHour = eventEndTime.getHours();
+    if (eventType.includes('sport') || eventType.includes('game')) {
+      // Add celebration/food stop after sports events
+      tasks.push({
+        id: 'celebration-stop',
+        title: 'Celebration meal/treat',
+        time: new Date(eventEndTime.getTime() + 30 * 60000),
+        icon: Utensils,
+        color: 'orange',
+        description: 'Stop for victory meal or consolation treat'
+      });
+    }
+    
+    if (eventHour >= 17) { // After 5 PM
+      tasks.push({
+        id: 'grocery-stop',
+        title: 'Grocery shopping on way home',
+        time: new Date(eventEndTime.getTime() + 45 * 60000),
+        icon: ShoppingBag,
+        color: 'green',
+        description: 'Pick up groceries while out'
+      });
+    }
+    
+    if (eventType.includes('medical') || eventType.includes('health')) {
+      tasks.push({
+        id: 'pharmacy-stop',
+        title: 'Pharmacy stop if needed',
+        time: new Date(eventEndTime.getTime() + 30 * 60000),
+        icon: Heart,
+        color: 'red',
+        description: 'Fill any new prescriptions'
       });
     }
 
@@ -308,6 +390,40 @@ const PostEventTimeline = ({ event, className = '', socket }) => {
       setCustomTasks(updatedCustomTasks);
     }
     // For generated tasks, we would need to handle differently if needed
+  };
+
+  // Handle return trip planning
+  const handlePlanReturnTrip = (task) => {
+    if (task.templateData?.originalTrip) {
+      setOriginalTripData(task.templateData.originalTrip);
+      setShowReturnTripModal(true);
+    }
+  };
+
+  // Handle return trip save
+  const handleReturnTripSave = async (transportationData) => {
+    // Update the return trip task with the planned transportation
+    const updatedTasks = tasks.map(task => 
+      task.id === 'return-trip'
+        ? {
+            ...task,
+            templateData: {
+              ...task.templateData,
+              returnTrip: transportationData
+            }
+          }
+        : task
+    );
+    
+    if (customTasks.length > 0) {
+      setCustomTasks(updatedTasks);
+    }
+    
+    setShowReturnTripModal(false);
+    setOriginalTripData(null);
+    
+    // Save to localStorage
+    localStorage.setItem(`post-event-return-trip-${event.id}`, JSON.stringify(transportationData));
   };
 
   const toggleTaskComplete = (taskId) => {
@@ -541,7 +657,92 @@ const PostEventTimeline = ({ event, className = '', socket }) => {
               
               // Check if this task has a templateType and should use SmartTaskItem
               if (task.templateType) {
-                // Convert task to SmartTaskItem format
+                // Handle return trip task specially
+                if (task.templateType === 'return-transportation') {
+                  return (
+                    <div key={task.id} className="relative">
+                      {/* Connection line */}
+                      {index < tasks.length - 1 && (
+                        <div className="absolute left-5 top-10 w-0.5 h-full bg-gray-200" />
+                      )}
+                      
+                      <div className="flex items-start space-x-4">
+                        {/* Completion Checkbox */}
+                        <button
+                          onClick={() => toggleTaskComplete(task.id)}
+                          className="mt-1 transition-colors duration-200"
+                        >
+                          {completedTasks.has(task.id) ? (
+                            <CheckCircle className="h-5 w-5 text-green-600" />
+                          ) : (
+                            <Circle className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+                          )}
+                        </button>
+
+                        {/* Icon */}
+                        <div className={`p-2 rounded-lg border bg-indigo-100 border-indigo-300 text-indigo-700 relative z-10 ${
+                          completedTasks.has(task.id) ? 'opacity-60' : ''
+                        }`}>
+                          <Navigation className="h-4 w-4" />
+                        </div>
+                        
+                        {/* Content */}
+                        <div className="flex-1">
+                          <div className="flex items-center justify-between">
+                            <h4 className={`font-semibold ${
+                              completedTasks.has(task.id) 
+                                ? 'line-through text-gray-500' 
+                                : 'text-gray-900'
+                            }`}>{task.title}</h4>
+                            <div className="flex items-center space-x-2">
+                              <button
+                                onClick={() => handlePlanReturnTrip(task)}
+                                className="text-xs bg-indigo-600 text-white px-3 py-1 rounded-md hover:bg-indigo-700 transition-colors"
+                              >
+                                {task.templateData?.returnTrip ? 'Edit Route' : 'Plan Route'}
+                              </button>
+                              <span className="text-sm text-gray-500 flex items-center space-x-1">
+                                <Clock className="h-3 w-3" />
+                                <span>{formatTime(task.time)}</span>
+                              </span>
+                              <button
+                                onClick={() => handleDeleteTask(task.id)}
+                                className="p-1 text-gray-400 hover:text-red-600 rounded transition-colors"
+                                title="Delete task"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </button>
+                            </div>
+                          </div>
+                          <p className={`text-sm mt-1 ${
+                            completedTasks.has(task.id) ? 'text-gray-400' : 'text-gray-600'
+                          }`}>{task.description}</p>
+                          
+                          {/* Return trip summary */}
+                          {task.templateData?.returnTrip && (
+                            <div className="mt-2 p-2 bg-indigo-50 rounded-lg border border-indigo-200">
+                              <div className="flex items-center space-x-4 text-xs">
+                                <div className="flex items-center space-x-1 text-indigo-700">
+                                  <Route className="h-3 w-3" />
+                                  <span>{task.templateData.returnTrip.route_info?.distance}</span>
+                                </div>
+                                <div className="flex items-center space-x-1 text-indigo-700">
+                                  <Clock className="h-3 w-3" />
+                                  <span>{task.templateData.returnTrip.route_info?.duration}</span>
+                                </div>
+                              </div>
+                              <div className="text-xs text-indigo-600 mt-1">
+                                {task.templateData.returnTrip.starting_address} → {task.templateData.returnTrip.destination_address}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                }
+                
+                // Convert task to SmartTaskItem format for other template types
                 const smartTask = {
                   id: task.id,
                   title: task.title,
@@ -672,6 +873,21 @@ const PostEventTimeline = ({ event, className = '', socket }) => {
           onSelectTemplate={handleTemplateSelect}
           onClose={() => setShowReplaceOptions(false)}
           mode="post-event"
+        />
+      )}
+      
+      {/* Return Trip Planning Modal */}
+      {showReturnTripModal && originalTripData && (
+        <TransportationModal
+          isOpen={showReturnTripModal}
+          onClose={() => {
+            setShowReturnTripModal(false);
+            setOriginalTripData(null);
+          }}
+          onSave={handleReturnTripSave}
+          event={event}
+          initialData={originalTripData}
+          mode="return"
         />
       )}
     </div>

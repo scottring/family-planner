@@ -1,6 +1,7 @@
-import { Clock, MapPin, Users, CheckSquare, ChevronRight, AlertTriangle, Brain, Sparkles, Timer, ArrowUp, RotateCcw } from 'lucide-react';
-import { useState } from 'react';
+import { Clock, MapPin, Users, CheckSquare, ChevronRight, AlertTriangle, Brain, Sparkles, Timer, ArrowUp, RotateCcw, Car, Bike, Navigation, Route, ArrowRight, ExternalLink, Eye, Info, ParkingCircle, AlertCircle } from 'lucide-react';
+import { useState, useEffect } from 'react';
 import { aiService } from '../../services/ai';
+import { mapService } from '../../services/mapService';
 
 const eventTypeColors = {
   school: 'border-l-blue-500 bg-white',
@@ -13,7 +14,9 @@ const eventTypeColors = {
   routine: 'border-l-indigo-500 bg-indigo-50',
   bedtime: 'border-l-purple-500 bg-purple-50',
   morning: 'border-l-orange-500 bg-orange-50',
-  hygiene: 'border-l-cyan-500 bg-cyan-50'
+  hygiene: 'border-l-cyan-500 bg-cyan-50',
+  travel: 'border-l-indigo-500 bg-indigo-50',
+  transportation: 'border-l-indigo-500 bg-indigo-50'
 };
 
 const eventTypeIcons = {
@@ -27,7 +30,17 @@ const eventTypeIcons = {
   routine: '📋',
   bedtime: '🌙',
   morning: '🌅',
-  hygiene: '🧼'
+  hygiene: '🧼',
+  travel: '🚗',
+  transportation: '🚗'
+};
+
+// Transportation mode specific icons and colors
+const transportationModeConfig = {
+  driving: { icon: Car, color: 'text-blue-600', bgColor: 'bg-blue-100', label: 'Driving' },
+  walking: { icon: Navigation, color: 'text-green-600', bgColor: 'bg-green-100', label: 'Walking' },
+  bicycling: { icon: Bike, color: 'text-yellow-600', bgColor: 'bg-yellow-100', label: 'Bicycling' },
+  transit: { icon: Route, color: 'text-purple-600', bgColor: 'bg-purple-100', label: 'Transit' }
 };
 
 const EventCard = ({ event, onClick, compact = false, showDetails = true, onEventUpdate }) => {
@@ -164,6 +177,75 @@ const EventCard = ({ event, onClick, compact = false, showDetails = true, onEven
   const needsEnrichment = aiService.needsEnrichment(event);
   const enrichmentPriority = aiService.getEnrichmentPriority(event);
 
+  // Transportation event detection and helpers
+  const isTransportationEvent = (event) => {
+    return event.event_type === 'travel' || 
+           event.category === 'travel' || 
+           event.type === 'travel' ||
+           event.transportation_mode || 
+           event.driving_needed ||
+           event.starting_address ||
+           event.destination_address ||
+           (event.transportation_data && Object.keys(event.transportation_data).length > 0);
+  };
+
+  const getTransportationMode = (event) => {
+    return event.transportation_mode || 
+           event.transportation_data?.mode || 
+           (event.driving_needed ? 'driving' : 'driving');
+  };
+
+  const getRouteInfo = (event) => {
+    if (event.transportation_data) {
+      return {
+        starting_address: event.transportation_data.starting_address || event.starting_address,
+        destination_address: event.transportation_data.destination_address || event.destination_address,
+        stops: event.transportation_data.stops || [],
+        route_info: event.transportation_data.route_info
+      };
+    }
+    return {
+      starting_address: event.starting_address,
+      destination_address: event.destination_address || event.location,
+      stops: event.stops || [],
+      route_info: null
+    };
+  };
+
+  const handleOpenInMaps = (event) => {
+    const routeInfo = getRouteInfo(event);
+    if (routeInfo.starting_address && routeInfo.destination_address) {
+      const waypoints = routeInfo.stops?.map(stop => stop.address).filter(Boolean) || [];
+      const mapsUrl = mapService.generateNavigationUrl(
+        routeInfo.starting_address,
+        routeInfo.destination_address,
+        waypoints
+      );
+      if (mapsUrl) {
+        window.open(mapsUrl, '_blank');
+      }
+    }
+  };
+
+  const formatRouteSummary = (event) => {
+    const routeInfo = getRouteInfo(event);
+    const stops = routeInfo.stops || [];
+    const routeData = routeInfo.route_info;
+    
+    let summary = '';
+    if (stops.length > 0) {
+      summary += `${stops.length} stop${stops.length > 1 ? 's' : ''}`;
+    }
+    if (routeData?.duration) {
+      summary += summary ? ` • ${routeData.duration}` : routeData.duration;
+    }
+    if (routeData?.distance) {
+      summary += summary ? ` • ${routeData.distance}` : routeData.distance;
+    }
+    
+    return summary || 'Route details';
+  };
+
   if (compact) {
     return (
       <div
@@ -287,6 +369,13 @@ const EventCard = ({ event, onClick, compact = false, showDetails = true, onEven
                 <span className="text-sm text-gray-500">
                   {event.attendees.length} attendee{event.attendees.length !== 1 ? 's' : ''}
                 </span>
+              </div>
+            )}
+
+            {/* Transportation Event Special Display */}
+            {isTransportationEvent(event) && (
+              <div className="mb-3">
+                <TransportationEventDisplay event={event} onOpenInMaps={handleOpenInMaps} compact={compact} />
               </div>
             )}
 
@@ -437,6 +526,141 @@ const EventCard = ({ event, onClick, compact = false, showDetails = true, onEven
             )}
           </div>
         )}
+      </div>
+    </div>
+  );
+};
+
+// Transportation Event Display Component for Itinerary
+const TransportationEventDisplay = ({ event, onOpenInMaps, compact = false }) => {
+  const [showRoute, setShowRoute] = useState(false);
+  const [trafficInfo, setTrafficInfo] = useState(null);
+  const [loadingTraffic, setLoadingTraffic] = useState(false);
+  
+  const transportationMode = event.transportation_mode || event.transportation_data?.mode || 'driving';
+  const modeConfig = transportationModeConfig[transportationMode] || transportationModeConfig.driving;
+  const ModeIcon = modeConfig.icon;
+  const routeInfo = event.transportation_data?.route_info;
+  const routeDetails = {
+    starting_address: event.transportation_data?.starting_address || event.starting_address,
+    destination_address: event.transportation_data?.destination_address || event.destination_address || event.location,
+    stops: event.transportation_data?.stops || event.stops || []
+  };
+  
+  const isDepartureTime = () => {
+    if (!event.departure_time && !event.start_time) return false;
+    const now = new Date();
+    const departureTime = new Date(event.departure_time || event.start_time);
+    const diffMs = departureTime.getTime() - now.getTime();
+    return diffMs > 0 && diffMs <= 30 * 60 * 1000; // Within 30 minutes
+  };
+  
+  const getTrafficInfo = async () => {
+    if (!routeDetails.starting_address || !routeDetails.destination_address) return;
+    
+    setLoadingTraffic(true);
+    try {
+      const traffic = await mapService.getTrafficInfo(
+        routeDetails.starting_address,
+        routeDetails.destination_address
+      );
+      setTrafficInfo(traffic);
+    } catch (error) {
+      console.error('Error fetching traffic info:', error);
+    }
+    setLoadingTraffic(false);
+  };
+  
+  if (compact) {
+    // Compact view for timeline
+    return (
+      <div className="flex items-center space-x-2">
+        <div className={`p-1 rounded ${modeConfig.bgColor}`}>
+          <ModeIcon className={`h-3 w-3 ${modeConfig.color}`} />
+        </div>
+        <span className={`text-xs font-medium ${modeConfig.color}`}>{modeConfig.label}</span>
+        {routeInfo?.duration && (
+          <span className="text-xs text-gray-500">{routeInfo.duration}</span>
+        )}
+        {isDepartureTime() && (
+          <div className="flex items-center space-x-1 px-1 py-0.5 bg-orange-100 text-orange-800 rounded text-xs">
+            <AlertCircle className="h-2 w-2" />
+            <span>Soon</span>
+          </div>
+        )}
+      </div>
+    );
+  }
+  
+  // Full view
+  return (
+    <div className={`${modeConfig.bgColor} rounded-lg p-3 border border-gray-200`}>
+      {/* Transportation Mode Header */}
+      <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center space-x-2">
+          <ModeIcon className={`h-4 w-4 ${modeConfig.color}`} />
+          <span className={`font-medium text-sm ${modeConfig.color}`}>{modeConfig.label}</span>
+          {isDepartureTime() && (
+            <div className="flex items-center space-x-1 px-2 py-1 bg-orange-100 text-orange-800 rounded-full text-xs">
+              <AlertCircle className="h-3 w-3" />
+              <span>Leave Soon</span>
+            </div>
+          )}
+        </div>
+        
+        {/* Quick Stats */}
+        <div className="text-xs text-gray-600 text-right">
+          {routeInfo?.duration && <div>{routeInfo.duration}</div>}
+          {routeInfo?.distance && <div>{routeInfo.distance}</div>}
+        </div>
+      </div>
+      
+      {/* Route Summary */}
+      <div className="flex items-center space-x-2 text-xs mb-2">
+        <div className="flex items-center space-x-1 flex-1 min-w-0">
+          <div className="w-1.5 h-1.5 bg-green-500 rounded-full flex-shrink-0"></div>
+          <span className="text-gray-600 truncate">
+            {routeDetails.starting_address || 'Current location'}
+          </span>
+        </div>
+        <ArrowRight className="h-2 w-2 text-gray-400 flex-shrink-0" />
+        <div className="flex items-center space-x-1 flex-1 min-w-0">
+          <div className="w-1.5 h-1.5 bg-red-500 rounded-full flex-shrink-0"></div>
+          <span className="text-gray-600 truncate">
+            {routeDetails.destination_address || event.location || 'Destination'}
+          </span>
+        </div>
+      </div>
+      
+      {/* Stops and Traffic */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center space-x-3 text-xs text-gray-600">
+          {routeDetails.stops && routeDetails.stops.length > 0 && (
+            <span>{routeDetails.stops.length} stop{routeDetails.stops.length > 1 ? 's' : ''}</span>
+          )}
+          {trafficInfo && (
+            <div className={`flex items-center space-x-1 ${
+              trafficInfo.condition === 'light' ? 'text-green-600' :
+              trafficInfo.condition === 'moderate' ? 'text-yellow-600' :
+              'text-red-600'
+            }`}>
+              <div className={`w-1.5 h-1.5 rounded-full ${
+                trafficInfo.condition === 'light' ? 'bg-green-500' :
+                trafficInfo.condition === 'moderate' ? 'bg-yellow-500' :
+                'bg-red-500'
+              }`}></div>
+              <span className="capitalize">{trafficInfo.condition}</span>
+            </div>
+          )}
+        </div>
+        
+        <button
+          onClick={() => onOpenInMaps(event)}
+          className={`flex items-center space-x-1 px-2 py-1 ${modeConfig.color} hover:opacity-80 rounded text-xs`}
+        >
+          <ExternalLink className="h-2 w-2" />
+          <span>Maps</span>
+        </button>
       </div>
     </div>
   );

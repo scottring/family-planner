@@ -25,7 +25,34 @@ const LINE_ITEM_TEMPLATES = [
     description: 'Plan route with navigation and stops',
     icon: Car,
     color: 'blue',
-    category: 'transportation'
+    category: 'transportation',
+    generateChecklist: true,
+    checklistItems: [
+      { text: 'Check traffic conditions', completed: false },
+      { text: 'Verify destination address', completed: false },
+      { text: 'Plan stops along the route', completed: false },
+      { text: 'Check parking availability', completed: false },
+      { text: 'Set GPS/navigation', completed: false }
+    ]
+  },
+  {
+    id: 'transportation-full',
+    type: 'transportation',
+    name: 'Transportation Planning',
+    description: 'Complete trip planning with route builder',
+    icon: Car,
+    color: 'indigo',
+    category: 'transportation',
+    openModal: true,  // This will trigger the TransportationModal
+    generateChecklist: true,
+    checklistItems: [
+      { text: 'Set departure time', completed: false },
+      { text: 'Plan route with stops', completed: false },
+      { text: 'Calculate travel time', completed: false },
+      { text: 'Check traffic conditions', completed: false },
+      { text: 'Verify all addresses', completed: false },
+      { text: 'Share trip details with participants', completed: false }
+    ]
   },
   {
     id: 'shopping',
@@ -43,7 +70,15 @@ const LINE_ITEM_TEMPLATES = [
     description: 'Coordinate pickup and dropoff arrangements',
     icon: Users,
     color: 'orange',
-    category: 'transportation'
+    category: 'transportation',
+    generateChecklist: true,
+    checklistItems: [
+      { text: 'Confirm pickup time', completed: false },
+      { text: 'Share pickup location', completed: false },
+      { text: 'Exchange contact information', completed: false },
+      { text: 'Confirm number of passengers', completed: false },
+      { text: 'Send arrival notification', completed: false }
+    ]
   },
   {
     id: 'meeting',
@@ -151,12 +186,21 @@ const LineItemTemplateSelector = ({ onSelect, onClose, showCreateNew = true }) =
   });
 
   const handleSelectTemplate = (template) => {
+    // If template has checklist items, include them
+    const templateData = {
+      ...(template.defaultData || {}),
+      checklistItems: template.checklistItems || [],
+      generateChecklist: template.generateChecklist || false
+    };
+    
     onSelect({
       type: template.type,
       templateType: template.type,
-      templateData: template.defaultData || {},
+      templateData: templateData,
       name: template.name,
-      description: template.description
+      description: template.description,
+      checklistItems: template.checklistItems,
+      openModal: template.openModal || false
     });
   };
 

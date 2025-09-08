@@ -49,6 +49,9 @@ router.get('/', async (req, res) => {
     if (status && status !== 'all') {
       query += ` AND status = ?`;
       params.push(status);
+    } else if (!status || status === 'all') {
+      // Default: exclude only converted and fully deleted items
+      query += ` AND status NOT IN ('converted', 'deleted')`;
     }
 
     if (category && category !== 'all') {
@@ -127,8 +130,8 @@ router.post('/', async (req, res) => {
     const stmt = db.prepare(`
       INSERT INTO inbox_items (
         raw_content, transcription, input_type, parsed_data,
-        urgency_score, category, created_by
-      ) VALUES (?, ?, ?, ?, ?, ?, ?)
+        urgency_score, category, status, created_by
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     const result = stmt.run(
@@ -138,6 +141,7 @@ router.post('/', async (req, res) => {
       JSON.stringify(parsed_data || processedData.parsed_data || {}),
       urgency_score || processedData.urgency_score || 3,
       category || processedData.category,
+      'pending', // Explicitly set status
       userId
     );
 
@@ -217,7 +221,7 @@ router.put('/:id', async (req, res) => {
     // Build update query
     const allowedUpdates = [
       'status', 'category', 'urgency_score', 'processed_at',
-      'converted_to_type', 'converted_to_id', 'parsed_data'
+      'converted_to_type', 'converted_to_id', 'parsed_data', 'snooze_until'
     ];
     
     const updateFields = [];

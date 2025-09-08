@@ -25,7 +25,10 @@ import {
   X,
   RefreshCw,
   Edit2,
-  LayoutTemplate
+  LayoutTemplate,
+  Route,
+  Navigation,
+  MapPin
 } from 'lucide-react';
 import { eventContextService } from '../../services/eventContext';
 import api from '../../services/api';
@@ -36,6 +39,7 @@ import SmartTaskItem from '../timeline/SmartTaskItem';
 import PersonAssignment from '../common/PersonAssignment';
 import { useEventTemplateStore } from '../../stores/eventTemplateStore';
 import { useAuthStore } from '../../stores/authStore';
+import TransportationModal from '../events/TransportationModal';
 
 const PreparationTimeline = ({ event, className = '', socket }) => {
   const { user } = useAuthStore();
@@ -58,6 +62,9 @@ const PreparationTimeline = ({ event, className = '', socket }) => {
   const [editingTaskIndex, setEditingTaskIndex] = useState(null);
   const [editingTaskData, setEditingTaskData] = useState(null);
   const [showTemplateSelectorForTask, setShowTemplateSelectorForTask] = useState(null);
+  const [showTransportationModal, setShowTransportationModal] = useState(false);
+  const [transportationTask, setTransportationTask] = useState(null);
+  const [transportationTaskIndex, setTransportationTaskIndex] = useState(null);
 
   // Database integration functions
   const fetchTimelineFromDatabase = async () => {
@@ -492,8 +499,13 @@ const PreparationTimeline = ({ event, className = '', socket }) => {
     return currentTime >= taskStart && currentTime <= taskEnd;
   };
 
-  const getTaskIcon = (type, isCompleted, isCurrent) => {
+  const getTaskIcon = (type, isCompleted, isCurrent, templateType) => {
     const iconClass = `h-4 w-4 ${isCompleted ? 'text-green-600' : isCurrent ? 'text-blue-600' : 'text-gray-400'}`;
+    
+    // Transportation specific icons
+    if (templateType === 'driving' || type === 'departure' && templateType) {
+      return <Navigation className={iconClass} />;
+    }
     
     switch (type) {
       case 'meal':
@@ -677,18 +689,126 @@ const PreparationTimeline = ({ event, className = '', socket }) => {
       return;
     }
     
+    // If template requires opening a modal (like transportation planning)
+    if (template.openModal && template.type === 'transportation') {
+      setTransportationTask(timeline[index]);
+      setTransportationTaskIndex(index);
+      setShowTransportationModal(true);
+      setShowTemplateSelectorForTask(null);
+      
+      // Also add the checklist items to the task
+      const updatedTimeline = [...timeline];
+      updatedTimeline[index] = {
+        ...updatedTimeline[index],
+        templateType: template.type,
+        templateData: template.templateData || {},
+        hasChecklist: true,
+        checklistItems: template.checklistItems
+      };
+      setCustomTimeline(updatedTimeline);
+      await saveTimelineToDatabase(updatedTimeline, Array.from(completedTasks), true);
+      return;
+    }
+    
     const updatedTimeline = [...timeline];
-    updatedTimeline[index] = {
-      ...updatedTimeline[index],
-      templateType: template.type || 'driving',
-      templateData: template.templateData || {}
-    };
+    
+    // If template has checklist items, expand the task into subtasks
+    if (template.checklistItems && template.checklistItems.length > 0) {
+      // Create the main task with template
+      updatedTimeline[index] = {
+        ...updatedTimeline[index],
+        templateType: template.type || 'driving',
+        templateData: template.templateData || {},
+        hasChecklist: true,
+        checklistItems: template.checklistItems
+      };
+    } else {
+      // Regular template without checklist
+      updatedTimeline[index] = {
+        ...updatedTimeline[index],
+        templateType: template.type || 'driving',
+        templateData: template.templateData || {}
+      };
+    }
     
     setCustomTimeline(updatedTimeline);
     setShowTemplateSelectorForTask(null);
     
     // Save to database
     await saveTimelineToDatabase(updatedTimeline, Array.from(completedTasks), true);
+  };
+
+  // Check if task needs transportation
+  const needsTransportation = (task) => {
+    if (!task) return false;
+    
+    // Check if task already has transportation template
+    if (task.templateType === 'driving') return true;
+    
+    // Check for transportation keywords in task
+    const transportKeywords = ['depart', 'leave', 'drive', 'travel', 'go to', 'head to', 'departure'];
+    const taskText = (task.activity || '').toLowerCase();
+    
+    return transportKeywords.some(keyword => taskText.includes(keyword)) ||
+           task.type === 'departure' ||
+           (event?.location && taskText.includes('arrive'));
+  };
+
+  // Handle transportation planning
+  const handlePlanTransportation = (task, index) => {
+    setTransportationTask(task);
+    setTransportationTaskIndex(index);
+    setShowTransportationModal(true);
+  };
+
+  // Handle transportation save
+  const handleTransportationSave = async (transportationData) => {
+    if (transportationTaskIndex === null) return;
+    
+    const updatedTimeline = [...timeline];
+    updatedTimeline[transportationTaskIndex] = {
+      ...updatedTimeline[transportationTaskIndex],
+      templateType: 'driving',
+      templateData: {
+        transportation_mode: transportationData.transportation_mode,
+        starting_address: transportationData.starting_address,
+        destination_address: transportationData.destination_address,
+        stops: transportationData.stops || [],
+        route_info: transportationData.route_info,
+        parking_info: transportationData.parking_info,
+        departure_time: transportationData.departure_time,
+        arrival_time: transportationData.arrival_time
+      }
+    };
+    
+    // Calculate and update departure time based on route duration
+    if (transportationData.departure_time && transportationData.departure_time !== updatedTimeline[transportationTaskIndex].time) {
+      updatedTimeline[transportationTaskIndex].time = transportationData.departure_time;
+    }
+    
+    setCustomTimeline(updatedTimeline);
+    setShowTransportationModal(false);
+    setTransportationTask(null);
+    setTransportationTaskIndex(null);
+    
+    // Save to database
+    await saveTimelineToDatabase(updatedTimeline, Array.from(completedTasks), true);
+  };
+
+  // Get route summary for display
+  const getRouteSummary = (task) => {
+    if (!task.templateData?.route_info) return null;
+    
+    const { route_info, starting_address, destination_address, stops } = task.templateData;
+    const summary = {
+      duration: route_info.duration,
+      distance: route_info.distance,
+      origin: starting_address,
+      destination: destination_address,
+      stopCount: stops?.length || 0
+    };
+    
+    return summary;
   };
 
   const handleSaveCustomTimeline = async (newTimeline) => {
@@ -966,7 +1086,7 @@ const PreparationTimeline = ({ event, className = '', socket }) => {
 
                   {/* Task Icon */}
                   <div className="mt-1">
-                    {getTaskIcon(task.type, isCompleted, isCurrent)}
+                    {getTaskIcon(task.type, isCompleted, isCurrent, task.templateType)}
                   </div>
 
                   {/* Task Details */}
@@ -1004,6 +1124,19 @@ const PreparationTimeline = ({ event, className = '', socket }) => {
                           }}
                           compact={true}
                         />
+                        {needsTransportation(task) && (
+                          <button
+                            onClick={() => handlePlanTransportation(task, index)}
+                            className={`p-1 rounded transition-colors ${
+                              task.templateType === 'driving' 
+                                ? 'text-blue-600 hover:text-blue-800' 
+                                : 'text-gray-400 hover:text-blue-600'
+                            }`}
+                            title={task.templateType === 'driving' ? 'View/Edit Route' : 'Plan Route'}
+                          >
+                            <Route className="h-4 w-4" />
+                          </button>
+                        )}
                         <button
                           onClick={() => setShowTemplateSelectorForTask(index)}
                           className="p-1 text-gray-400 hover:text-blue-600 rounded transition-colors"
@@ -1054,6 +1187,62 @@ const PreparationTimeline = ({ event, className = '', socket }) => {
                       <p className="mt-2 text-sm text-gray-500 italic">
                         {task.note}
                       </p>
+                    )}
+                    
+                    {/* Transportation Route Summary */}
+                    {task.templateType === 'driving' && (() => {
+                      const routeSummary = getRouteSummary(task);
+                      if (routeSummary) {
+                        return (
+                          <div className="mt-2 p-2 bg-blue-50 rounded-lg border border-blue-200">
+                            <div className="flex items-center space-x-4 text-xs">
+                              <div className="flex items-center space-x-1 text-blue-700">
+                                <Route className="h-3 w-3" />
+                                <span>{routeSummary.distance}</span>
+                              </div>
+                              <div className="flex items-center space-x-1 text-blue-700">
+                                <Clock className="h-3 w-3" />
+                                <span>{routeSummary.duration}</span>
+                              </div>
+                              {routeSummary.stopCount > 0 && (
+                                <div className="flex items-center space-x-1 text-blue-700">
+                                  <MapPin className="h-3 w-3" />
+                                  <span>{routeSummary.stopCount} stop{routeSummary.stopCount > 1 ? 's' : ''}</span>
+                                </div>
+                              )}
+                            </div>
+                            <div className="text-xs text-blue-600 mt-1">
+                              {routeSummary.origin} → {routeSummary.destination}
+                            </div>
+                          </div>
+                        );
+                      }
+                      return (
+                        <div className="mt-2 p-2 bg-yellow-50 rounded-lg border border-yellow-200">
+                          <div className="flex items-center space-x-2 text-xs text-yellow-700">
+                            <AlertTriangle className="h-3 w-3" />
+                            <span>Transportation route not planned yet</span>
+                          </div>
+                        </div>
+                      );
+                    })()}
+                    
+                    {/* Transportation Planning Suggestion */}
+                    {needsTransportation(task) && !task.templateType && (
+                      <div className="mt-2 p-2 bg-green-50 rounded-lg border border-green-200">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center space-x-2 text-xs text-green-700">
+                            <Car className="h-3 w-3" />
+                            <span>Transportation needed</span>
+                          </div>
+                          <button
+                            onClick={() => handlePlanTransportation(task, index)}
+                            className="text-xs bg-green-600 text-white px-2 py-1 rounded hover:bg-green-700 transition-colors"
+                          >
+                            Plan Route
+                          </button>
+                        </div>
+                      </div>
                     )}
                   </div>
                 </div>
@@ -1186,6 +1375,22 @@ const PreparationTimeline = ({ event, className = '', socket }) => {
         onSelectTemplate={handleTemplateSelect}
         onClose={() => setShowReplaceOptions(false)}
         mode="preparation"
+      />
+    )}
+    
+    {/* Transportation Planning Modal */}
+    {showTransportationModal && (
+      <TransportationModal
+        isOpen={showTransportationModal}
+        onClose={() => {
+          setShowTransportationModal(false);
+          setTransportationTask(null);
+          setTransportationTaskIndex(null);
+        }}
+        onSave={handleTransportationSave}
+        event={event}
+        initialData={transportationTask?.templateData}
+        mode={transportationTask?.templateType === 'driving' ? 'edit' : 'plan'}
       />
     )}
     </>
