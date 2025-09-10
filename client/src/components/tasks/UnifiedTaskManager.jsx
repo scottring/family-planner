@@ -19,13 +19,17 @@ import {
   Edit3,
   Save,
   ArrowRight,
-  MoreVertical
+  MoreVertical,
+  Mic,
+  Type,
+  Send
 } from 'lucide-react';
 import { useInboxStore } from '../../stores/inboxStore';
 import { useTaskStore } from '../../stores/taskStore';
 import { useFamilyStore } from '../../stores/familyStore';
 import { useAuthStore } from '../../stores/authStore';
 import { useNavigate } from 'react-router-dom';
+import VoiceCapture from '../inbox/VoiceCapture';
 
 const UnifiedTaskManager = () => {
   const navigate = useNavigate();
@@ -42,6 +46,9 @@ const UnifiedTaskManager = () => {
   const [showDeferMenu, setShowDeferMenu] = useState(null);
   const [showCustomDatePicker, setShowCustomDatePicker] = useState(null);
   const [customDeferDate, setCustomDeferDate] = useState('');
+  const [captureMode, setCaptureMode] = useState('text');
+  const [textInput, setTextInput] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [filters, setFilters] = useState({
     urgency: 'all',
@@ -63,7 +70,8 @@ const UnifiedTaskManager = () => {
     fetchInboxItems,
     processInboxItem,
     deleteInboxItem,
-    archiveInboxItem
+    archiveInboxItem,
+    addInboxItem
   } = useInboxStore();
 
   const {
@@ -195,15 +203,12 @@ const UnifiedTaskManager = () => {
   };
 
   const handleScheduleTask = (task) => {
-    navigate('/calendar', {
-      state: {
-        createEvent: {
-          title: task.title,
-          description: task.description,
-          linkedTaskId: task.id
-        }
-      }
-    });
+    // Quick schedule for tomorrow
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    updateTask(task.id, { 
+      scheduled_date: tomorrow.toISOString().split('T')[0]
+    }).then(() => fetchTasks());
   };
 
   const handleEditTask = (task) => {
@@ -259,6 +264,26 @@ const UnifiedTaskManager = () => {
     setCustomDeferDate('');
   };
 
+  const handleTextSubmit = async (e) => {
+    e.preventDefault();
+    if (!textInput.trim() || isSubmitting) return;
+    
+    setIsSubmitting(true);
+    try {
+      await addInboxItem({
+        content: textInput,
+        input_type: 'text',
+        status: 'pending'
+      });
+      setTextInput('');
+      await fetchInboxItems();
+    } catch (error) {
+      console.error('Failed to add item:', error);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const handleBulkAction = async (action) => {
     const selectedItemsArray = Array.from(selectedItems);
     if (selectedItemsArray.length === 0) return;
@@ -299,6 +324,79 @@ const UnifiedTaskManager = () => {
 
   const renderInboxTab = () => (
     <div className="space-y-4">
+      {/* Capture Input Section */}
+      <div className="bg-gradient-to-r from-blue-50 to-purple-50 border border-blue-200 rounded-xl p-6">
+        {/* Mode Toggle */}
+        <div className="flex items-center justify-center mb-4 bg-white/50 rounded-lg p-1 max-w-xs mx-auto">
+          <button
+            onClick={() => setCaptureMode('text')}
+            className={`flex items-center px-4 py-2 rounded-md transition-all ${
+              captureMode === 'text' 
+                ? 'bg-white text-blue-600 shadow-sm' 
+                : 'text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            <Type className="w-4 h-4 mr-2" />
+            Text
+          </button>
+          <button
+            onClick={() => setCaptureMode('voice')}
+            className={`flex items-center px-4 py-2 rounded-md transition-all ${
+              captureMode === 'voice' 
+                ? 'bg-white text-blue-600 shadow-sm' 
+                : 'text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            <Mic className="w-4 h-4 mr-2" />
+            Voice
+          </button>
+        </div>
+
+        {/* Text Input */}
+        {captureMode === 'text' && (
+          <form onSubmit={handleTextSubmit} className="space-y-4">
+            <div>
+              <textarea
+                value={textInput}
+                onChange={(e) => setTextInput(e.target.value)}
+                placeholder="Type your thought, idea, or reminder..."
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
+                rows={3}
+                disabled={isSubmitting}
+              />
+            </div>
+            <div className="flex justify-end">
+              <button
+                type="submit"
+                disabled={!textInput.trim() || isSubmitting}
+                className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+              >
+                {isSubmitting ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    Adding...
+                  </>
+                ) : (
+                  <>
+                    <Send className="w-4 h-4 mr-2" />
+                    Add to Inbox
+                  </>
+                )}
+              </button>
+            </div>
+          </form>
+        )}
+
+        {/* Voice Capture */}
+        {captureMode === 'voice' && (
+          <VoiceCapture 
+            onCapture={(item) => {
+              fetchInboxItems();
+            }}
+          />
+        )}
+      </div>
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold text-gray-900">
@@ -451,7 +549,16 @@ const UnifiedTaskManager = () => {
       ) : (
         <div className="space-y-3">
           {activeTasks.map((task) => (
-            <div key={task.id} className="bg-white border border-gray-200 rounded-lg p-4">
+            <div 
+              key={task.id} 
+              className="bg-white border border-gray-200 rounded-lg p-4 cursor-move hover:shadow-md transition-shadow"
+              draggable
+              onDragStart={(e) => {
+                e.dataTransfer.setData('taskId', task.id.toString());
+                e.dataTransfer.effectAllowed = 'move';
+              }}
+              title="Drag to schedule on calendar"
+            >
               <div className="flex items-start justify-between">
                 <div className="flex items-start space-x-3 flex-1">
                   <input
@@ -665,7 +772,28 @@ const UnifiedTaskManager = () => {
     </div>
   );
 
-  const renderScheduledTab = () => (
+  const renderScheduledTab = () => {
+    // Group scheduled tasks by date
+    const tasksByDate = scheduledTasks.reduce((acc, task) => {
+      const date = task.scheduled_date?.split('T')[0];
+      if (!acc[date]) acc[date] = [];
+      acc[date].push(task);
+      return acc;
+    }, {});
+
+    // Get week dates
+    const weekDates = [];
+    const today = new Date();
+    const startOfWeek = new Date(today);
+    startOfWeek.setDate(today.getDate() - today.getDay());
+    
+    for (let i = 0; i < 7; i++) {
+      const date = new Date(startOfWeek);
+      date.setDate(startOfWeek.getDate() + i);
+      weekDates.push(date);
+    }
+    
+    return (
     <div className="space-y-4">
       {/* Header */}
       <div className="flex items-center justify-between">
@@ -674,7 +802,65 @@ const UnifiedTaskManager = () => {
         </h2>
       </div>
 
-      {/* Simple List View for now - can be enhanced with calendar widget later */}
+      {/* Calendar Week View */}
+      <div className="bg-white border border-gray-200 rounded-lg p-4 mb-6">
+        <h3 className="text-md font-semibold text-gray-700 mb-3">Week View - Drag tasks from Active Tasks to schedule</h3>
+        <div className="grid grid-cols-7 gap-2">
+          {weekDates.map((date) => {
+            const dateStr = date.toISOString().split('T')[0];
+            const dayTasks = tasksByDate[dateStr] || [];
+            const isToday = dateStr === new Date().toISOString().split('T')[0];
+            
+            return (
+              <div
+                key={dateStr}
+                className={`border rounded-lg p-2 min-h-[120px] transition-colors ${
+                  isToday ? 'border-blue-400 bg-blue-50' : 'border-gray-200 bg-gray-50'
+                }`}
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  e.currentTarget.classList.add('bg-green-50', 'border-green-400');
+                }}
+                onDragLeave={(e) => {
+                  e.currentTarget.classList.remove('bg-green-50', 'border-green-400');
+                }}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  e.currentTarget.classList.remove('bg-green-50', 'border-green-400');
+                  const taskId = e.dataTransfer.getData('taskId');
+                  if (taskId) {
+                    updateTask(parseInt(taskId), {
+                      scheduled_date: dateStr
+                    }).then(() => fetchTasks());
+                  }
+                }}
+              >
+                <div className={`text-xs font-medium mb-2 ${
+                  isToday ? 'text-blue-700' : 'text-gray-600'
+                }`}>
+                  <div>{date.toLocaleDateString('en-US', { weekday: 'short' })}</div>
+                  <div>{date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</div>
+                </div>
+                <div className="space-y-1">
+                  {dayTasks.map(task => (
+                    <div
+                      key={task.id}
+                      className="text-xs p-1 bg-blue-100 text-blue-800 rounded cursor-move hover:bg-blue-200"
+                      draggable
+                      onDragStart={(e) => e.dataTransfer.setData('taskId', task.id.toString())}
+                      title={task.title}
+                    >
+                      {task.title.substring(0, 20)}{task.title.length > 20 ? '...' : ''}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Scheduled Tasks List */}
       {scheduledTasks.length === 0 ? (
         <div className="text-center py-12 bg-gray-50 rounded-lg">
           <Calendar className="w-12 h-12 text-gray-400 mx-auto mb-4" />
@@ -731,7 +917,8 @@ const UnifiedTaskManager = () => {
         </div>
       )}
     </div>
-  );
+    );
+  };
 
   return (
     <div className="max-w-7xl mx-auto p-6">

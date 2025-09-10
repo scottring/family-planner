@@ -16,8 +16,7 @@ import {
   List,
   Check
 } from 'lucide-react';
-
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:11001/api';
+import calendarAccountsService from '../../services/calendarAccounts';
 
 const CalendarAccountManager = () => {
   const [accounts, setAccounts] = useState([]);
@@ -47,44 +46,22 @@ const CalendarAccountManager = () => {
 
   const loadAccounts = async () => {
     try {
-      const token = localStorage.getItem('auth-token');
-      const response = await fetch(`${API_BASE}/calendar-accounts`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to load accounts');
-      }
-
-      const accountData = await response.json();
+      const accountData = await calendarAccountsService.getAccounts();
       setAccounts(accountData);
     } catch (err) {
-      setError(err.message);
+      console.error('Failed to load accounts:', err);
+      // Don't show error for initial load
     }
   };
 
   const loadContexts = async () => {
     try {
-      const token = localStorage.getItem('auth-token');
-      const response = await fetch(`${API_BASE}/calendar-accounts/contexts`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to load contexts');
-      }
-
-      const contextData = await response.json();
+      const contextData = await calendarAccountsService.getContexts();
       setContexts(contextData.contexts);
       setAvailableContexts(contextData.availableContexts);
     } catch (err) {
-      setError(err.message);
+      console.error('Failed to load contexts:', err);
+      // Don't show error for initial load
     } finally {
       setLoading(false);
     }
@@ -95,33 +72,20 @@ const CalendarAccountManager = () => {
     clearMessages();
     
     try {
-      const token = localStorage.getItem('auth-token');
-      const response = await fetch(`${API_BASE}/calendar-accounts/add`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          displayName: `Account ${accounts.length + 1}`,
-          mockMode: false // Use real Google OAuth
-        })
-      });
+      const result = await calendarAccountsService.addAccount(
+        `Account ${accounts.length + 1}`,
+        false
+      );
 
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.message || 'Failed to add account');
-      }
-
-      if (result.mockMode) {
-        setSuccess('Mock Google Calendar account added successfully!');
-        await loadAccounts();
-      } else if (result.authUrl) {
-        // Redirect to Google OAuth
-        window.location.href = result.authUrl;
-      } else {
-        throw new Error('Unable to generate authorization URL');
+      if (result.success && !result.mockMode) {
+        // Real OAuth flow initiated
+        setSuccess(result.message || 'Redirecting to Google...');
+        // The redirect will happen from the service
+      } else if (result.mockMode) {
+        // Edge Functions not available
+        setError(result.message || 'Google Calendar integration not available');
+      } else if (!result.success) {
+        setError(result.message || 'Failed to connect Google Calendar');
       }
     } catch (err) {
       setError(err.message);
@@ -138,21 +102,7 @@ const CalendarAccountManager = () => {
     clearMessages();
     
     try {
-      const token = localStorage.getItem('auth-token');
-      const response = await fetch(`${API_BASE}/calendar-accounts/${accountId}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.message || 'Failed to remove account');
-      }
-
+      await calendarAccountsService.removeAccount(accountId);
       setSuccess('Calendar account removed successfully');
       await loadAccounts();
       await loadContexts();
@@ -165,22 +115,7 @@ const CalendarAccountManager = () => {
     clearMessages();
     
     try {
-      const token = localStorage.getItem('auth-token');
-      const response = await fetch(`${API_BASE}/calendar-accounts/${accountId}/context`, {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ context })
-      });
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.message || 'Failed to set context');
-      }
-
+      await calendarAccountsService.setContext(accountId, context);
       setSuccess(`Account set as default for ${context} context`);
       await loadContexts();
     } catch (err) {
@@ -192,21 +127,7 @@ const CalendarAccountManager = () => {
     clearMessages();
     
     try {
-      const token = localStorage.getItem('auth-token');
-      const response = await fetch(`${API_BASE}/calendar-accounts/${accountId}/context/${context}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.message || 'Failed to remove context');
-      }
-
+      await calendarAccountsService.removeContext(accountId, context);
       setSuccess(`Removed ${context} context assignment`);
       await loadContexts();
     } catch (err) {
@@ -218,22 +139,7 @@ const CalendarAccountManager = () => {
     clearMessages();
     
     try {
-      const token = localStorage.getItem('auth-token');
-      const response = await fetch(`${API_BASE}/calendar-accounts/${accountId}/name`, {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ displayName: newDisplayName })
-      });
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.message || 'Failed to update display name');
-      }
-
+      await calendarAccountsService.updateDisplayName(accountId, newDisplayName);
       setSuccess('Account display name updated successfully');
       setEditingAccount(null);
       setNewDisplayName('');
@@ -273,20 +179,8 @@ const CalendarAccountManager = () => {
     clearMessages();
     
     try {
-      const token = localStorage.getItem('auth-token');
-      const response = await fetch(`${API_BASE}/calendar-accounts/${accountId}/calendars`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.message || 'Failed to load calendars');
-      }
-
+      const result = await calendarAccountsService.getCalendars(accountId);
+      
       setCalendarData(prev => ({
         ...prev,
         [accountId]: result.calendars
@@ -355,22 +249,7 @@ const CalendarAccountManager = () => {
           };
         });
       
-      const token = localStorage.getItem('auth-token');
-      const response = await fetch(`${API_BASE}/calendar-accounts/${accountId}/calendars`, {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ selections })
-      });
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.message || 'Failed to save calendar selections');
-      }
-
+      await calendarAccountsService.saveCalendarSelections(accountId, selections);
       setSuccess('Calendar selections saved successfully');
       await loadContexts(); // Reload contexts to reflect changes
       

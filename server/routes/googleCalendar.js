@@ -42,8 +42,11 @@ router.get('/callback', async (req, res) => {
   try {
     const { code, state } = req.query;
     
+    // Get the first CLIENT_URL if multiple are provided
+    const clientUrl = (process.env.CLIENT_URL || 'http://localhost:5174').split(',')[0].trim();
+    
     if (!code || !state) {
-      return res.redirect(`${process.env.CLIENT_URL || 'http://localhost:5174'}/settings?error=missing_code`);
+      return res.redirect(`${clientUrl}/settings?error=missing_code`);
     }
     
     // State contains the user ID
@@ -51,10 +54,11 @@ router.get('/callback', async (req, res) => {
     const tokens = await googleCalendarService.handleAuthCallback(code, userId);
     
     // Redirect back to frontend with success
-    res.redirect(`${process.env.CLIENT_URL || 'http://localhost:5174'}/settings?calendar_auth=success`);
+    res.redirect(`${clientUrl}/settings?calendar_auth=success`);
   } catch (error) {
     console.error('OAuth callback error:', error);
-    res.redirect(`${process.env.CLIENT_URL || 'http://localhost:5174'}/settings?calendar_auth=error`);
+    const clientUrl = (process.env.CLIENT_URL || 'http://localhost:5174').split(',')[0].trim();
+    res.redirect(`${clientUrl}/settings?calendar_auth=error`);
   }
 });
 

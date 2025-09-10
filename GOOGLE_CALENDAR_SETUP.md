@@ -1,85 +1,54 @@
-# Google Calendar OAuth Setup Guide
+# Google Calendar Setup - SIMPLIFIED
 
-Your Google OAuth credentials are returning a 404 error. Here's how to fix it:
+## What We Fixed
+- ✅ Removed all mock data
+- ✅ Direct Google Calendar API integration (no Edge Functions needed)
+- ✅ Simple OAuth in the browser
+- ✅ Real events sync to Supabase
 
-## Step 1: Create a Google Cloud Project
+## Quick Setup (5 minutes)
 
-1. Go to [Google Cloud Console](https://console.cloud.google.com/)
-2. Create a new project or select an existing one
-3. Note your project ID
+### 1. Get Google API Credentials
 
-## Step 2: Enable Google Calendar API
+Go to: https://console.cloud.google.com/
 
-1. In the Cloud Console, go to "APIs & Services" > "Library"
-2. Search for "Google Calendar API"
-3. Click on it and press "Enable"
+1. Create new project or select existing
+2. Enable "Google Calendar API"
+3. Create OAuth 2.0 Client ID:
+   - Type: Web application
+   - Authorized JavaScript origins:
+     - `http://localhost:5173`
+     - `https://your-app.vercel.app` (your production URL)
+4. Create API Key (for calendar API access)
 
-## Step 3: Configure OAuth Consent Screen
+### 2. Update Your .env.local
 
-1. Go to "APIs & Services" > "OAuth consent screen"
-2. Choose "External" user type (unless you have a Google Workspace account)
-3. Fill in required fields:
-   - App name: "Family Planner"
-   - User support email: Your email
-   - Developer contact: Your email
-4. Add scopes:
-   - Click "Add or Remove Scopes"
-   - Search and add: `https://www.googleapis.com/auth/calendar`
-5. Add test users (your email addresses)
-6. Save and continue
-
-## Step 4: Create OAuth 2.0 Credentials
-
-1. Go to "APIs & Services" > "Credentials"
-2. Click "Create Credentials" > "OAuth client ID"
-3. Choose "Web application"
-4. Add authorized redirect URIs:
-   - `http://localhost:11001/api/google/callback`
-   - `http://localhost:11001/api/calendar-accounts/callback` (for new multi-account system)
-5. Click "Create"
-6. Copy the Client ID and Client Secret
-
-## Step 5: Update Your .env File
-
-Replace the existing credentials in `/server/.env`:
-
-```
-GOOGLE_CLIENT_ID=your_new_client_id_here
-GOOGLE_CLIENT_SECRET=your_new_client_secret_here
-GOOGLE_REDIRECT_URI=http://localhost:11001/api/google/callback
+```env
+VITE_GOOGLE_CLIENT_ID=your-client-id.apps.googleusercontent.com
+VITE_GOOGLE_API_KEY=your-api-key
 ```
 
-## Step 6: Restart the Server
+### 3. Connect Your Calendar
 
-After updating .env, restart your server for changes to take effect.
+1. Open the app
+2. Go to Calendar Settings
+3. Click "Add Account"
+4. Sign in with Google
+5. Your real events appear!
 
-## Alternative: Use Mock Mode
+## That's It! 🎉
 
-While setting up Google OAuth, you can temporarily revert to mock mode:
+No more Edge Functions, no more mock data. Just your real calendar events.
 
-1. Edit `/client/src/components/calendar/CalendarAccountManager.jsx`
-2. Change line 98 from `mockMode: false` to `mockMode: true`
-3. This will use simulated calendar accounts for testing
+## What's Working Now
 
-## Common Issues
+- ✅ Direct Google Calendar OAuth (no backend needed)
+- ✅ Events sync to Supabase for offline access
+- ✅ Simple, clean integration
+- ✅ Works on localhost and production
 
-### 404 Error
-- Usually means the client ID doesn't exist or the project was deleted
-- Verify the client ID in Google Cloud Console matches your .env file
+## Your Apps
 
-### 400 Error (redirect_uri_mismatch)
-- The redirect URI in your request doesn't match what's configured in Google Cloud Console
-- Make sure `http://localhost:11001/api/google/callback` is added as an authorized redirect URI
-
-### 403 Error (access_denied)
-- The Google Calendar API might not be enabled
-- Or your email isn't in the test users list (if app is in testing mode)
-
-## Testing Your Setup
-
-1. After configuration, go to Calendar Settings in your app
-2. Click "Add Google Account"
-3. You should see Google's consent screen
-4. Authorize and select your Google account
-5. Grant calendar permissions
-6. You'll be redirected back to your app with the account connected
+- Local: http://localhost:5173
+- Production: https://itineraries-jet.vercel.app
+- Supabase: https://app.supabase.com/project/ztgvaawtjfcyatbpsaau

@@ -33,7 +33,7 @@ const CalendarSync = () => {
         );
         loadSyncStatus();
       } else if (authResult.error) {
-        setError('Failed to connect Google Calendar. Please try again.');
+        setError('Failed to connect Google Calendar. Edge Functions may not be deployed yet.');
       }
     }
   };
@@ -41,13 +41,27 @@ const CalendarSync = () => {
   const loadSyncStatus = async () => {
     try {
       const status = await calendarSyncService.getSyncStatus();
-      setSyncStatus(status);
+      setSyncStatus({
+        isConfigured: status.isConfigured || false,
+        isAuthenticated: status.isAuthenticated || status.connected || false,
+        syncEnabled: status.syncEnabled || false,
+        lastSyncTime: status.lastSync || status.lastSyncTime || null,
+        mockMode: status.mockMode !== false
+      });
       
-      if (status.isAuthenticated) {
+      if (status.isAuthenticated || status.connected) {
         await loadCalendars();
       }
     } catch (err) {
-      // Don't show error on initial load - might just be not configured
+      console.log('Calendar sync not configured yet');
+      // Set default status when Edge Functions not deployed
+      setSyncStatus({
+        isConfigured: false,
+        isAuthenticated: false,
+        syncEnabled: false,
+        lastSyncTime: null,
+        mockMode: true
+      });
       console.log('Calendar sync status check failed:', err);
       setSyncStatus({
         isConfigured: true, // Assume configured since we have credentials

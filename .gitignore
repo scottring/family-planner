@@ -8,6 +8,13 @@ node_modules/
 .env.local
 .env.*.local
 *.env
+.env.railway
+DEPLOY_BACKEND.md
+setup-apis.sh
+setup-apis-final.sh
+deploy-functions.sh
+database/family_export.sql
+database/family_postgres.sql
 
 # Logs
 logs/

@@ -41,11 +41,12 @@ app.use(cors({
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Serve static files in production
-if (process.env.NODE_ENV === 'production') {
-  // Serve static files from the React app build directory
-  app.use(express.static(path.join(__dirname, '../client/dist')));
-}
+// Serve static files in production (disabled for separate backend deployment)
+// Uncomment if deploying backend and frontend together
+// if (process.env.NODE_ENV === 'production' && fs.existsSync(path.join(__dirname, '../client/dist'))) {
+//   // Serve static files from the React app build directory
+//   app.use(express.static(path.join(__dirname, '../client/dist')));
+// }
 
 // Database initialization
 const db = require('./config/database');
@@ -70,7 +71,7 @@ console.log('[Server] Planning session routes loaded:', typeof planningSessionRo
 const captureRoutes = require('./routes/capture');
 const familyNotesRoutes = require('./routes/family-notes');
 const handoffsRoutes = require('./routes/handoffs');
-const calendarAccountsRoutes = require('./routes/calendar-accounts');
+const calendarAccountsRoutes = require('./routes/calendarAccounts');
 const checklistTemplateRoutes = require('./routes/checklist-templates');
 const timelineTemplateRoutes = require('./routes/timeline-templates');
 const timelineSuggestionsRoutes = require('./routes/timeline-suggestions');
@@ -488,13 +489,14 @@ cron.schedule('*/30 * * * *', async () => {
   }
 });
 
-// Serve React app in production
-if (process.env.NODE_ENV === 'production') {
-  // Handle React routing, return all requests to React app
-  app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, '../client/dist/index.html'));
-  });
-}
+// Serve React app in production (disabled for separate backend deployment)
+// Uncomment if deploying backend and frontend together
+// if (process.env.NODE_ENV === 'production' && fs.existsSync(path.join(__dirname, '../client/dist'))) {
+//   // Handle React routing, return all requests to React app
+//   app.get('*', (req, res) => {
+//     res.sendFile(path.join(__dirname, '../client/dist/index.html'));
+//   });
+// }
 
 const PORT = process.env.PORT || 11001;
 

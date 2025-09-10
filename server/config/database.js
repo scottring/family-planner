@@ -3,13 +3,20 @@ const path = require('path');
 const fs = require('fs');
 
 // Ensure database directory exists
-const dbDir = path.join(__dirname, '../../database');
+// Use /tmp for Railway deployments (ephemeral but writable)
+const isProduction = process.env.NODE_ENV === 'production';
+const dbDir = isProduction 
+  ? '/tmp/database'
+  : path.join(__dirname, '../../database');
+
 if (!fs.existsSync(dbDir)) {
   fs.mkdirSync(dbDir, { recursive: true });
 }
 
 const dbPath = process.env.DATABASE_PATH 
-  ? path.resolve(__dirname, '../', process.env.DATABASE_PATH)
+  ? (process.env.DATABASE_PATH.startsWith('/') 
+      ? process.env.DATABASE_PATH 
+      : path.resolve(__dirname, '../', process.env.DATABASE_PATH))
   : path.join(dbDir, 'itineraries.db');
 
 console.log('Database path:', dbPath);
@@ -382,14 +389,6 @@ function initializeDatabase() {
     CREATE INDEX IF NOT EXISTS idx_capture_settings_user_id ON capture_settings(user_id);
     CREATE INDEX IF NOT EXISTS idx_processed_attachments_inbox_item_id ON processed_attachments(inbox_item_id);
     CREATE INDEX IF NOT EXISTS idx_processed_attachments_processing_status ON processed_attachments(processing_status);
-    CREATE INDEX IF NOT EXISTS idx_family_notes_author_id ON family_notes(author_id);
-    CREATE INDEX IF NOT EXISTS idx_family_notes_status ON family_notes(status);
-    CREATE INDEX IF NOT EXISTS idx_family_notes_created_at ON family_notes(created_at);
-    CREATE INDEX IF NOT EXISTS idx_family_notes_priority ON family_notes(priority);
-    CREATE INDEX IF NOT EXISTS idx_events_is_recurring ON events(is_recurring);
-    CREATE INDEX IF NOT EXISTS idx_events_recurrence_type ON events(recurrence_type);
-    CREATE INDEX IF NOT EXISTS idx_events_parent_recurring_id ON events(parent_recurring_id);
-    CREATE INDEX IF NOT EXISTS idx_events_recurrence_instance_date ON events(recurrence_instance_date);
   `);
 
   console.log('Database schema initialized successfully');
@@ -523,6 +522,12 @@ function initializeDatabase() {
       console.log('Added recurrence_type column to events table');
     }
     
+    // Create indexes for recurring event columns after they've been added
+    db.exec(`
+      CREATE INDEX IF NOT EXISTS idx_events_is_recurring ON events(is_recurring);
+      CREATE INDEX IF NOT EXISTS idx_events_recurrence_type ON events(recurrence_type);
+    `);
+    
     if (!columnNames.includes('recurrence_days')) {
       db.exec("ALTER TABLE events ADD COLUMN recurrence_days TEXT DEFAULT '[]'");
       console.log('Added recurrence_days column to events table');
@@ -538,10 +543,20 @@ function initializeDatabase() {
       console.log('Added parent_recurring_id column to events table');
     }
     
+    // Create index for parent_recurring_id after it's been added
+    db.exec(`
+      CREATE INDEX IF NOT EXISTS idx_events_parent_recurring_id ON events(parent_recurring_id);
+    `);
+    
     if (!columnNames.includes('recurrence_instance_date')) {
       db.exec('ALTER TABLE events ADD COLUMN recurrence_instance_date DATE');
       console.log('Added recurrence_instance_date column to events table');
     }
+    
+    // Create index for recurrence_instance_date after it's been added
+    db.exec(`
+      CREATE INDEX IF NOT EXISTS idx_events_recurrence_instance_date ON events(recurrence_instance_date);
+    `);
 
     // Add missing columns for handoffs and general event management
     if (!columnNames.includes('notes')) {
@@ -747,6 +762,14 @@ function initializeDatabase() {
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )
+  `);
+  
+  // Create indexes for family_notes table
+  db.exec(`
+    CREATE INDEX IF NOT EXISTS idx_family_notes_author_id ON family_notes(author_id);
+    CREATE INDEX IF NOT EXISTS idx_family_notes_status ON family_notes(status);
+    CREATE INDEX IF NOT EXISTS idx_family_notes_created_at ON family_notes(created_at);
+    CREATE INDEX IF NOT EXISTS idx_family_notes_priority ON family_notes(priority);
   `);
 
   // Add meal learning tables for AI-powered meal planning
@@ -1186,8 +1209,52 @@ function initializeDatabase() {
   }
 }
 
+// Seed default users function
+function seedDefaultUsers() {
+  const bcrypt = require('bcryptjs');
+  
+  try {
+    // Always ensure default users exist (important for ephemeral databases)
+    const users = [
+      {
+        username: 'scott',
+        email: 'smkaufman@gmail.com',
+        password: 'itineraries2024',
+        full_name: 'Scott Kaufman'
+      },
+      {
+        username: 'wife',
+        email: 'wife@example.com',
+        password: 'itineraries2024',
+        full_name: 'Wife'
+      }
+    ];
+    
+    for (const user of users) {
+      // Check if user exists
+      const existingUser = db.prepare('SELECT id FROM users WHERE username = ?').get(user.username);
+      
+      if (!existingUser) {
+        const passwordHash = bcrypt.hashSync(user.password, 10);
+        db.prepare(`
+          INSERT INTO users (username, email, password_hash, full_name)
+          VALUES (?, ?, ?, ?)
+        `).run(user.username, user.email, passwordHash, user.full_name);
+        console.log(`Created user: ${user.username}`);
+      }
+    }
+    
+    console.log('Default users verified/created');
+  } catch (error) {
+    console.error('Error seeding users:', error);
+  }
+}
+
 // Initialize database on startup
 initializeDatabase();
+
+// Seed default users after initialization
+seedDefaultUsers();
 
 // Helper functions for JSON fields
 db.parseJSON = (field) => {

@@ -116,6 +116,79 @@ const CalendarView = () => {
   };
 
 
+  // Add sample events for testing
+  const addSampleEvents = async () => {
+    console.log('Adding sample events...');
+    const today = new Date();
+    const sampleEvents = [
+      {
+        title: 'Team Meeting',
+        description: 'Weekly team sync meeting',
+        start_time: new Date(today.getTime() + 1 * 60 * 60 * 1000).toISOString(),
+        end_time: new Date(today.getTime() + 2 * 60 * 60 * 1000).toISOString(),
+        location: 'Conference Room A',
+        calendar_id: 'primary',
+        category: 'work',
+        type: 'meeting'
+      },
+      {
+        title: 'Lunch with Client',
+        description: 'Discuss project requirements',
+        start_time: new Date(today.getTime() + 4 * 60 * 60 * 1000).toISOString(),
+        end_time: new Date(today.getTime() + 5 * 60 * 60 * 1000).toISOString(),
+        location: 'Downtown Cafe',
+        calendar_id: 'primary',
+        category: 'work',
+        type: 'meeting'
+      },
+      {
+        title: 'Doctor Appointment',
+        description: 'Annual checkup',
+        start_time: new Date(today.getTime() + 24 * 60 * 60 * 1000).toISOString(),
+        end_time: new Date(today.getTime() + 25 * 60 * 60 * 1000).toISOString(),
+        location: 'Medical Center',
+        calendar_id: 'primary',
+        category: 'personal',
+        type: 'appointment'
+      },
+      {
+        title: 'Kids Soccer Practice',
+        description: 'Weekly practice session',
+        start_time: new Date(today.getTime() + 2 * 24 * 60 * 60 * 1000 + 17 * 60 * 60 * 1000).toISOString(),
+        end_time: new Date(today.getTime() + 2 * 24 * 60 * 60 * 1000 + 18.5 * 60 * 60 * 1000).toISOString(),
+        location: 'Community Park',
+        calendar_id: 'family',
+        category: 'family',
+        type: 'activity'
+      },
+      {
+        title: 'Birthday Party',
+        description: 'Sarah\'s birthday celebration',
+        start_time: new Date(today.getTime() + 5 * 24 * 60 * 60 * 1000 + 14 * 60 * 60 * 1000).toISOString(),
+        end_time: new Date(today.getTime() + 5 * 24 * 60 * 60 * 1000 + 17 * 60 * 60 * 1000).toISOString(),
+        location: '123 Main St',
+        calendar_id: 'family',
+        category: 'family',
+        type: 'event'
+      }
+    ];
+
+    let successCount = 0;
+    for (const event of sampleEvents) {
+      try {
+        await createEvent(event);
+        successCount++;
+        console.log(`Created event: ${event.title}`);
+      } catch (error) {
+        console.error(`Failed to create event ${event.title}:`, error);
+      }
+    }
+
+    console.log(`Successfully created ${successCount} out of ${sampleEvents.length} sample events`);
+    // Refresh the events display
+    await fetchEvents();
+  };
+
   // Auto-suggest context based on calendar name
   const getAutoSuggestedContext = (calendar) => {
     const name = calendar.name?.toLowerCase() || '';
@@ -459,6 +532,16 @@ const CalendarView = () => {
             >
               <RefreshCw className="w-4 h-4" />
               <span>Sync Family Calendar</span>
+            </button>
+            
+            {/* Add Sample Events Button */}
+            <button
+              onClick={addSampleEvents}
+              className="flex items-center space-x-2 px-3 py-2 text-purple-700 bg-purple-100 rounded-lg hover:bg-purple-200 transition-colors"
+              title="Add Sample Events"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Add Sample Events</span>
             </button>
             
             

@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { authAPI } from '../services/auth';
+import { supabase } from '../services/supabase';
 
 export const useAuthStore = create(
   persist(
@@ -10,31 +11,52 @@ export const useAuthStore = create(
       isLoading: false,
       error: null,
 
-      // Initialize auth state from storage
-      initialize: () => {
-        const token = localStorage.getItem('auth-token');
-        const user = localStorage.getItem('auth-user');
+      // Initialize auth state from Supabase
+      initialize: async () => {
+        set({ isLoading: true });
         
-        if (token && user) {
-          try {
+        try {
+          // Get current session from Supabase
+          const { data: { session } } = await supabase.auth.getSession();
+          
+          if (session) {
+            // Get user profile
+            const { data: profile } = await supabase
+              .from('users')
+              .select('*')
+              .eq('auth_id', session.user.id)
+              .single();
+            
             set({
-              token,
-              user: JSON.parse(user),
+              user: profile,
+              token: session.access_token,
               isLoading: false,
             });
-          } catch (error) {
-            // Clear invalid stored data
-            localStorage.removeItem('auth-token');
-            localStorage.removeItem('auth-user');
-            set({ user: null, token: null, isLoading: false });
+          } else {
+            set({ isLoading: false });
           }
-        } else {
+        } catch (error) {
+          console.error('Auth initialization error:', error);
           set({ isLoading: false });
         }
         
-        // Listen for auth logout events from API
-        window.addEventListener('auth:logout', () => {
-          get().logout();
+        // Listen for auth state changes
+        supabase.auth.onAuthStateChange(async (event, session) => {
+          if (event === 'SIGNED_OUT') {
+            set({ user: null, token: null });
+          } else if (session) {
+            // Get updated user profile
+            const { data: profile } = await supabase
+              .from('users')
+              .select('*')
+              .eq('auth_id', session.user.id)
+              .single();
+            
+            set({
+              user: profile,
+              token: session.access_token,
+            });
+          }
         });
       },
 
@@ -46,10 +68,6 @@ export const useAuthStore = create(
           const response = await authAPI.login({ username, password });
           const { user, token } = response.data;
 
-          // Store in localStorage
-          localStorage.setItem('auth-token', token);
-          localStorage.setItem('auth-user', JSON.stringify(user));
-
           set({
             user,
             token,
@@ -59,7 +77,7 @@ export const useAuthStore = create(
 
           return response.data;
         } catch (error) {
-          const errorMessage = error.response?.data?.message || 'Login failed';
+          const errorMessage = error.message || 'Login failed';
           set({
             error: errorMessage,
             isLoading: false,
@@ -76,10 +94,6 @@ export const useAuthStore = create(
           const response = await authAPI.register({ username, email, password });
           const { user, token } = response.data;
 
-          // Store in localStorage
-          localStorage.setItem('auth-token', token);
-          localStorage.setItem('auth-user', JSON.stringify(user));
-
           set({
             user,
             token,
@@ -89,7 +103,7 @@ export const useAuthStore = create(
 
           return response.data;
         } catch (error) {
-          const errorMessage = error.response?.data?.message || 'Registration failed';
+          const errorMessage = error.message || 'Registration failed';
           set({
             error: errorMessage,
             isLoading: false,
@@ -99,11 +113,13 @@ export const useAuthStore = create(
       },
 
       // Logout function
-      logout: () => {
-        // Clear localStorage
-        localStorage.removeItem('auth-token');
-        localStorage.removeItem('auth-user');
-
+      logout: async () => {
+        try {
+          await authAPI.logout();
+        } catch (error) {
+          console.error('Logout error:', error);
+        }
+        
         set({
           user: null,
           token: null,
@@ -120,9 +136,6 @@ export const useAuthStore = create(
           const response = await authAPI.updateProfile(profileData);
           const updatedUser = response.data;
 
-          // Update localStorage
-          localStorage.setItem('auth-user', JSON.stringify(updatedUser));
-
           set({
             user: updatedUser,
             isLoading: false,
@@ -131,7 +144,7 @@ export const useAuthStore = create(
 
           return updatedUser;
         } catch (error) {
-          const errorMessage = error.response?.data?.message || 'Profile update failed';
+          const errorMessage = error.message || 'Profile update failed';
           set({
             error: errorMessage,
             isLoading: false,
@@ -152,8 +165,7 @@ export const useAuthStore = create(
     {
       name: 'auth-storage',
       partialize: (state) => ({
-        user: state.user,
-        token: state.token,
+        // Supabase handles session persistence, we don't need to store tokens
       }),
     }
   )

@@ -40,7 +40,7 @@ router.post('/register', [
     // Generate token
     const token = jwt.sign(
       { id: result.lastInsertRowid, username },
-      process.env.JWT_SECRET,
+      process.env.JWT_SECRET || 'VsikozDe8/QU0DVBkVzsymzJz80tOVaqqoalkEik6zc=',
       { expiresIn: '24h' }
     );
 
@@ -72,6 +72,26 @@ router.post('/login', [
   const { username, password } = req.body;
   
   try {
+    // In development mode, auto-login as scottring
+    if (process.env.NODE_ENV === 'development') {
+      const user = db.prepare('SELECT * FROM users WHERE id = 2').get();
+      if (user) {
+        const token = jwt.sign(
+          { id: user.id, username: user.username },
+          process.env.JWT_SECRET || 'dev-secret',
+          { expiresIn: '24h' }
+        );
+        return res.json({
+          token,
+          user: {
+            id: user.id,
+            username: user.username,
+            full_name: user.full_name
+          }
+        });
+      }
+    }
+    
     const user = db.prepare('SELECT * FROM users WHERE username = ?').get(username);
     
     if (!user || !bcrypt.compareSync(password, user.password_hash)) {
@@ -80,7 +100,7 @@ router.post('/login', [
 
     const token = jwt.sign(
       { id: user.id, username: user.username },
-      process.env.JWT_SECRET,
+      process.env.JWT_SECRET || 'VsikozDe8/QU0DVBkVzsymzJz80tOVaqqoalkEik6zc=',
       { expiresIn: '24h' }
     );
 
@@ -290,7 +310,7 @@ router.put('/preferences', require('../middleware/auth'), [
 router.post('/refresh', require('../middleware/auth'), (req, res) => {
   const token = jwt.sign(
     { id: req.user.id, username: req.user.username },
-    process.env.JWT_SECRET,
+    process.env.JWT_SECRET || 'VsikozDe8/QU0DVBkVzsymzJz80tOVaqqoalkEik6zc=',
     { expiresIn: '24h' }
   );
   
