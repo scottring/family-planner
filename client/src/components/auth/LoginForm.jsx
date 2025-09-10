@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Eye, EyeOff, LogIn } from 'lucide-react';
 import { useAuthStore } from '../../stores/authStore';
+import GoogleSignIn from './GoogleSignIn';
 
 const loginSchema = z.object({
   username: z.string().min(3, 'Username must be at least 3 characters'),
@@ -39,7 +40,23 @@ const LoginForm = () => {
           </p>
         </div>
         
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit(onSubmit)}>
+        {/* Google Sign In */}
+        <div className="mt-6">
+          <GoogleSignIn />
+        </div>
+        
+        <div className="mt-6">
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-gray-300" />
+            </div>
+            <div className="relative flex justify-center text-sm">
+              <span className="px-2 bg-white text-gray-500">Or continue with</span>
+            </div>
+          </div>
+        </div>
+        
+        <form className="mt-6 space-y-6" onSubmit={handleSubmit(onSubmit)}>
           {error && (
             <div className="bg-red-50 border border-red-300 text-red-700 px-4 py-3 rounded-md">
               {error}
@@ -91,7 +108,7 @@ const LoginForm = () => {
             </div>
           </div>
 
-          <div>
+          <div className="space-y-3">
             <button
               type="submit"
               disabled={isLoading}

@@ -1,12 +1,12 @@
-import React, { useState, useEffect } from 'react';
-import { 
-  Plus, 
-  Trash2, 
-  Settings, 
-  CheckCircle, 
-  AlertCircle, 
-  Loader, 
-  User, 
+import React, { useState, useEffect } from "react";
+import {
+  Plus,
+  Trash2,
+  Settings,
+  CheckCircle,
+  AlertCircle,
+  Loader,
+  User,
   Calendar,
   Edit3,
   X,
@@ -14,20 +14,24 @@ import {
   ChevronDown,
   ChevronRight,
   List,
-  Check
-} from 'lucide-react';
-import calendarAccountsService from '../../services/calendarAccounts';
+  Check,
+} from "lucide-react";
+import calendarAccountsService from "../../services/calendarAccounts";
 
 const CalendarAccountManager = () => {
   const [accounts, setAccounts] = useState([]);
   const [contexts, setContexts] = useState({});
-  const [availableContexts, setAvailableContexts] = useState(['work', 'personal', 'family']);
+  const [availableContexts, setAvailableContexts] = useState([
+    "work",
+    "personal",
+    "family",
+  ]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
   const [addingAccount, setAddingAccount] = useState(false);
   const [editingAccount, setEditingAccount] = useState(null);
-  const [newDisplayName, setNewDisplayName] = useState('');
+  const [newDisplayName, setNewDisplayName] = useState("");
   const [expandedAccounts, setExpandedAccounts] = useState(new Set());
   const [calendarData, setCalendarData] = useState({});
   const [loadingCalendars, setLoadingCalendars] = useState({});
@@ -48,20 +52,39 @@ const CalendarAccountManager = () => {
     try {
       const accountData = await calendarAccountsService.getAccounts();
       setAccounts(accountData);
+      setLoading(false); // Make sure loading stops even if contexts fail
     } catch (err) {
-      console.error('Failed to load accounts:', err);
+      console.error("Failed to load accounts:", err);
+      setLoading(false); // Stop loading on error
       // Don't show error for initial load
     }
   };
 
   const loadContexts = async () => {
     try {
+      console.log("loadContexts: Fetching context data...");
       const contextData = await calendarAccountsService.getContexts();
-      setContexts(contextData.contexts);
-      setAvailableContexts(contextData.availableContexts);
+      console.log("loadContexts: Received context data:", contextData);
+
+      // Ensure contexts is an object, even if empty
+      const contextsToSet = contextData.contexts || {};
+      const availableToSet = contextData.availableContexts || ["work", "personal", "family"];
+      
+      console.log(
+        "loadContexts: Setting contexts state:",
+        contextsToSet,
+      );
+      setContexts(contextsToSet);
+      setAvailableContexts(availableToSet);
+      console.log("loadContexts: State updated with:", {
+        contexts: contextsToSet,
+        availableContexts: availableToSet
+      });
     } catch (err) {
-      console.error('Failed to load contexts:', err);
-      // Don't show error for initial load
+      console.error("Failed to load contexts:", err);
+      // Set default values on error
+      setContexts({});
+      setAvailableContexts(["work", "personal", "family"]);
     } finally {
       setLoading(false);
     }
@@ -70,22 +93,27 @@ const CalendarAccountManager = () => {
   const handleAddAccount = async () => {
     setAddingAccount(true);
     clearMessages();
-    
+
     try {
       const result = await calendarAccountsService.addAccount(
         `Account ${accounts.length + 1}`,
-        false
+        false,
       );
 
       if (result.success && !result.mockMode) {
         // Real OAuth flow initiated
-        setSuccess(result.message || 'Redirecting to Google...');
-        // The redirect will happen from the service
+        setSuccess(result.message || "Redirecting to Google...");
+        // Reload accounts and contexts to show the new account
+        await loadAccounts();
+        await loadContexts();
       } else if (result.mockMode) {
         // Edge Functions not available
-        setError(result.message || 'Google Calendar integration not available');
+        setError(result.message || "Google Calendar integration not available");
+        // Still reload to show any mock accounts
+        await loadAccounts();
+        await loadContexts();
       } else if (!result.success) {
-        setError(result.message || 'Failed to connect Google Calendar');
+        setError(result.message || "Failed to connect Google Calendar");
       }
     } catch (err) {
       setError(err.message);
@@ -95,15 +123,17 @@ const CalendarAccountManager = () => {
   };
 
   const handleRemoveAccount = async (accountId) => {
-    if (!window.confirm('Are you sure you want to remove this calendar account?')) {
+    if (
+      !window.confirm("Are you sure you want to remove this calendar account?")
+    ) {
       return;
     }
 
     clearMessages();
-    
+
     try {
       await calendarAccountsService.removeAccount(accountId);
-      setSuccess('Calendar account removed successfully');
+      setSuccess("Calendar account removed successfully");
       await loadAccounts();
       await loadContexts();
     } catch (err) {
@@ -112,20 +142,34 @@ const CalendarAccountManager = () => {
   };
 
   const handleSetContext = async (accountId, context) => {
+    console.log("handleSetContext called:", { accountId, context });
     clearMessages();
-    
+
     try {
-      await calendarAccountsService.setContext(accountId, context);
+      console.log("Calling calendarAccountsService.setContext...");
+      const result = await calendarAccountsService.setContext(
+        accountId,
+        context,
+      );
+      console.log("setContext result:", result);
+
       setSuccess(`Account set as default for ${context} context`);
+
+      console.log("Calling loadContexts to refresh data...");
       await loadContexts();
+      console.log("loadContexts completed, new contexts:", contexts);
+
+      // Force a re-render by updating accounts too
+      await loadAccounts();
     } catch (err) {
+      console.error("handleSetContext error:", err);
       setError(err.message);
     }
   };
 
   const handleRemoveContext = async (accountId, context) => {
     clearMessages();
-    
+
     try {
       await calendarAccountsService.removeContext(accountId, context);
       setSuccess(`Removed ${context} context assignment`);
@@ -137,12 +181,15 @@ const CalendarAccountManager = () => {
 
   const handleEditDisplayName = async (accountId) => {
     clearMessages();
-    
+
     try {
-      await calendarAccountsService.updateDisplayName(accountId, newDisplayName);
-      setSuccess('Account display name updated successfully');
+      await calendarAccountsService.updateDisplayName(
+        accountId,
+        newDisplayName,
+      );
+      setSuccess("Account display name updated successfully");
       setEditingAccount(null);
-      setNewDisplayName('');
+      setNewDisplayName("");
       await loadAccounts();
     } catch (err) {
       setError(err.message);
@@ -157,7 +204,10 @@ const CalendarAccountManager = () => {
 
   const getAvailableContextsForAccount = (accountId) => {
     const usedContexts = getContextsForAccount(accountId);
-    return availableContexts.filter(context => !contexts[context] || contexts[context]?.accountId === accountId);
+    return availableContexts.filter(
+      (context) =>
+        !contexts[context] || contexts[context]?.accountId === accountId,
+    );
   };
 
   const toggleAccountExpansion = (accountId) => {
@@ -175,43 +225,47 @@ const CalendarAccountManager = () => {
   };
 
   const loadCalendarsForAccount = async (accountId) => {
-    setLoadingCalendars(prev => ({ ...prev, [accountId]: true }));
+    setLoadingCalendars((prev) => ({ ...prev, [accountId]: true }));
     clearMessages();
-    
+
     try {
       const result = await calendarAccountsService.getCalendars(accountId);
-      
-      setCalendarData(prev => ({
+
+      setCalendarData((prev) => ({
         ...prev,
-        [accountId]: result.calendars
+        [accountId]: result.calendars,
       }));
 
       // Initialize selections state
       const selections = {};
-      result.calendars.forEach(calendar => {
+      result.calendars.forEach((calendar) => {
         selections[calendar.id] = {
           selected: calendar.selected,
-          contexts: calendar.contexts || []
+          contexts: calendar.contexts || [],
         };
       });
-      
-      setCalendarSelections(prev => ({
-        ...prev,
-        [accountId]: selections
-      }));
 
+      setCalendarSelections((prev) => ({
+        ...prev,
+        [accountId]: selections,
+      }));
     } catch (err) {
       setError(err.message);
     } finally {
-      setLoadingCalendars(prev => ({ ...prev, [accountId]: false }));
+      setLoadingCalendars((prev) => ({ ...prev, [accountId]: false }));
     }
   };
 
-  const updateCalendarSelection = (accountId, calendarId, context, isSelected) => {
-    setCalendarSelections(prev => {
+  const updateCalendarSelection = (
+    accountId,
+    calendarId,
+    context,
+    isSelected,
+  ) => {
+    setCalendarSelections((prev) => {
       const accountSelections = { ...prev[accountId] };
       const calendarSelection = { ...accountSelections[calendarId] };
-      
+
       if (isSelected) {
         // Add context if not already present
         if (!calendarSelection.contexts.includes(context)) {
@@ -219,62 +273,72 @@ const CalendarAccountManager = () => {
         }
       } else {
         // Remove context
-        calendarSelection.contexts = calendarSelection.contexts.filter(c => c !== context);
+        calendarSelection.contexts = calendarSelection.contexts.filter(
+          (c) => c !== context,
+        );
       }
-      
+
       calendarSelection.selected = calendarSelection.contexts.length > 0;
       accountSelections[calendarId] = calendarSelection;
-      
+
       return {
         ...prev,
-        [accountId]: accountSelections
+        [accountId]: accountSelections,
       };
     });
   };
 
   const saveCalendarSelections = async (accountId) => {
-    setSavingSelections(prev => ({ ...prev, [accountId]: true }));
+    setSavingSelections((prev) => ({ ...prev, [accountId]: true }));
     clearMessages();
-    
+
     try {
       const accountSelections = calendarSelections[accountId];
       const selections = Object.entries(accountSelections)
         .filter(([calendarId, selection]) => selection.contexts.length > 0)
         .map(([calendarId, selection]) => {
-          const calendar = calendarData[accountId]?.find(c => c.id === calendarId);
+          const calendar = calendarData[accountId]?.find(
+            (c) => c.id === calendarId,
+          );
           return {
             calendarId,
-            calendarName: calendar?.summary || 'Unknown Calendar',
-            contexts: selection.contexts
+            calendarName: calendar?.summary || "Unknown Calendar",
+            contexts: selection.contexts,
           };
         });
-      
-      await calendarAccountsService.saveCalendarSelections(accountId, selections);
-      setSuccess('Calendar selections saved successfully');
+
+      await calendarAccountsService.saveCalendarSelections(
+        accountId,
+        selections,
+      );
+      setSuccess("Calendar selections saved successfully");
       await loadContexts(); // Reload contexts to reflect changes
-      
     } catch (err) {
       setError(err.message);
     } finally {
-      setSavingSelections(prev => ({ ...prev, [accountId]: false }));
+      setSavingSelections((prev) => ({ ...prev, [accountId]: false }));
     }
   };
 
   const hasUnsavedChanges = (accountId) => {
     const accountSelections = calendarSelections[accountId];
     const calendars = calendarData[accountId];
-    
+
     if (!accountSelections || !calendars) return false;
-    
-    return calendars.some(calendar => {
+
+    return calendars.some((calendar) => {
       const currentSelection = accountSelections[calendar.id];
       const originalContexts = calendar.contexts || [];
       const currentContexts = currentSelection?.contexts || [];
-      
+
       // Check if contexts have changed
       if (originalContexts.length !== currentContexts.length) return true;
-      return originalContexts.some(context => !currentContexts.includes(context)) ||
-             currentContexts.some(context => !originalContexts.includes(context));
+      return (
+        originalContexts.some(
+          (context) => !currentContexts.includes(context),
+        ) ||
+        currentContexts.some((context) => !originalContexts.includes(context))
+      );
     });
   };
 
@@ -283,7 +347,9 @@ const CalendarAccountManager = () => {
       <div className="bg-white rounded-lg shadow p-6">
         <div className="flex items-center justify-center py-8">
           <Loader className="w-8 h-8 animate-spin text-blue-500" />
-          <span className="ml-2 text-gray-600">Loading calendar accounts...</span>
+          <span className="ml-2 text-gray-600">
+            Loading calendar accounts...
+          </span>
         </div>
       </div>
     );
@@ -294,9 +360,12 @@ const CalendarAccountManager = () => {
       <div className="p-6 border-b border-gray-200">
         <div className="flex items-center justify-between">
           <div>
-            <h3 className="text-lg font-semibold text-gray-900">Google Calendar Accounts</h3>
+            <h3 className="text-lg font-semibold text-gray-900">
+              Google Calendar Accounts
+            </h3>
             <p className="text-sm text-gray-600">
-              Manage multiple Google Calendar accounts and assign them to different contexts
+              Manage multiple Google Calendar accounts and assign them to
+              different contexts
             </p>
           </div>
           <button
@@ -337,7 +406,9 @@ const CalendarAccountManager = () => {
         {accounts.length === 0 ? (
           <div className="text-center py-12">
             <Calendar className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-            <h4 className="text-lg font-medium text-gray-900 mb-2">No Calendar Accounts</h4>
+            <h4 className="text-lg font-medium text-gray-900 mb-2">
+              No Calendar Accounts
+            </h4>
             <p className="text-gray-600 mb-4">
               Add a Google Calendar account to get started with calendar sync.
             </p>
@@ -363,8 +434,9 @@ const CalendarAccountManager = () => {
           <div className="space-y-4">
             {accounts.map((account) => {
               const accountContexts = getContextsForAccount(account.id);
-              const availableContextsForThisAccount = getAvailableContextsForAccount(account.id);
-              
+              const availableContextsForThisAccount =
+                getAvailableContextsForAccount(account.id);
+
               return (
                 <div
                   key={account.id}
@@ -377,7 +449,7 @@ const CalendarAccountManager = () => {
                           <User className="w-5 h-5 text-blue-600" />
                         </div>
                       </div>
-                      
+
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center space-x-2">
                           {editingAccount === account.id ? (
@@ -385,12 +457,16 @@ const CalendarAccountManager = () => {
                               <input
                                 type="text"
                                 value={newDisplayName}
-                                onChange={(e) => setNewDisplayName(e.target.value)}
+                                onChange={(e) =>
+                                  setNewDisplayName(e.target.value)
+                                }
                                 className="px-2 py-1 border border-gray-300 rounded text-sm"
                                 placeholder="Display name"
                               />
                               <button
-                                onClick={() => handleEditDisplayName(account.id)}
+                                onClick={() =>
+                                  handleEditDisplayName(account.id)
+                                }
                                 className="p-1 text-green-600 hover:text-green-700"
                               >
                                 <Save className="w-4 h-4" />
@@ -398,7 +474,7 @@ const CalendarAccountManager = () => {
                               <button
                                 onClick={() => {
                                   setEditingAccount(null);
-                                  setNewDisplayName('');
+                                  setNewDisplayName("");
                                 }}
                                 className="p-1 text-gray-600 hover:text-gray-700"
                               >
@@ -408,12 +484,13 @@ const CalendarAccountManager = () => {
                           ) : (
                             <div className="flex items-center space-x-2">
                               <h4 className="text-sm font-medium text-gray-900 truncate">
-                                {account.display_name || account.google_account_email}
+                                {account.display_name ||
+                                  account.google_account_email}
                               </h4>
                               <button
                                 onClick={() => {
                                   setEditingAccount(account.id);
-                                  setNewDisplayName(account.display_name || '');
+                                  setNewDisplayName(account.display_name || "");
                                 }}
                                 className="p-1 text-gray-400 hover:text-gray-600"
                               >
@@ -422,11 +499,11 @@ const CalendarAccountManager = () => {
                             </div>
                           )}
                         </div>
-                        
+
                         <p className="text-xs text-gray-500 truncate">
                           {account.google_account_email}
                         </p>
-                        
+
                         {/* Context assignments */}
                         <div className="mt-2">
                           <div className="flex flex-wrap gap-1">
@@ -437,7 +514,9 @@ const CalendarAccountManager = () => {
                               >
                                 {context}
                                 <button
-                                  onClick={() => handleRemoveContext(account.id, context)}
+                                  onClick={() =>
+                                    handleRemoveContext(account.id, context)
+                                  }
                                   className="ml-1 text-blue-600 hover:text-blue-800"
                                 >
                                   <X className="w-3 h-3" />
@@ -448,13 +527,21 @@ const CalendarAccountManager = () => {
                         </div>
 
                         {/* Context assignment dropdown */}
-                        {availableContextsForThisAccount.length > accountContexts.length && (
+                        {availableContextsForThisAccount.length >
+                          accountContexts.length && (
                           <div className="mt-2">
                             <select
                               onChange={(e) => {
+                                console.log("Dropdown onChange triggered:", {
+                                  accountId: account.id,
+                                  selectedValue: e.target.value,
+                                  event: e,
+                                });
                                 if (e.target.value) {
+                                  console.log("Calling handleSetContext...");
                                   handleSetContext(account.id, e.target.value);
-                                  e.target.value = '';
+                                  e.target.value = "";
+                                  console.log("Reset dropdown value");
                                 }
                               }}
                               className="text-xs border border-gray-300 rounded px-2 py-1 text-gray-600"
@@ -462,12 +549,16 @@ const CalendarAccountManager = () => {
                             >
                               <option value="">Assign to context...</option>
                               {availableContextsForThisAccount
-                                .filter(context => !accountContexts.includes(context))
+                                .filter(
+                                  (context) =>
+                                    !accountContexts.includes(context),
+                                )
                                 .map((context) => (
-                                <option key={context} value={context}>
-                                  {context.charAt(0).toUpperCase() + context.slice(1)}
-                                </option>
-                              ))}
+                                  <option key={context} value={context}>
+                                    {context.charAt(0).toUpperCase() +
+                                      context.slice(1)}
+                                  </option>
+                                ))}
                             </select>
                           </div>
                         )}
@@ -479,7 +570,7 @@ const CalendarAccountManager = () => {
                         <CheckCircle className="w-4 h-4 mr-1" />
                         Connected
                       </div>
-                      
+
                       <button
                         onClick={() => toggleAccountExpansion(account.id)}
                         className="p-2 text-gray-400 hover:text-blue-600 transition-colors"
@@ -487,7 +578,7 @@ const CalendarAccountManager = () => {
                       >
                         <List className="w-4 h-4" />
                       </button>
-                      
+
                       <button
                         onClick={() => handleRemoveAccount(account.id)}
                         className="p-2 text-gray-400 hover:text-red-600 transition-colors"
@@ -497,7 +588,7 @@ const CalendarAccountManager = () => {
                       </button>
                     </div>
                   </div>
-                  
+
                   {/* Calendar Selection Interface */}
                   {expandedAccounts.has(account.id) && (
                     <div className="mt-4 border-t border-gray-200 pt-4">
@@ -530,13 +621,16 @@ const CalendarAccountManager = () => {
                           </button>
                         )}
                       </div>
-                      
+
                       {loadingCalendars[account.id] ? (
                         <div className="flex items-center justify-center py-4">
                           <Loader className="w-5 h-5 animate-spin text-blue-500 mr-2" />
-                          <span className="text-sm text-gray-600">Loading calendars...</span>
+                          <span className="text-sm text-gray-600">
+                            Loading calendars...
+                          </span>
                         </div>
-                      ) : calendarData[account.id] && calendarData[account.id].length > 0 ? (
+                      ) : calendarData[account.id] &&
+                        calendarData[account.id].length > 0 ? (
                         <div className="space-y-3">
                           {calendarData[account.id].map((calendar) => (
                             <div
@@ -563,12 +657,18 @@ const CalendarAccountManager = () => {
                                       )}
                                     </div>
                                   </div>
-                                  
+
                                   <div className="pl-6">
-                                    <p className="text-xs text-gray-600 mb-2">Assign to contexts:</p>
+                                    <p className="text-xs text-gray-600 mb-2">
+                                      Assign to contexts:
+                                    </p>
                                     <div className="grid grid-cols-3 gap-2">
                                       {availableContexts.map((context) => {
-                                        const isSelected = calendarSelections[account.id]?.[calendar.id]?.contexts?.includes(context) || false;
+                                        const isSelected =
+                                          calendarSelections[account.id]?.[
+                                            calendar.id
+                                          ]?.contexts?.includes(context) ||
+                                          false;
                                         return (
                                           <label
                                             key={context}
@@ -577,12 +677,14 @@ const CalendarAccountManager = () => {
                                             <input
                                               type="checkbox"
                                               checked={isSelected}
-                                              onChange={(e) => updateCalendarSelection(
-                                                account.id,
-                                                calendar.id,
-                                                context,
-                                                e.target.checked
-                                              )}
+                                              onChange={(e) =>
+                                                updateCalendarSelection(
+                                                  account.id,
+                                                  calendar.id,
+                                                  context,
+                                                  e.target.checked,
+                                                )
+                                              }
                                               className="w-3 h-3 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
                                             />
                                             <span className="capitalize text-gray-700">
@@ -604,9 +706,12 @@ const CalendarAccountManager = () => {
                       ) : (
                         <div className="text-center py-4">
                           <Calendar className="w-8 h-8 text-gray-400 mx-auto mb-2" />
-                          <p className="text-sm text-gray-600">No calendars found</p>
+                          <p className="text-sm text-gray-600">
+                            No calendars found
+                          </p>
                           <p className="text-xs text-gray-500">
-                            Make sure your Google account has accessible calendars
+                            Make sure your Google account has accessible
+                            calendars
                           </p>
                         </div>
                       )}
@@ -619,12 +724,21 @@ const CalendarAccountManager = () => {
         )}
 
         {/* Context overview */}
-        {Object.keys(contexts).length > 0 && (
+        {(Object.keys(contexts).length > 0 || true) && (
           <div className="mt-6 pt-6 border-t border-gray-200">
-            <h4 className="text-sm font-medium text-gray-900 mb-3">Context Assignments</h4>
+            <h4 className="text-sm font-medium text-gray-900 mb-3">
+              Context Assignments
+            </h4>
+            {console.log(
+              "Rendering Context Assignments - contexts state:",
+              contexts,
+              "availableContexts:",
+              availableContexts,
+            )}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {availableContexts.map((context) => {
                 const contextData = contexts[context];
+                console.log(`Rendering context ${context}:`, contextData);
                 return (
                   <div
                     key={context}
@@ -641,11 +755,15 @@ const CalendarAccountManager = () => {
                         </span>
                       )}
                     </div>
-                    
+
                     {contextData ? (
                       <div className="text-xs text-gray-600">
-                        <div className="font-medium">{contextData.displayName}</div>
-                        <div className="text-gray-500 truncate">{contextData.email}</div>
+                        <div className="font-medium">
+                          {contextData.displayName}
+                        </div>
+                        <div className="text-gray-500 truncate">
+                          {contextData.email}
+                        </div>
                       </div>
                     ) : (
                       <div className="text-xs text-gray-500">

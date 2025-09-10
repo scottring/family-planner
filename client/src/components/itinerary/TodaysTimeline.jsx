@@ -70,8 +70,16 @@ const TodaysTimeline = ({ date }) => {
         time: format(startTime, 'HH:mm'),
         endTimeFormatted: format(endTime, 'HH:mm'),
         type: event.category || 'personal',
-        attendees: event.attendees ? event.attendees.split(',').map(a => a.trim()) : [],
-        checklist: event.checklist ? event.checklist.split('\n') : [],
+        attendees: event.attendees ? (
+          typeof event.attendees === 'string' 
+            ? event.attendees.split(',').map(a => a.trim())
+            : Array.isArray(event.attendees) ? event.attendees : []
+        ) : [],
+        checklist: event.checklist ? (
+          typeof event.checklist === 'string'
+            ? event.checklist.split('\n')
+            : Array.isArray(event.checklist) ? event.checklist : []
+        ) : [],
         preparation: 15 // default preparation time
       };
     }).sort((a, b) => a.startTime.getTime() - b.startTime.getTime());

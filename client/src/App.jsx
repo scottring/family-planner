@@ -2,8 +2,10 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { useEffect } from 'react';
 import Layout from './components/layout/Layout';
 import ProtectedRoute from './components/auth/ProtectedRoute';
+import DirectLogin from './components/auth/DirectLogin';
 import LoginForm from './components/auth/LoginForm';
 import RegisterForm from './components/auth/RegisterForm';
+import AuthCallback from './pages/AuthCallback';
 import Dashboard from './pages/Dashboard';
 import DailyPage from './pages/DailyPage';
 import WeeklyPage from './pages/WeeklyPage';
@@ -37,11 +39,15 @@ function App() {
           {/* Public Routes */}
           <Route 
             path="/login" 
-            element={!user ? <LoginForm /> : <Navigate to="/" replace />} 
+            element={!user ? <DirectLogin /> : <Navigate to="/" replace />} 
           />
           <Route 
             path="/register" 
             element={!user ? <RegisterForm /> : <Navigate to="/" replace />} 
+          />
+          <Route 
+            path="/auth/callback" 
+            element={<AuthCallback />} 
           />
 
           {/* Protected Routes */}
